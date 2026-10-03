@@ -7,7 +7,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import { base64Decode, canonicalJson } from '../main/ets/core/remote/CanonicalJson';
 import {
   CourseManifest, packDir, packManifestPath, parseCatalog, parseCourseManifest, parseEnvelope, parseExpiresAt,
-  parseInstall, safeRelPath, tokenUsable, ttsBodyJson, validVersion
+  parseInstall, safeRelPath, tokenUsable, ttsBodyJson, validVersion, bundledCourseVersion
 } from '../main/ets/core/remote/ServerApi';
 import { sha256Hex, utf8Bytes } from '../main/ets/core/speech/Sha256';
 
@@ -16,6 +16,12 @@ const SIG: string = 'rYe6vCKK9uvXkP4geDHKtZkC25Tpvn/oUXbQA5RHnNC6VxXUL/PFjS4jDzQ
 const ENVELOPE: string = '{ "payload": { "courses": [ { "version": "2026.10.03", "id": "krakow", "title": {"zh":"皇家之路","pl":"Droga Królewska","en":"Royal Route"}, "km": 1.5, "stops": 6, "minutes": 45, "langs": ["en","pl","zh"], "bytes": 12345678, "city": "Kraków", "note": "a\\"b\\\\c\\n\\u0001 😀" } ], "Zeta": null, "alpha": [true, false, 0.1, -2, 1e21, 100] }, "sig": "' + SIG + '" }';
 const CANONICAL: string = '{"Zeta":null,"alpha":[true,false,0.1,-2,1e+21,100],"courses":[{"bytes":12345678,"city":"Kraków","id":"krakow","km":1.5,"langs":["en","pl","zh"],"minutes":45,"note":"a\\"b\\\\c\\n\\u0001 😀","stops":6,"title":{"en":"Royal Route","pl":"Droga Królewska","zh":"皇家之路"},"version":"2026.10.03"}]}';
 const CANONICAL_SHA: string = '76fadf7ebe2f244070e2da4e8dd7e1cd76d8436cfc9c39e8ed12903aa7a6c806';
+// The committed server/seed/catalog.json of origin/feat/server (PR #79), signed with the production key in
+// RemoteConfig. Node: crypto.verify(null, utf8(canonical(payload)), spkiKey, base64(sig)) === true for this file and
+// for server/seed/courses/krakow/manifest.json (canonical sha 6c915617...); here we check the app builds the same
+// canonical bytes (so the on-device Ed25519 verify sees exactly what was signed).
+const SEED_CATALOG: string = '{"payload":{"courses":[{"id":"krakow","version":"2026.10.03-41e1482c-a572a94e2","title":{"en":"The Royal Route","pl":"Droga Królewska","zh":"皇家之路"},"city":"Kraków","stops":11,"km":2,"minutes":55,"langs":["en","pl","zh"],"bytes":40307550}]},"sig":"rbXn3169LJC36iAm7iGjGJBEzaQL/hW6Vgb6MXq32enKT+rUoMijfuBZkQriQqXqy9AkuUNIZrubhLtwCO+xCQ=="}';
+const SEED_CATALOG_CANONICAL_SHA: string = '10af69091bf6875c2be7da0a005ea6e5265faa45a1df7b1f36ae5c50a9d81f84';
 const SHA_A: string = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const SHA_B: string = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 
@@ -45,6 +51,20 @@ export default function remoteEnvelopeTest() {
       expect(env.canonical).assertEqual(CANONICAL);
       expect(sha256Hex(env.canonical)).assertEqual(CANONICAL_SHA);
       expect(env.sig.length).assertEqual(64);
+    });
+
+    it('seedCatalogFromServer', 0, () => {
+      const env = parseEnvelope(SEED_CATALOG);
+      expect(env.error).assertEqual('');
+      expect(sha256Hex(env.canonical)).assertEqual(SEED_CATALOG_CANONICAL_SHA);
+      const cat = parseCatalog(env.payload);
+      expect(cat.courses.length).assertEqual(1);
+      expect(cat.courses[0].version).assertEqual('2026.10.03-41e1482c-a572a94e2');
+      expect(cat.courses[0].bytes).assertEqual(40307550);
+      // R6: the bundled pack 2026.10.03-41e1482c + sha256(rawfile/audio/manifest.json) 572a94e2... = the same version
+      expect(bundledCourseVersion('2026.10.03-41e1482c', '572a94e2' + 'f'.repeat(56)))
+        .assertEqual('2026.10.03-41e1482c-a572a94e2');
+      expect(bundledCourseVersion('1.0', 'nothex')).assertEqual('1.0');
     });
 
     it('canonicalJsonScalarsAndNesting', 0, () => {
@@ -162,7 +182,7 @@ export default function remoteEnvelopeTest() {
       expect(ttsBodyJson('krakow', 'de', 'Hallo', len)).assertEqual('');
       expect(ttsBodyJson('krakow', 'en', '', len)).assertEqual('');
       expect(ttsBodyJson('krakow', 'en', 'x'.repeat(401), len)).assertEqual('');
-      expect(ttsBodyJson('krakow', 'zh', '长'.repeat(390), len)).assertEqual('');   // 1170 utf-8 bytes > 1 KB
+      expect(ttsBodyJson('krakow', 'zh', '长'.repeat(400), len).length > 0).assertTrue();   // 1200 bytes <= 2 KB
       expect(ttsBodyJson('../x', 'en', 'Hi', len)).assertEqual('');
     });
   });

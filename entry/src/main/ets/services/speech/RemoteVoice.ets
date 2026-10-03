@@ -52,6 +52,7 @@ export class RemoteVoice implements SpeechPort, RuntimeClipSource {
   private cacheLoad: Promise<void> | undefined = undefined;
   private results: Map<string, Fetched> = new Map<string, Fetched>();
   private inflight: Map<string, Promise<void>> = new Map<string, Promise<void>>();
+  private refused: Set<string> = new Set<string>();   // 403 not_allowed: never asked again (SERVER.md §3.1)
   private offlineUntil: number = 0;
   private budgetUntil: number = 0;
   private state: ServerState = ServerState.OFFLINE;
@@ -260,6 +261,13 @@ export class RemoteVoice implements SpeechPort, RuntimeClipSource {
   }
 
   private decide(u: Utterance, sha: string, platformText: boolean): ChainStep {
+    if (this.refused.has(sha) && !this.cached.has(sha)) {
+      const s = new ChainStep();
+      s.src = platformText ? VoiceSrc.TEXT : VoiceSrc.TTS;
+      s.fallback = s.src;
+      s.reason = 'not_allowed';
+      return s;
+    }
     const i = new ChainInput();
     i.localClip = false;
     i.userOptOut = false;
@@ -319,6 +327,9 @@ export class RemoteVoice implements SpeechPort, RuntimeClipSource {
       }
       if (v.budgetForMs > 0) {
         this.budgetUntil = now + v.budgetForMs;
+      }
+      if (v.neverRetry) {
+        this.refused.add(sha);
       }
       const f = new Fetched();
       if (v.accept && res.audio !== undefined && this.cacheDir() !== '') {

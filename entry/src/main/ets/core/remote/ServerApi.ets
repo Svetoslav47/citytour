@@ -7,11 +7,13 @@
  *  R1 Envelope: `{payload: <object>, sig: <base64 Ed25519 signature, 64 bytes>}`; the signed bytes are
  *     utf8(canonicalJson(payload)) (CanonicalJson.ets). Standard or URL-safe base64 are both accepted.
  *  R2 `expiresAt` of POST /v1/installs: epoch seconds, epoch milliseconds (>= 1e12) or an ISO-8601 string.
- *  R3 Course layout: CourseManifest.files[].path is relative to the course root. The pack manifest is the first
- *     of `manifest.json`, `pack/manifest.json`, `packs/<packId>/manifest.json` that is listed; the pack's other files
- *     sit next to it (the same layout as rawfile/packs/krakow/). The clip manifest is `audio.manifestPath` (default
- *     `audio/manifest.json`) and its clip paths (`audio/...`) are relative to the course root, exactly as the
- *     bundled rawfile/audio/manifest.json is relative to rawfile/.
+ *  R3 Course layout (SERVER.md §3.1): CourseManifest.files[].path mirrors the app's rawfile/ layout:
+ *     `packs/<packId>/<file>` and `audio/...`. The pack manifest is the first of `packs/<packId>/manifest.json`,
+ *     `manifest.json`, `pack/manifest.json` that is listed; the pack's other files sit next to it. The clip manifest
+ *     is `audio.manifestPath` (default `audio/manifest.json`) and its clip paths (`audio/...`) are relative to the
+ *     course root, exactly as the bundled rawfile/audio/manifest.json is relative to rawfile/.
+ *  R6 Course version (SERVER.md §3.1): `<pack version>-a<first 8 hex of sha256(audio/manifest.json)>`, so the
+ *     bundled course's own version is computed the same way (bundledCourseVersion) to compare with the catalog.
  *  R4 Version: an opaque string; a catalog version different from the installed one is an update.
  *  R5 Ids and versions become folder names, so they are restricted to [A-Za-z0-9._-] (no '..').
  */
@@ -295,10 +297,12 @@ export function parseCourseManifest(payload: Object | undefined, expectId: strin
 
 /** R3: the course-relative path of the pack manifest, '' when none is listed. */
 export function packManifestPath(m: CourseManifest): string {
-  const candidates: string[] = ['manifest.json', 'pack/manifest.json'];
+  const candidates: string[] = [];
   if (m.packId !== '') {
     candidates.push(`packs/${m.packId}/manifest.json`);
   }
+  candidates.push('manifest.json');
+  candidates.push('pack/manifest.json');
   for (const c of candidates) {
     if (m.files.some((f: CourseFile) => f.path === c)) {
       return c;
@@ -369,9 +373,17 @@ export function tokenUsable(t: InstallToken | undefined, nowMs: number): boolean
   return t !== undefined && t.token !== '' && t.expiresAtMs - TOKEN_REFRESH_MARGIN_MS > nowMs;
 }
 
-/** POST /v1/tts limits (SERVER.md §3): text at most 400 chars, body at most 1 KB. */
+/** POST /v1/tts limits (SERVER.md §3.1): text 1..400 chars, body at most 2 KB (Chinese is 3 bytes per char). */
 export const TTS_MAX_TEXT_CHARS: number = 400;
-export const TTS_MAX_BODY_BYTES: number = 1024;
+export const TTS_MAX_BODY_BYTES: number = 2048;
+
+/** R6: the catalog version of the bundled course, from its pack version and the sha256 of its clip manifest. */
+export function bundledCourseVersion(packVersion: string, audioManifestSha: string): string {
+  if (!SHA256_RE.test(audioManifestSha)) {
+    return packVersion;
+  }
+  return `${packVersion}-a${audioManifestSha.substring(0, 8)}`;
+}
 
 export class TtsBody {
   courseId: string = '';

@@ -12,7 +12,10 @@ import { PackLoadResult, PackRepository } from '../../contracts/Ports';
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
 import { InstalledCourse, resolveActive } from '../../core/remote/CourseRules';
-import { CourseSummary } from '../../core/remote/ServerApi';
+import { bundledCourseVersion, CourseSummary } from '../../core/remote/ServerApi';
+import { CLIP_MANIFEST_RAWFILE } from '../../core/speech/ClipSelection';
+import { application } from '@kit.AbilityKit';
+import { FileStore } from './FileStore';
 import { ActivePackRepository } from '../pack/ActivePackRepository';
 import { FilePackRepository } from '../pack/FilePackRepository';
 import { CancelToken, CourseRecord, CourseStore, InstallProgress } from './CourseStore';
@@ -55,6 +58,7 @@ export class CourseRepository {
   private listeners: ActiveCourseListener[] = [];
   private initP: Promise<void> | undefined = undefined;
   private busy: Set<string> = new Set<string>();
+  private bundledVersionP: Promise<string> | undefined = undefined;
 
   constructor(client: RemoteClient, store: CourseStore, pack: ActivePackRepository, bundledId: string) {
     this.client = client;
@@ -128,6 +132,33 @@ export class CourseRepository {
 
   bundledCourseId(): string {
     return this.bundledId;
+  }
+
+  /**
+   * The bundled course's version as the catalog writes it (SERVER.md §3.1: `<pack version>-a<sha8 of
+   * audio/manifest.json>`), so an unchanged server course is not shown as an update. Async digest, never rejects.
+   */
+  bundledVersion(): Promise<string> {
+    if (this.bundledVersionP === undefined) {
+      this.bundledVersionP = this.computeBundledVersion();
+    }
+    return this.bundledVersionP;
+  }
+
+  private async computeBundledVersion(): Promise<string> {
+    let packVersion = '';
+    try {
+      const r = await this.pack.bundledRepo().load();
+      packVersion = r.manifest !== undefined ? r.manifest.version : '';
+      const bytes = await application.getApplicationContext().resourceManager.getRawFileContent(CLIP_MANIFEST_RAWFILE);
+      const sha = await FileStore.sha256Bytes(bytes);
+      const v = bundledCourseVersion(packVersion, sha);
+      Log.i(LogEvents.COURSE, `event=bundled_version version=${v}`);
+      return v;
+    } catch (e) {
+      Log.w(LogEvents.COURSE, `event=bundled_version_fail ${Log.errKv(e as Object)}`);
+      return packVersion;
+    }
   }
 
   bundledPack(): PackRepository {

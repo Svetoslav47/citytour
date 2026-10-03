@@ -17,11 +17,13 @@
  *   or in Node: crypto.createPublicKey(pem).export({type:'spki',format:'der'}).toString('base64').
  *   While it is empty, every signed envelope is rejected (no unsigned catalog is ever trusted), so downloads are off
  *   but the cached / built-in courses and the runtime voice still work.
+ *   The key below is the production key of the course server (`npm run keygen` in server/, SERVER.md §3.1); the
+ *   committed server/seed/ envelopes verify with it (checked in Node, see RemoteEnvelope.test.ets).
  */
 export class RemoteConfig {
   static readonly BASE_URL: string = 'https://citytour.example';
 
-  static readonly SIGNING_PUBLIC_KEY_SPKI_B64: string = '';
+  static readonly SIGNING_PUBLIC_KEY_SPKI_B64: string = 'MCowBQYDK2VwAyEANFPeilKdvGie94ZqhSmM1XtF7YfHmKTobvQ1bla4g4w=';
 
   /** Network timeouts (ms). Every call also has an overall deadline (RemoteClient). */
   static readonly CONNECT_TIMEOUT_MS: number = 5000;

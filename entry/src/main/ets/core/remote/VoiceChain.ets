@@ -125,6 +125,8 @@ export class RemoteVerdict {
   /** Back off until now + this (0 = no back-off). */
   offlineForMs: number = 0;
   budgetForMs: number = 0;
+  /** 403 not_allowed: this exact line is refused for good; never ask again for this sha (SERVER.md §3.1). */
+  neverRetry: boolean = false;
 }
 
 /** Judges one /v1/tts response against our own sha256 of the text. Never throws. */
@@ -153,8 +155,13 @@ export function judgeRemote(r: RemoteResult, localSha: string, budgetMs: number 
     v.offlineForMs = OFFLINE_BACKOFF_MS;
     return v;
   }
+  if (r.status === 403) {
+    v.reason = 'http_403';
+    v.neverRetry = true;
+    return v;
+  }
   if (r.status !== 200) {
-    v.reason = `http_${r.status}`;   // 400/401/403/404: this line or token is refused; the server is up
+    v.reason = `http_${r.status}`;   // 400/401/404/413: this line or token is refused; the server is up
     return v;
   }
   if (r.headerSha.toLowerCase() !== localSha.toLowerCase() || localSha === '') {

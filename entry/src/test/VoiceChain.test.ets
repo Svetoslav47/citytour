@@ -130,6 +130,12 @@ export default function voiceChainTest() {
       r.status = 403;
       expect(judgeRemote(r, SHA).reason).assertEqual('http_403');
       expect(judgeRemote(r, SHA).server).assertEqual(ServerState.ONLINE);
+      expect(judgeRemote(r, SHA).neverRetry).assertTrue();
+      r.status = 502;
+      expect(judgeRemote(r, SHA).accept).assertFalse();
+      expect(judgeRemote(r, SHA).neverRetry).assertFalse();
+      r.status = 401;
+      expect(judgeRemote(r, SHA).accept).assertFalse();
     });
 
     it('judgeMismatch', 0, () => {
