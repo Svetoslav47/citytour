@@ -23,6 +23,7 @@
 import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
 import { common, wantAgent, WantAgent } from '@kit.AbilityKit';
 import { BackgroundListener, BackgroundPort } from '../../contracts/Ports';
+import { AppConfig } from '../../app/AppConfig';
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
 
@@ -139,6 +140,12 @@ export class BackgroundRunner implements BackgroundPort {
     if (ctx === undefined) {
       Log.e(LogEvents.BG_FAIL, 'code=-1 msg=no_context');
       this.lastIssue = 'BG_FAIL no_context';
+      return false;
+    }
+    if (AppConfig.DEBUG_FAIL_BG_START) {
+      // §9 row 14 demo: behave as if the system refused the continuous task.
+      const sim: Record<string, Object> = { 'code': -99, 'message': 'simulated src=debug (AppConfig.DEBUG_FAIL_BG_START)' };
+      this.fail('startBackgroundRunning', sim);
       return false;
     }
     const agent = await this.launchAgent(ctx);

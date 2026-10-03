@@ -17,6 +17,7 @@
  */
 import { textToSpeech } from '@kit.CoreSpeechKit';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { AppConfig } from '../../app/AppConfig';
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
 
@@ -170,10 +171,18 @@ export class TtsEngines {
     const params: textToSpeech.CreateEngineParams = { language: locale, person: person, online: 1, extraParams: extra };
     const t0 = Date.now();
     let created: Promise<textToSpeech.TextToSpeechEngine>;
-    try {
-      created = textToSpeech.createEngine(params);
-    } catch (e) {
-      created = Promise.reject(e);
+    if (AppConfig.DEBUG_FAIL_TTS_INIT) {
+      // §9 row 9 demo: the same rejection the emulator gives for a missing voice model (RISKS a4).
+      const sim: BusinessError = {
+        code: TtsErr.KIT_ENGINE_CREATE, message: 'simulated src=debug (AppConfig.DEBUG_FAIL_TTS_INIT)', name: 'Debug'
+      };
+      created = Promise.reject(sim);
+    } else {
+      try {
+        created = textToSpeech.createEngine(params);
+      } catch (e) {
+        created = Promise.reject(e);
+      }
     }
     return created.then((eng: textToSpeech.TextToSpeechEngine) => {
       s.creating = undefined;

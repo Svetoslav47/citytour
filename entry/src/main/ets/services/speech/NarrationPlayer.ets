@@ -15,6 +15,13 @@
  *   pause = engine.stop(), resume = re-speak the sentence.
  * Every platform call is guarded; every wait has a timeout (synthesis SYNTH_TIMEOUT_MS, playback watchdog).
  * TTS keeps the [pN] pause markup; captions strip it (VoicePolicy.stripPauseMarkup).
+ * A10 (ARCHITECTURE §9 rows 9/12/13):
+ *   - init() waits (bounded by ENGINE_CREATE_TIMEOUT_MS) for the engine English would use, so a createEngine
+ *     failure is known before the tour is planned and the plan is already the fallback (zh voice or text only).
+ *   - Audio focus interrupts (PAUSE/STOP/RESUME) and the headphones going away are passed on to an
+ *     AudioEventListener (AppContainer -> TourController), so the engine pauses the tour, shows the issue and
+ *     replays the interrupted sentence on RESUME. This is a services-side hook: the SpeechPort contract is
+ *     unchanged. Without a listener the player still pauses/resumes itself as before.
  */
 import { Lang } from '../../contracts/Model';
 import { SpeechCapabilities, SpeechListener, SpeechPort, Utterance, VoicePlan } from '../../contracts/Ports';
@@ -36,6 +43,26 @@ const HINT_PAUSE: number = 2;
 const HINT_STOP: number = 3;
 // audio.AudioStreamDeviceChangeReason.REASON_OLD_DEVICE_UNAVAILABLE (headphones unplugged).
 const REASON_OLD_DEVICE_UNAVAILABLE: number = 2;
+
+/** §9 rows 12/13 hook (not part of SpeechPort). hint: 'PAUSE' | 'STOP' | 'RESUME'. */
+export interface AudioEventListener {
+  onInterrupt: (hint: string) => void;
+  onRouteLost: (devices: string) => void;
+}
+
+/** audio.InterruptHint number -> the engine's hint name; '' for hints the engine ignores (DUCK, UNDUCK, MUTE). */
+export function interruptHintName(hint: number): string {
+  if (hint === HINT_PAUSE) {
+    return 'PAUSE';
+  }
+  if (hint === HINT_STOP) {
+    return 'STOP';
+  }
+  if (hint === HINT_RESUME) {
+    return 'RESUME';
+  }
+  return '';
+}
 
 /** Persona voice parameters (Persona.voice in the pack); defaults = kit defaults. */
 export interface VoiceTuning {
@@ -79,6 +106,7 @@ export class NarrationPlayer implements SpeechPort {
   private pcm: PcmPlayer;
   private systemPlayback: boolean;
   private listener: SpeechListener | undefined = undefined;
+  private audioListener: AudioEventListener | undefined = undefined;
   private current: Job | undefined = undefined;
   private prefetched: Job | undefined = undefined;
   private paused: boolean = false;
@@ -103,29 +131,41 @@ export class NarrationPlayer implements SpeechPort {
 
   // ---------- SpeechPort ----------
 
-  /** listVoices, then warm up the engine English would use and the renderer. Never rejects. */
+  /**
+   * listVoices, then warm up the renderer and the engine English would use, waiting for that engine (bounded by
+   * TtsEngines' create timeout) so a failure re-plans before the tour does (§9 row 9). Never rejects.
+   */
   init(): Promise<SpeechCapabilities> {
     const t0 = Date.now();
-    return this.voice.capabilities().then((caps: SpeechCapabilities) => {
+    return this.voice.capabilities().then((caps: SpeechCapabilities): Promise<SpeechCapabilities> => {
       const p = this.voice.plan(Lang.EN);
       Log.i(LogEvents.TTS_INIT, `event=speech_init mode=${this.systemPlayback ? 'system_playType1' : 'pcm_playType0'}` +
         ` en_label=${p.label} ms=${Date.now() - t0}`);
-      if (p.engineLocale !== '') {
-        this.engines.get(p.engineLocale, p.person).catch((e: Object) => {
-          const code = this.engines.failure(p.engineLocale, p.person);
-          if (code !== 0) {
-            this.voice.markEngineFailed(p.engineLocale, p.person, code); // a timeout is not cached as a failure
-          }
-        });
-      }
       if (!this.systemPlayback) {
         this.pcm.warmUp();
       }
-      return caps;
+      if (p.engineLocale === '') {
+        return Promise.resolve(caps);
+      }
+      return this.engines.get(p.engineLocale, p.person).then((): SpeechCapabilities => caps)
+        .catch((e: Object): SpeechCapabilities => {
+          const code = this.engines.failure(p.engineLocale, p.person);
+          if (code !== 0) {
+            this.voice.markEngineFailed(p.engineLocale, p.person, code); // a timeout is not cached as a failure
+            Log.e(LogEvents.TTS_INIT_FAIL, `lang=en engine=${p.engineLocale}/${p.person} code=${code} ` +
+              `action=replan where=NarrationPlayer.init`);
+          }
+          return this.voice.lastCaps();
+        });
     }).catch((e: Object) => {
       Log.e(LogEvents.TTS_INIT_FAIL, `where=NarrationPlayer.init ${Log.errKv(e)}`);
       return this.voice.lastCaps();
     });
+  }
+
+  /** §9 rows 12/13: who hears about audio interrupts and headphone loss (AppContainer wires the TourController). */
+  setAudioEventListener(l: AudioEventListener | undefined): void {
+    this.audioListener = l;
   }
 
   setListener(l: SpeechListener): void {
@@ -575,18 +615,39 @@ export class NarrationPlayer implements SpeechPort {
   }
 
   private onInterrupt(hint: number, force: number): void {
-    if (hint === HINT_PAUSE || hint === HINT_STOP) {
-      this.pause();
-    } else if (hint === HINT_RESUME) {
-      this.resume();
+    try {
+      if (hint === HINT_PAUSE || hint === HINT_STOP) {
+        this.pause();
+      } else if (hint === HINT_RESUME) {
+        this.resume();
+      }
+      // DUCK / UNDUCK / MUTE: the system handles them; PcmPlayer already logged AUDIO_INTERRUPT.
+      const name = interruptHintName(hint);
+      const l = this.audioListener;
+      if (name !== '' && l !== undefined) {
+        l.onInterrupt(name);             // the tour pauses (stopNow) and replays the sentence on RESUME
+      }
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=NarrationPlayer.onInterrupt hint=${hint} ${Log.errKv(e as Object)}`);
     }
-    // DUCK / UNDUCK / MUTE: the system handles them; PcmPlayer already logged AUDIO_INTERRUPT.
   }
 
   private onRouteChange(reason: number, devices: string): void {
-    if (reason === REASON_OLD_DEVICE_UNAVAILABLE && this.current !== undefined) {
-      Log.i(LogEvents.AUDIO_ROUTE, `event=headphones_removed action=pause devices=${devices}`);
-      this.pause();
+    try {
+      if (reason !== REASON_OLD_DEVICE_UNAVAILABLE) {
+        return;
+      }
+      Log.i(LogEvents.AUDIO_ROUTE, `event=headphones_removed action=pause devices=${devices}` +
+        ` speaking=${this.current !== undefined}`);
+      if (this.current !== undefined) {
+        this.pause();
+      }
+      const l = this.audioListener;
+      if (l !== undefined) {
+        l.onRouteLost(devices);          // also when idle: the next story must not start on the loudspeaker
+      }
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=NarrationPlayer.onRouteChange ${Log.errKv(e as Object)}`);
     }
   }
 
