@@ -123,15 +123,20 @@ export class MapRenderer {
     }
   }
 
+  /** `transparentLand`: clear instead of painting the land, so a base image under the canvas shows through. */
   draw(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camera, ov: MapOverlay, pal: MapPalette,
-    fast: boolean): number {
+    fast: boolean, transparentLand: boolean = false): number {
     const t0 = Date.now();
     const s = cam.s;
     ctx.resetTransform();
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;
-    ctx.fillStyle = pal.land;
-    ctx.fillRect(0, 0, w, h);
+    if (transparentLand) {
+      ctx.clearRect(0, 0, w, h);
+    } else {
+      ctx.fillStyle = pal.land;
+      ctx.fillRect(0, 0, w, h);
+    }
 
     // World transform: x east, y north (flipped), metres -> vp.
     ctx.setTransform(s, 0, 0, -s, w / 2 - cam.cx * s, h / 2 + cam.cy * s);
