@@ -1240,6 +1240,29 @@ export default function tourControllerTest() {
         done();
       });
 
+    it('A13+X2: after a language switch the label follows the sentence actually playing', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        h.pack.translate = true;
+        h.clips = miniClips();
+        await h.ctrl.setSource(FixSource.DEMO);
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        h.placeNear(MINI_BARBICAN, 200, 0);
+        h.speech.sentenceMs = 3000;
+        h.live = VoiceLabel.PRERENDERED;                   // the welcome plays a studio clip
+        await h.ctrl.start();
+        expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.PRERENDERED);
+        h.ctrl.setStoryLang(Lang.ZH);                      // no zh clips: the zh voice from the next sentence on
+        expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.PRERENDERED);   // the clip is still playing
+        expect(h.media.metas[h.media.metas.length - 1].voiceLabel).assertEqual(VoiceLabel.PRERENDERED);
+        h.live = VoiceLabel.NATIVE;                        // the next (zh) sentence: native zh voice
+        h.sched.advance(3000);
+        expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.NATIVE);
+        expect(h.media.metas[h.media.metas.length - 1].voiceLabel).assertEqual(VoiceLabel.NATIVE);
+        h.ctrl.end();
+        done();
+      });
+
     it('X2: setStoryLang mid-story re-runs the voice plan, continues in 中文 at the next sentence, prefetch follows', 0,
       async (done: Function) => {
         const h: Harness = new Harness(false, true, true);

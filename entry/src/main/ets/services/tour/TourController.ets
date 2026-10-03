@@ -997,6 +997,11 @@ export class TourController implements TourControl {
       this.voicePlan = vp;
       this.narrLogged.clear();
       const personaId: string = tour.personaId;
+      if (st.speechText) {
+        this.heardLabel = undefined;       // from text to voice: no voice heard yet in this mode, use the plan label
+      }
+      // Otherwise the heard label stays until the first new-language sentence starts (noteHeard at UTT_START):
+      // the sentence in flight finishes in the old voice, and the chip / AVSession artist say so.
       const fxs: Effect[] = TourEngine.switchLang(st, lang,
         (poiId: string, len: NarrationLength) => this.narrationFor(poiId, personaId, lang, len), vp,
         this.deps.clock.nowMs());
