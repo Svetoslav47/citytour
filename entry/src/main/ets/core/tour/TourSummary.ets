@@ -11,7 +11,7 @@
  * reads like the real walk (the screen says "Simulated walk: distances and times come from a recorded route").
  * Pure: no platform imports; the caller passes the clock and the POI positions.
  */
-import { EngineSnapshot, StopProgress, StopStatus, TourPhase } from '../../contracts/EngineTypes';
+import { AnnouncementKind, EngineSnapshot, StopProgress, StopStatus, TourPhase } from '../../contracts/EngineTypes';
 import { FixSource } from '../../contracts/Ports';
 
 /** Walking pace the engine assumes (ARCHITECTURE §6), used for the Demo walk's time. */
@@ -30,6 +30,8 @@ export class TourTimer {
   startMs: number = Number.NaN;
   endMs: number = Number.NaN;
   atStopMs: number = 0;
+  /** POIs whose story (stop/full/deep story, teasers included) was seen playing in a snapshot. */
+  storyPois: string[] = [];
   private lastMs: number = Number.NaN;
   private lastAtStop: boolean = false;
   private active: boolean = false;
@@ -43,11 +45,14 @@ export class TourTimer {
         this.startMs = nowMs;
         this.endMs = Number.NaN;
         this.atStopMs = 0;
+        this.storyPois = [];
+        this.noteStory(s);
         this.lastMs = nowMs;
         this.lastAtStop = p === TourPhase.AT_STOP;
         return false;
       }
       this.accumulate(nowMs);
+      this.noteStory(s);
       this.lastAtStop = p === TourPhase.AT_STOP;
       return false;
     }
@@ -68,6 +73,17 @@ export class TourTimer {
 
   isRunning(): boolean {
     return this.active;
+  }
+
+  private noteStory(s: EngineSnapshot): void {
+    const np = s.nowPlaying;
+    if (np === undefined || np.poiId === '' || this.storyPois.indexOf(np.poiId) >= 0) {
+      return;
+    }
+    const k = np.kind;
+    if (k === AnnouncementKind.STOP_STORY || k === AnnouncementKind.FULL_STORY || k === AnnouncementKind.DEEP_STORY) {
+      this.storyPois.push(np.poiId);
+    }
   }
 
   private accumulate(nowMs: number): void {
@@ -173,7 +189,10 @@ export function buildSummary(s: EngineSnapshot, t: TourTimer, pos: (poiId: strin
   const uy = s.user !== undefined ? s.user.y : Number.NaN;
   const hasUser = Number.isFinite(ux) && Number.isFinite(uy) && (ux !== 0 || uy !== 0);
   s.stops.forEach((p: StopProgress, i: number) => {
-    if (isHeard(p.status)) {
+    // The engine marks a stop VISITED on arrival, before its story plays: a tour ended right at that moment did not
+    // hear it (the walk to it still counts in walkedM).
+    const cutOff = s.phase === TourPhase.ABORTED && i === s.currentStopIdx && t.storyPois.indexOf(p.poiId) < 0;
+    if (isHeard(p.status) && !cutOff) {
       d.heard.push(new SummaryStop(p.poiId, i + 1, p.status, Number.NaN));
       return;
     }

@@ -10,6 +10,7 @@ import {
 } from '../main/ets/contracts/EngineTypes';
 import { FixSource } from '../main/ets/contracts/Ports';
 import { VoiceLabel } from '../main/ets/contracts/Settings';
+import { ContentTier, Lang } from '../main/ets/contracts/Model';
 
 function platform(): PlatformStatus {
   const p: PlatformStatus = {
@@ -140,8 +141,10 @@ export default function tourSummaryTest() {
       const stops = [stop('a', 0, StopStatus.VISITED), stop('b', 1, StopStatus.SKIPPED),
         stop('c', 2, StopStatus.PENDING)];
       t.feed(snap(TourPhase.WALKING, stops, FixSource.DEMO), 0);
-      t.feed(snap(TourPhase.ABORTED, stops, FixSource.DEMO), 1000);
-      const d = buildSummary(snap(TourPhase.ABORTED, stops, FixSource.DEMO), t, positions, legs);
+      const end = snap(TourPhase.ABORTED, stops, FixSource.DEMO);
+      end.currentStopIdx = 2;                               // heading to 'c' when the tour ended
+      t.feed(end, 1000);
+      const d = buildSummary(end, t, positions, legs);
       expect(d.complete).assertFalse();
       expect(d.demo).assertTrue();
       expect(d.heardCount()).assertEqual(1);
@@ -162,6 +165,42 @@ export default function tourSummaryTest() {
       // Only the first stop heard: nothing walked between stops yet.
       expect(routeWalkedM([stop('a', 0, StopStatus.VISITED), stop('b', 1, StopStatus.PENDING)], legs, positions))
         .assertEqual(0);
+    });
+    it('stop_entered_but_ended_before_its_story_is_not_heard', 0, () => {
+      const t = new TourTimer();
+      const stops = [stop('a', 0, StopStatus.VISITED), stop('c', 1, StopStatus.VISITED)];
+      const walking = snap(TourPhase.WALKING, stops, FixSource.DEMO);
+      walking.nowPlaying = {
+        itemId: 'it1', poiId: 'a', kind: 'fullStory', sentenceIndex: 0, sentenceCount: 3, caption: '',
+        tier: ContentTier.REVIEWED_HISTORIAN, lang: Lang.EN
+      };
+      t.feed(walking, 0);
+      const nav = snap(TourPhase.AT_STOP, stops, FixSource.DEMO);
+      nav.nowPlaying = {
+        itemId: 'it2', poiId: 'c', kind: 'navCue', sentenceIndex: 0, sentenceCount: 1, caption: '',
+        tier: ContentTier.REVIEWED_HISTORIAN, lang: Lang.EN
+      };
+      t.feed(nav, 1000);                                  // only a nav cue for 'c', no story
+      const end = snap(TourPhase.ABORTED, stops, FixSource.DEMO);
+      end.currentStopIdx = 1;
+      t.feed(end, 2000);
+      expect(t.storyPois.length).assertEqual(1);
+      const d = buildSummary(end, t, positions, legs);
+      expect(d.heardCount()).assertEqual(1);
+      expect(d.stillToSee.length).assertEqual(1);
+      expect(d.stillToSee[0].poiId).assertEqual('c');
+      expect(near(d.walkedM, Math.hypot(100, 300))).assertTrue();   // the walk to 'c' still counts
+      // Same end but the story of 'c' had started: heard.
+      const t2 = new TourTimer();
+      t2.feed(walking, 0);
+      const story = snap(TourPhase.AT_STOP, stops, FixSource.DEMO);
+      story.nowPlaying = {
+        itemId: 'it3', poiId: 'c', kind: 'stopStory', sentenceIndex: 0, sentenceCount: 2, caption: '',
+        tier: ContentTier.REVIEWED_HISTORIAN, lang: Lang.EN
+      };
+      t2.feed(story, 1000);
+      t2.feed(end, 2000);
+      expect(buildSummary(end, t2, positions, legs).heardCount()).assertEqual(2);
     });
     it('no_position_means_no_distance_and_bad_walked_is_zero', 0, () => {
       const t = new TourTimer();
