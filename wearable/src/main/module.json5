@@ -10,6 +10,23 @@
     "deliveryWithInstall": true,
     "installationFree": false,
     "pages": "$profile:main_pages",
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.APPROXIMATELY_LOCATION",
+        "reason": "$string:perm_location_reason",
+        "usedScene": { "abilities": ["WatchAbility"], "when": "inuse" }
+      },
+      {
+        "name": "ohos.permission.LOCATION",
+        "reason": "$string:perm_location_reason",
+        "usedScene": { "abilities": ["WatchAbility"], "when": "inuse" }
+      },
+      {
+        "name": "ohos.permission.VIBRATE",
+        "reason": "$string:perm_vibrate_reason",
+        "usedScene": { "abilities": ["WatchAbility"], "when": "inuse" }
+      }
+    ],
     "abilities": [
       {
         "name": "WatchAbility",

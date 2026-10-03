@@ -14,6 +14,9 @@ export const SRC_DIR = join(REPO_ROOT, 'data/course/krakow/packs/krakow');
 export const TOUR_ID = 'royal-route';
 export const OUT_DIR = join(REPO_ROOT, 'wearable/src/main/resources/rawfile/watch', TOUR_ID);
 export const FILES = ['tours.json', 'pois.json', 'routes.json', 'personas.json'];
+// The SIMULATED Demo walk track is the phone's (scripts/demo/make-demo-walk.mjs); the watch gets a byte copy.
+export const DEMO_SRC = join(REPO_ROOT, 'entry/src/main/resources/rawfile/demo/royal-route-walk.json');
+export const DEMO_OUT = join(REPO_ROOT, 'wearable/src/main/resources/rawfile/demo/royal-route-walk.json');
 
 const readJson = (dir, f) => JSON.parse(readFileSync(join(dir, f), 'utf8'));
 const sha256 = (s) => createHash('sha256').update(s, 'utf8').digest('hex');
@@ -60,12 +63,15 @@ function main() {
   const pack = buildWatchPack();
   if (process.argv.includes('--check')) {
     const stale = Object.keys(pack).filter((f) => !existsSync(join(OUT_DIR, f)) || readFileSync(join(OUT_DIR, f), 'utf8') !== pack[f]);
+    if (!existsSync(DEMO_OUT) || !readFileSync(DEMO_OUT).equals(readFileSync(DEMO_SRC))) stale.push('demo track');
     if (stale.length) { console.error(`watch pack stale: ${stale.join(', ')} (run node scripts/pack/watch-pack.mjs)`); process.exit(1); }
     console.log('watch pack current');
     return;
   }
   mkdirSync(OUT_DIR, { recursive: true });
   for (const [f, s] of Object.entries(pack)) writeFileSync(join(OUT_DIR, f), s);
+  mkdirSync(dirname(DEMO_OUT), { recursive: true });
+  writeFileSync(DEMO_OUT, readFileSync(DEMO_SRC));
   const bytes = Object.values(pack).reduce((n, s) => n + Buffer.byteLength(s, 'utf8'), 0);
   console.log(`watch pack ${TOUR_ID}: ${Object.keys(pack).length} files, ${bytes} bytes -> ${OUT_DIR}`);
 }

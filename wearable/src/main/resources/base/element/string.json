@@ -1,7 +1,24 @@
 {
   "string": [
-    { "name": "module_desc", "value": "CityTour on the watch" },
-    { "name": "WatchAbility_desc", "value": "Walking tour guide on your wrist" },
-    { "name": "WatchAbility_label", "value": "CityTour" }
+    {
+      "name": "module_desc",
+      "value": "CityTour on the watch"
+    },
+    {
+      "name": "WatchAbility_desc",
+      "value": "Walking tour guide on your wrist"
+    },
+    {
+      "name": "WatchAbility_label",
+      "value": "CityTour"
+    },
+    {
+      "name": "perm_location_reason",
+      "value": "CityTour uses your precise location to tell you when you reach a monument and to point you to the next stop."
+    },
+    {
+      "name": "perm_vibrate_reason",
+      "value": "Short vibrations on your wrist tell you that you have arrived and on which side to look."
+    }
   ]
 }

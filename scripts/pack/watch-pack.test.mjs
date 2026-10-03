@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { OUT_DIR, buildWatchPack } from './watch-pack.mjs';
+import { DEMO_OUT, DEMO_SRC, OUT_DIR, buildWatchPack } from './watch-pack.mjs';
 
 const pack = buildWatchPack();
 
@@ -37,4 +37,8 @@ test('manifest lists every data file with its size and SHA-256, and no narration
 test('the watch pack stays small (< 300 KB in total)', () => {
   const bytes = Object.values(pack).reduce((n, s) => n + Buffer.byteLength(s, 'utf8'), 0);
   assert.ok(bytes < 300 * 1024, `bytes=${bytes}`);
+});
+
+test('the watch Demo walk track is a byte copy of the phone track (SIMULATED, same route)', () => {
+  assert.ok(readFileSync(DEMO_OUT).equals(readFileSync(DEMO_SRC)));
 });
