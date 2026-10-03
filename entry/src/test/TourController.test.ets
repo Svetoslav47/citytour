@@ -18,6 +18,7 @@ import {
   normalizeDemoSpeed, predictNextUtteranceId, voiceIssueFor
 } from '../main/ets/services/tour/TourController';
 import { Scheduler } from '../main/ets/app/Clock';
+import { CORRUPT_PACK_DETAIL, CorruptPackRepository } from '../main/ets/services/debug/CorruptPackRepository';
 import {
   AppIssue, EngineSnapshot, IssueCode, IssueSeverity, MediaMeta, MediaPlayState, NextNotice, TourPhase, TourPlan
 } from '../main/ets/contracts/EngineTypes';
@@ -1078,6 +1079,36 @@ export default function tourControllerTest() {
         expect(ok.order.length).assertEqual(3);
         expect(h.hasIssue(IssueCode.PACK_ERR)).assertFalse();
         expect(h.log.count('UNCAUGHT')).assertEqual(0);
+        done();
+      });
+
+    it('A10 row 17 demo: CorruptPackRepository (AppConfig.DEBUG_CORRUPT_PACK) => BLOCKING PACK_ERR src=debug', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        const bad: CorruptPackRepository = new CorruptPackRepository(h.log);
+        const deps: TourControllerDeps = {
+          pack: bad, speech: h.speech, voice: h.voice, log: h.log, clock: h.clock, scheduler: h.sched,
+          sourceFor: (kind: FixSource): LocationSource | undefined => kind === FixSource.DEMO ? h.demo : h.real,
+          demoControls: (): DemoControls | undefined => h.demoCtl,
+          background: (): BackgroundPort | undefined => h.bg,
+          media: (): MediaSessionPort | undefined => h.media,
+          notifier: (): NotifierPort | undefined => undefined,
+          haptics: (): HapticsPort | undefined => undefined,
+          permissions: (): PermissionPort | undefined => h.perms
+        };
+        const c: TourController = new TourController(deps);
+        const p: TourPlan = await c.plan('royal-route', 0);
+        expect(p.order.length).assertEqual(0);
+        const i: AppIssue | undefined = c.current().issues.find((x: AppIssue) => x.code === IssueCode.PACK_ERR);
+        expect(i?.severity).assertEqual(IssueSeverity.BLOCKING);
+        expect(i?.detail).assertEqual(CORRUPT_PACK_DETAIL);
+        expect(h.log.find('PACK_ERR', 'file=pois.json reason=parse src=debug', 0) >= 0).assertTrue();
+        await c.start();
+        expect(c.isRunning()).assertFalse();
+        expect(bad.tours().length + bad.pois().length + bad.routes().legs.length).assertEqual(0);
+        expect(bad.narration('x', 'y', Lang.EN, NarrationLength.TEASER) === undefined).assertTrue();
+        expect(h.log.count('UNCAUGHT')).assertEqual(0);
+        c.shutdown();
         done();
       });
   });
