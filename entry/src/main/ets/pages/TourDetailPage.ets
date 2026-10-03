@@ -1,7 +1,8 @@
 /*
  * Tour detail (DESIGN §3.3): hero cover photo with the title (or, for a course without a cover, the route preview
  * as before), stats, the route map in its own "Route" section when the hero is a photo, guide row (name and
- * language), the stop list from the pack and the sticky "Start tour" (id btnStartTour). Location is checked
+ * language), the stop list from the pack and the sticky "Start tour" (id btnStartTour): one tap plans every stop
+ * (optimised order, default settings) and starts, then Now Walking (no Route ready); a running walk just reopens. Location is checked
  * here, in context (Flow D): a denied/approximate/switched-off state shows a banner that always offers the
  * Demo walk, so the flow never dead-ends.
  */
@@ -34,9 +35,20 @@ export struct TourDetailPage {
   }
 
   private async onStartTour(): Promise<void> {
+    if (this.vm.tourRunning()) {
+      this.app.openNowWalking();   // the walk is already running: continue it
+      return;
+    }
     const ok = await this.vm.startTour();
     if (ok) {
-      this.app.openRouteReady();
+      await this.go();
+    }
+  }
+
+  /** One tap: plan all stops (optimised order, default settings) and start; Now Walking (no Route ready). */
+  private async go(): Promise<void> {
+    if (await this.vm.startNow()) {
+      this.app.openNowWalking();
     }
   }
 
@@ -44,14 +56,14 @@ export struct TourDetailPage {
     const ok = this.vm.locBanner === LocBanner.SWITCH_OFF ? await this.vm.turnOnLocationSwitch() :
       await this.vm.allowLocation();
     if (ok) {
-      this.app.openRouteReady();
+      await this.go();
     }
   }
 
   private async onDemo(): Promise<void> {
     const ok = await this.vm.useDemo();
     if (ok) {
-      this.app.openRouteReady();
+      await this.go();
     }
   }
 
@@ -226,8 +238,11 @@ export struct TourDetailPage {
           }
         })
       }
+      if (this.vm.startFailed) {
+        IssueBanner({ message: $r('app.string.route_start_failed'), code: IssueCode.UNCAUGHT })
+      }
       Button({ type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.EMPHASIZED }) {
-        if (this.vm.checking) {
+        if (this.vm.checking || this.vm.starting) {
           LoadingProgress()
             .width(24)
             .height(24)
@@ -243,7 +258,7 @@ export struct TourDetailPage {
       .width('100%')
       .height(Size.BUTTON_H)
       .backgroundColor($r('app.color.accent'))
-      .enabled(this.vm.found && !this.vm.checking)
+      .enabled(this.vm.found && !this.vm.checking && !this.vm.starting)
       .onClick(() => {
         this.onStartTour();
       })

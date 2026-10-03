@@ -1635,6 +1635,70 @@
     {
       "name": "about_cover_changes",
       "value": "由 CityTour 团队裁剪为 16:10 并缩小尺寸；按相同许可协议共享。"
+    },
+    {
+      "name": "home_in_city",
+      "value": "你在%s"
+    },
+    {
+      "name": "home_walks_in",
+      "value": "%s的步行路线"
+    },
+    {
+      "name": "home_walks_any",
+      "value": "步行路线"
+    },
+    {
+      "name": "home_start",
+      "value": "开始"
+    },
+    {
+      "name": "home_continue",
+      "value": "继续"
+    },
+    {
+      "name": "home_demo_short",
+      "value": "演示步行"
+    },
+    {
+      "name": "home_demo_a11y",
+      "value": "演示步行：用录制的路线代替 GPS，标注为“模拟”"
+    },
+    {
+      "name": "home_no_demo",
+      "value": "这条路线没有演示轨迹。请点“开始”步行。"
+    },
+    {
+      "name": "home_start_failed",
+      "value": "无法开始步行。请检查网络后重试。"
+    },
+    {
+      "name": "home_remove_download",
+      "value": "删除下载"
+    },
+    {
+      "name": "home_remove_title",
+      "value": "从设备中删除这条路线？"
+    },
+    {
+      "name": "home_download_a11y",
+      "value": "下载以离线使用"
+    },
+    {
+      "name": "home_downloaded_a11y",
+      "value": "已下载，可离线使用"
+    },
+    {
+      "name": "home_more_a11y",
+      "value": "更多选项"
+    },
+    {
+      "name": "home_card_meta",
+      "value": "%1$d 站 · %2$s 公里 · 约 %3$d 分钟"
+    },
+    {
+      "name": "home_card_meta_no_km",
+      "value": "%1$d 站 · 约 %2$d 分钟"
     }
   ]
 }

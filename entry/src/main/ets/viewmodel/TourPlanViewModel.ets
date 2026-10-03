@@ -323,6 +323,48 @@ export class TourPlanViewModel {
     return ok;
   }
 
+  /** A tour is running (Start then just reopens Now Walking). */
+  tourRunning(): boolean {
+    try {
+      return AppContainer.tourController().isRunning();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * One-tap start (Home card, Tour detail): plan every stop in the optimised order with the default settings and
+   * start at once, no Route ready / Before you go. Resolves true when the tour runs and Now Walking should open.
+   */
+  async startNow(): Promise<boolean> {
+    if (this.starting || this.tourId === '') {
+      return false;
+    }
+    this.starting = true;
+    this.startFailed = false;
+    try {
+      const p = await withTimeout<TourPlan | undefined>(AppContainer.tourControl().plan(this.tourId, 0),
+        CONTROL_TIMEOUT_MS, undefined, 'tour.plan');
+      if (p === undefined || p.order.length === 0) {
+        Log.w(LogEvents.ROUTE_PLAN, `where=startNow tour=${this.tourId} result=empty`);
+        this.startFailed = true;
+        return false;
+      }
+      this.plan = p;
+      Log.i(LogEvents.ROUTE_PLAN, `where=startNow chosen=${p.order.length} algo=${p.algo} walkM=${Math.round(p.walkM)}`);
+      const ok = await withTimeout(AppContainer.tourControl().start().then((): boolean => true), CONTROL_TIMEOUT_MS,
+        false, 'tour.start');
+      this.startFailed = !ok;
+      return ok;
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=TourPlanViewModel.startNow ${Log.errKv(e as Object)}`);
+      this.startFailed = true;
+      return false;
+    } finally {
+      this.starting = false;
+    }
+  }
+
   private async afterPermission(st: PermissionState): Promise<boolean> {
     if (st === PermissionState.APPROX_ONLY) {
       this.locBanner = LocBanner.APPROX;

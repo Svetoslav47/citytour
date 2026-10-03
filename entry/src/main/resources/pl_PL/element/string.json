@@ -1635,6 +1635,70 @@
     {
       "name": "about_cover_changes",
       "value": "Przycięte do 16:10 i zmniejszone przez zespół CityTour; udostępnione na tej samej licencji."
+    },
+    {
+      "name": "home_in_city",
+      "value": "Jesteś w: %s"
+    },
+    {
+      "name": "home_walks_in",
+      "value": "Spacery: %s"
+    },
+    {
+      "name": "home_walks_any",
+      "value": "Spacery"
+    },
+    {
+      "name": "home_start",
+      "value": "Start"
+    },
+    {
+      "name": "home_continue",
+      "value": "Kontynuuj"
+    },
+    {
+      "name": "home_demo_short",
+      "value": "Spacer demo"
+    },
+    {
+      "name": "home_demo_a11y",
+      "value": "Spacer demo: odtwarza nagrany spacer zamiast GPS, oznaczony jako SYMULACJA"
+    },
+    {
+      "name": "home_no_demo",
+      "value": "Ten spacer nie ma trasy demo. Użyj Start, aby go przejść."
+    },
+    {
+      "name": "home_start_failed",
+      "value": "Nie udało się rozpocząć spaceru. Sprawdź połączenie i spróbuj ponownie."
+    },
+    {
+      "name": "home_remove_download",
+      "value": "Usuń pobrane"
+    },
+    {
+      "name": "home_remove_title",
+      "value": "Usunąć ten spacer z urządzenia?"
+    },
+    {
+      "name": "home_download_a11y",
+      "value": "Pobierz do użytku offline"
+    },
+    {
+      "name": "home_downloaded_a11y",
+      "value": "Pobrano do użytku offline"
+    },
+    {
+      "name": "home_more_a11y",
+      "value": "Więcej opcji"
+    },
+    {
+      "name": "home_card_meta",
+      "value": "%1$d przystanków · %2$s km · ~%3$d min"
+    },
+    {
+      "name": "home_card_meta_no_km",
+      "value": "%1$d przystanków · ~%2$d min"
     }
   ]
 }

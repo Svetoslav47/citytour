@@ -1635,6 +1635,70 @@
     {
       "name": "about_cover_changes",
       "value": "Cropped to 16:10 and resized by the CityTour team; shared under the same licence."
+    },
+    {
+      "name": "home_in_city",
+      "value": "You're in %s"
+    },
+    {
+      "name": "home_walks_in",
+      "value": "Walks in %s"
+    },
+    {
+      "name": "home_walks_any",
+      "value": "Walks"
+    },
+    {
+      "name": "home_start",
+      "value": "Start"
+    },
+    {
+      "name": "home_continue",
+      "value": "Continue"
+    },
+    {
+      "name": "home_demo_short",
+      "value": "Demo walk"
+    },
+    {
+      "name": "home_demo_a11y",
+      "value": "Demo walk: replays a recorded walk instead of GPS, labelled SIMULATED"
+    },
+    {
+      "name": "home_no_demo",
+      "value": "This walk has no demo track. Use Start to walk it."
+    },
+    {
+      "name": "home_start_failed",
+      "value": "Couldn't start the walk. Check your connection and try again."
+    },
+    {
+      "name": "home_remove_download",
+      "value": "Remove download"
+    },
+    {
+      "name": "home_remove_title",
+      "value": "Remove this walk from the device?"
+    },
+    {
+      "name": "home_download_a11y",
+      "value": "Download for offline use"
+    },
+    {
+      "name": "home_downloaded_a11y",
+      "value": "Downloaded for offline use"
+    },
+    {
+      "name": "home_more_a11y",
+      "value": "More options"
+    },
+    {
+      "name": "home_card_meta",
+      "value": "%1$d stops · %2$s km · ~%3$d min"
+    },
+    {
+      "name": "home_card_meta_no_km",
+      "value": "%1$d stops · ~%2$d min"
     }
   ]
 }
