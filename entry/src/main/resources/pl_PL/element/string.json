@@ -1169,6 +1169,10 @@
       "value": "Trasę zakończono przed pierwszym przystankiem. Czeka na Ciebie, kiedy tylko zechcesz."
     },
     {
+      "name": "summary_map_a11y",
+      "value": "Mapa przebytej trasy."
+    },
+    {
       "name": "walk_look_up",
       "value": ", spójrz w górę"
     },

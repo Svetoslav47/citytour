@@ -39,6 +39,7 @@ export class LogEvents {
   static readonly POI_EXIT: string = 'POI_EXIT';
   static readonly OFF_ROUTE: string = 'OFF_ROUTE';
   static readonly ON_ROUTE: string = 'ON_ROUTE';
+  static readonly TOUR_SUMMARY: string = 'TOUR_SUMMARY';   // B11: tour ended -> summary built / shown
   // Narration
   static readonly STORY_QUEUE: string = 'STORY_QUEUE';
   static readonly STORY_START: string = 'STORY_START';

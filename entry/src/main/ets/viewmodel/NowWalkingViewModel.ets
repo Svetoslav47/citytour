@@ -26,6 +26,7 @@ import { localName } from './Format';
 import { findTour, poiName, previewPoints, safePoi } from './PackView';
 import { otherLiveLangs, storyLangForLive } from '../core/tour/LangSwitch';
 import { SettingsViewModel } from './SettingsViewModel';
+import { SummaryViewModel } from './SummaryViewModel';
 
 export enum WalkState {
   IDLE = 'idle', HEADING = 'heading', APPROACHING = 'approaching', AT_STOP = 'atStop', TEASER = 'teaser',
@@ -62,6 +63,9 @@ export class NowWalkingViewModel {
   private plannedKey: string = '';
   private boundsKey: string = '';
   private unsubscribe: (() => void) | undefined = undefined;
+  /** B11: called once when the tour has ended and its summary is waiting (the page opens the Tour summary). */
+  onTourEnded: () => void = () => {};
+  private endHandled: boolean = false;
 
   attach(lang: Lang): void {
     this.lang = lang;
@@ -243,6 +247,12 @@ export class NowWalkingViewModel {
   private onSnapshot(s: EngineSnapshot): void {
     const pack = AppContainer.packRepository();
     this.snap = s;
+    if ((s.phase === TourPhase.FINISHED || s.phase === TourPhase.ABORTED) && !this.endHandled &&
+      SummaryViewModel.pending()) {
+      this.endHandled = true;
+      // Deferred: subscribe() notifies synchronously, possibly inside the page's aboutToAppear.
+      setTimeout(() => this.onTourEnded(), 0);
+    }
     this.totalStops = s.stops.length;
     this.stopNumber = Math.min(s.stops.length, Math.max(0, s.currentStopIdx) + 1);
     const poiId = s.next !== undefined ? s.next.poiId : (this.currentStop()?.poiId ?? '');
