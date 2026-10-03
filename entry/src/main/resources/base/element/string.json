@@ -18,7 +18,7 @@
     },
     {
       "name": "perm_background_reason",
-      "value": "Keeps the tour guide running and talking while your phone is locked in your pocket."
+      "value": "Keeps your guide talking while your phone is in your pocket."
     },
     {
       "name": "perm_vibrate_reason",
@@ -354,7 +354,7 @@
     },
     {
       "name": "byg_lock_title",
-      "value": "Lock your phone."
+      "value": "Put your phone away."
     },
     {
       "name": "byg_lock_body",
@@ -370,7 +370,7 @@
     },
     {
       "name": "byg_footnote",
-      "value": "While the tour runs, CityTour uses your location with the screen locked. You'll see a system notification. Stop any time from the app or the notification."
+      "value": "While the tour runs, CityTour uses your location even when the screen is off. You'll see a system notification. Stop any time from the app or the notification."
     },
     {
       "name": "err_perm_denied",
@@ -442,7 +442,7 @@
     },
     {
       "name": "err_bg_fail",
-      "value": "Guiding with the screen locked couldn't start. Keep the app open while walking."
+      "value": "The guide couldn't start in the background. Keep the app open while walking."
     },
     {
       "name": "err_bg_cancelled",
@@ -450,7 +450,7 @@
     },
     {
       "name": "err_avs_fail",
-      "value": "Lock-screen controls aren't available. The tour still works."
+      "value": "Media controls aren't available. The tour still works."
     },
     {
       "name": "err_notif_denied",
@@ -942,7 +942,7 @@
     },
     {
       "name": "onb1_body",
-      "value": "Put your headphones in, lock your phone and walk. The Historian leads you through the city and tells you about each place as you reach it."
+      "value": "Put your headphones in, put your phone away and walk. The Historian leads you through the city and tells you about each place as you reach it."
     },
     {
       "name": "onb2_title",

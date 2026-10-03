@@ -18,7 +18,7 @@
     },
     {
       "name": "perm_background_reason",
-      "value": "Pozwala przewodnikowi działać i mówić, gdy telefon jest zablokowany w kieszeni."
+      "value": "Przewodnik mówi dalej, gdy telefon jest w kieszeni."
     },
     {
       "name": "perm_vibrate_reason",
@@ -354,7 +354,7 @@
     },
     {
       "name": "byg_lock_title",
-      "value": "Zablokuj telefon."
+      "value": "Schowaj telefon."
     },
     {
       "name": "byg_lock_body",
@@ -370,7 +370,7 @@
     },
     {
       "name": "byg_footnote",
-      "value": "W trakcie trasy CityTour używa Twojej lokalizacji przy zablokowanym ekranie. Zobaczysz powiadomienie systemowe. Możesz zakończyć w każdej chwili w aplikacji lub w powiadomieniu."
+      "value": "W trakcie trasy CityTour używa Twojej lokalizacji także przy wyłączonym ekranie. Zobaczysz powiadomienie systemowe. Możesz zakończyć w każdej chwili w aplikacji lub w powiadomieniu."
     },
     {
       "name": "err_perm_denied",
@@ -442,7 +442,7 @@
     },
     {
       "name": "err_bg_fail",
-      "value": "Nie udało się uruchomić prowadzenia przy zablokowanym ekranie. Podczas spaceru nie zamykaj aplikacji."
+      "value": "Nie udało się uruchomić przewodnika w tle. Podczas spaceru nie zamykaj aplikacji."
     },
     {
       "name": "err_bg_cancelled",
@@ -450,7 +450,7 @@
     },
     {
       "name": "err_avs_fail",
-      "value": "Sterowanie na ekranie blokady jest niedostępne. Trasa nadal działa."
+      "value": "Sterowanie odtwarzaniem jest niedostępne. Trasa nadal działa."
     },
     {
       "name": "err_notif_denied",
@@ -942,7 +942,7 @@
     },
     {
       "name": "onb1_body",
-      "value": "Załóż słuchawki, zablokuj telefon i ruszaj. Historyk poprowadzi Cię przez miasto i opowie o każdym miejscu, gdy do niego dojdziesz."
+      "value": "Załóż słuchawki, schowaj telefon i ruszaj. Historyk poprowadzi Cię przez miasto i opowie o każdym miejscu, gdy do niego dojdziesz."
     },
     {
       "name": "onb2_title",

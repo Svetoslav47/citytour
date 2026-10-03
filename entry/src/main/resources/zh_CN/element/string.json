@@ -18,7 +18,7 @@
     },
     {
       "name": "perm_background_reason",
-      "value": "在手机锁屏放在口袋里时，导览仍可继续运行并讲解。"
+      "value": "手机放进口袋后，导游仍会继续讲解。"
     },
     {
       "name": "perm_vibrate_reason",
@@ -354,7 +354,7 @@
     },
     {
       "name": "byg_lock_title",
-      "value": "锁定手机。"
+      "value": "收起手机。"
     },
     {
       "name": "byg_lock_body",
@@ -370,7 +370,7 @@
     },
     {
       "name": "byg_footnote",
-      "value": "游览期间，CityTour 会在锁屏状态下使用您的位置信息，您会看到一条系统通知。您可随时在应用或通知中停止。"
+      "value": "游览期间，即使屏幕关闭，CityTour 也会使用您的位置信息，您会看到一条系统通知。您可随时在应用或通知中停止。"
     },
     {
       "name": "err_perm_denied",
@@ -442,7 +442,7 @@
     },
     {
       "name": "err_bg_fail",
-      "value": "无法在锁屏状态下启动导览。步行时请保持应用打开。"
+      "value": "导览无法在后台启动。步行时请保持应用打开。"
     },
     {
       "name": "err_bg_cancelled",
@@ -450,7 +450,7 @@
     },
     {
       "name": "err_avs_fail",
-      "value": "锁屏控制不可用，游览仍可正常进行。"
+      "value": "媒体控制不可用，游览仍可正常进行。"
     },
     {
       "name": "err_notif_denied",
@@ -942,7 +942,7 @@
     },
     {
       "name": "onb1_body",
-      "value": "戴上耳机，锁定手机，出发吧。历史学家将带您游览这座城市，每到一处便为您讲解。"
+      "value": "戴上耳机，收起手机，出发吧。历史学家将带您游览这座城市，每到一处便为您讲解。"
     },
     {
       "name": "onb2_title",
