@@ -1,6 +1,6 @@
 /*
- * A course pack read through a PackSource (task B3; the pack is built by scripts/pack/build-pack.sh into
- * data/course/krakow/packs/krakow/ and downloaded from the course server; the app bundles no course).
+ * A pack read through a PackSource (task B3): a course's own pack (data/course/<id>/tour/) or, with `placesOnly`, a
+ * city places pack (data/city/<cityId>/), both downloaded from the course server; the app bundles no pack.
  * - load() runs once and is shared (the UI and the TourController both call it).
  * - Integrity: every file listed in manifest.json is checked for byte size and SHA-256 when it is read;
  *   a mismatch, invalid JSON or another schema major is blocking (PACK_ERR, ARCHITECTURE §9 row 17).
