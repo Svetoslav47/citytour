@@ -30,7 +30,7 @@ The user owns the decisions recorded here. Unresolved fields may remain blank; d
 
 - [ ] A guided tour runs end to end with the screen locked (narration triggered by location).
 - [ ] Stops are visited in a computed, optimised walking order.
-- [ ] Narration is spoken in English and Chinese, and shown as text in English, Polish and Chinese.
+- [ ] Narration is spoken in English and Chinese, and shown as text in English, Polish and Chinese. English is spoken by the built-in Chinese (zh-CN) voice, labelled "Fallback voice" in the UI, because the English voice (Laura) can't be downloaded on the emulator (download error 1002300008, see docs/RISKS.md). A device that has Laura installed uses it automatically.
 
 ## Scope boundaries
 
