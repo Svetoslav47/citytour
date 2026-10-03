@@ -105,8 +105,7 @@ export struct LookCue {
         Text() {
           Span(relDirCaption(this.relDir))
           if (this.lookUp) {
-            Span(', ')
-            Span($r('app.string.walk_look_up'))
+            Span($r('app.string.walk_look_up'))   // carries its own separator: ", look up" / "，抬头看"
           }
         }
         .fontSize(Type.CAPTION)

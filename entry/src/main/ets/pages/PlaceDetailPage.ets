@@ -79,8 +79,9 @@ export struct PlaceDetailPage {
         .fontSize(14)
         .fontColor([$r('app.color.text_secondary')])
       if (this.vm.tier === ContentTier.REVIEWED_HISTORIAN || this.vm.tier === ContentTier.GROUNDED_AI) {
+        // Only a narration with a human reviewedBy may say "reviewed by a person" (ARCHITECTURE §7.4).
         Text(this.vm.reviewedAt !== '' ? $r('app.string.place_ai_note', this.vm.reviewedAt) :
-          $r('app.string.about_ai_model'))
+          $r('app.string.place_ai_unreviewed_note'))
           .fontSize(Type.FOOTNOTE)
           .lineHeight(Type.FOOTNOTE_LH)
           .fontColor($r('app.color.text_secondary'))

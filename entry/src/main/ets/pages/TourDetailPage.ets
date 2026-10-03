@@ -176,7 +176,8 @@ export struct TourDetailPage {
       this.sectionHeader($r('app.string.tour_about_stories'))
       Text(this.vm.sourcesCount === 0 ? $r('app.string.tour_about_none') :
         this.vm.allReviewed ? $r('app.string.tour_about_reviewed', this.vm.sourcesCount) :
-          $r('app.string.tour_about_extract', this.vm.sourcesCount))
+          this.vm.aiDrafted ? $r('app.string.tour_about_ai', this.vm.sourcesCount) :
+            $r('app.string.tour_about_extract', this.vm.sourcesCount))
         .fontSize(Type.CALLOUT)
         .lineHeight(Type.CALLOUT_LH)
         .fontColor($r('app.color.text_secondary'))

@@ -8,7 +8,7 @@ import { IssueCode } from '../contracts/EngineTypes';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { AppViewModel } from '../viewmodel/AppViewModel';
-import { distanceRes, durationRes } from '../viewmodel/Format';
+import { distanceRes, durationRes, savingRes } from '../viewmodel/Format';
 import { OrderRow, TourPlanViewModel } from '../viewmodel/TourPlanViewModel';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { IssueBanner } from '../views/common/IssueBanner';
@@ -117,17 +117,11 @@ export struct RouteReadyPage {
           SymbolGlyph($r('sys.symbol.checkmark'))
             .fontSize(16)
             .fontColor([$r('app.color.accent')])
-          Text() {
-            Span($r('app.string.route_optimised_prefix'))
-            Span(' ')
-            Span(distanceRes(this.vm.plan.savedM))
-            Span(' ')
-            Span($r('app.string.route_optimised_suffix'))
-          }
-          .fontSize(Type.CALLOUT)
-          .lineHeight(Type.CALLOUT_LH)
-          .fontColor($r('app.color.text_primary'))
-          .layoutWeight(1)
+          Text(savingRes(this.vm.plan.savedM))
+            .fontSize(Type.CALLOUT)
+            .lineHeight(Type.CALLOUT_LH)
+            .fontColor($r('app.color.text_primary'))
+            .layoutWeight(1)
         }
         .alignItems(VerticalAlign.Top)
         .margin({ top: 10 })
