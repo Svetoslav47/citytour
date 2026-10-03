@@ -25,6 +25,17 @@
  * Only an open stop (PENDING or APPROACHING) can fire, and while one stop's story plays no other stop
  * fires, so St Mary's / Cloth Hall cannot ping-pong. While paused, fixes still update the position and
  * arrivals are queued, but no sentence starts.
+ *
+ * Turn-by-turn and off-route (task A9, ARCHITECTURE §4.6/§4.7): while WALKING or APPROACHING, the leg from the last
+ * finished stop to the target is tracked with core/route/LegTracker (pack leg geometry and OSRM steps, TourInput.legs).
+ * Leg 0 (no stop finished yet) and a leg without geometry use bearing guidance until the walker is within 30 m of a
+ * leg polyline that ends at the target, then snap onto it. Cues ("In 30 metres, turn left onto Grodzka.", "Now turn
+ * left.", NAV_CUE log) are P1_NAV queue items: the queue hands out whole sentences only, so a cue never cuts a story
+ * sentence; it waits for the sentence boundary, expires after 20 s, and is dropped once its maneuver point is passed
+ * or a newer cue replaces it. No cue is spoken while AT_STOP. With UserSettings.spokenDirections off nothing is
+ * spoken (NAV_CUE spoken=0) but EngineSnapshot.next.maneuverText still updates. Off-route (OFF_ROUTE log) => P0 line
+ * (at most once per 60 s), HAPTIC(offRoute), REQUEST_REPLAN; the controller answers with PLAN_READY (REPLAN log);
+ * back on the leg => ON_ROUTE.
  * Pure: no platform imports.
  */
 import {
@@ -33,7 +44,9 @@ import {
   Priority, RelDir, SignalQuality, StopProgress, StopStatus, TourPhase, TourPlan, UserPos
 } from '../../contracts/EngineTypes';
 import { Fix, FixSource, Utterance, VoicePlan } from '../../contracts/Ports';
-import { ContentTier, Lang, Narration, NarrationLength, Poi, Tour, TourStop, ViewHint } from '../../contracts/Model';
+import {
+  ContentTier, Lang, Narration, NarrationLength, Poi, RouteLeg, RouteStep, Tour, TourStop, ViewHint
+} from '../../contracts/Model';
 import { VoiceLabel } from '../../contracts/Settings';
 import { AnnouncementQueue, QueueAdvance, expiryFor, readingTimeMs } from './AnnouncementQueue';
 import {
@@ -49,6 +62,10 @@ import {
   approachSentence, arrivalSentences, finishSentences, gpsLostSentence, localized, nextStopSentence,
   welcomeSentences
 } from '../content/Phrases';
+import { CueKind, LegTracker, LegUpdate, NavConfig, NavCue, OffRouteChange, PolyHit } from '../route/LegTracker';
+import {
+  bearingText, continueText, maneuverUiText, nowText, offRouteSentences, prepareText, replanSentence
+} from '../route/Guidance';
 
 /** Log codes used in LOG effects (same strings as app/LogEvents.ets; core/ may not import app/). */
 export class EngineLog {
@@ -74,6 +91,9 @@ export class EngineLog {
   static readonly AUDIO_INTERRUPT: string = 'AUDIO_INTERRUPT';
   static readonly AUDIO_ROUTE: string = 'AUDIO_ROUTE';
   static readonly BG_CANCEL: string = 'BG_CANCEL';
+  static readonly NAV_CUE: string = 'NAV_CUE';
+  static readonly OFF_ROUTE: string = 'OFF_ROUTE';
+  static readonly ON_ROUTE: string = 'ON_ROUTE';
 }
 
 /** Narration lookup (PackRepository.narration bound to the persona and text language; validated + fallback). */
@@ -92,6 +112,8 @@ export interface TourInput {
   briefOnly?: boolean;         // Settings detail level Brief (B9): teaser only unless the user asks for more
   source: FixSource;           // active location source at start (DEMO => SIMULATED welcome line)
   projection?: Projection;     // defaults to the Kraków pack projection
+  legs?: RouteLeg[];           // A9: the pack's legs (RouteData.legs, every directed stop pair); none = bearing only
+  nav?: NavConfig;             // A9: turn-by-turn / off-route tunables (defaults: NavConfig)
 }
 
 /** LINGER: the teaser has ended, nothing plays, the teaser/full decision waits for the walker (issue #60). */
@@ -171,6 +193,18 @@ export class TourState {
   ttsErrorStreak: number = 0;
   issues: AppIssue[] = [];
   nowMs: number = 0;
+  // ---- A9: turn-by-turn and off-route ----
+  readonly nav: NavConfig;
+  spokenDirections: boolean;       // UserSettings.spokenDirections (live: TourEngine.setSpokenDirections)
+  navKey: string = '';             // `${lastStopPoiId}>${targetPoiId}` of the tracked leg ('' = none)
+  tracker: LegTracker | undefined = undefined;     // the leg the walker is snapped onto (or will be)
+  candidates: LegTracker[] = [];   // leg 0 / no direct leg: legs ending at the target, until one is within 30 m
+  navWaiting: string[] = [];       // dedupe keys of nav cue items that may still be waiting in the queue
+  maneuverText: string = '';
+  maneuverDistM: number = Number.NaN;
+  offRouteEpisodes: number = 0;
+  lastOffRouteCueMs: number = Number.NEGATIVE_INFINITY;
+  replanSeq: number = 0;
 
   constructor(input: TourInput, cfg: TourConfig) {
     this.input = input;
@@ -179,6 +213,13 @@ export class TourState {
     this.speechText = input.voice.speechMode === 'text';
     this.voiceLabel = input.voice.label;
     this.source = input.source;
+    this.nav = input.nav !== undefined ? input.nav : new NavConfig();
+    this.spokenDirections = input.spokenDirections;
+  }
+
+  /** The walker is off the tracked leg (EngineSnapshot.offRoute). */
+  offRoute(): boolean {
+    return this.tracker !== undefined && this.tracker.offRoute;
   }
 }
 
@@ -219,6 +260,11 @@ class Fx {
 
   persist(): void {
     const e: Effect = { type: EffectType.PERSIST_PROGRESS };
+    this.list.push(e);
+  }
+
+  replan(): void {
+    const e: Effect = { type: EffectType.REQUEST_REPLAN };
     this.list.push(e);
   }
 
@@ -451,8 +497,16 @@ function onPlanReady(st: TourState, fx: Fx, plan: TourPlan): void {
   st.lastStopIdx = last === undefined ? -1 : st.stops.indexOf(last);
   st.targetIdx = firstOpen(st);
   const after: string = st.targetIdx >= 0 ? st.stops[st.targetIdx].poiId : '';
+  fx.log(EngineLog.REPLAN, `from=${before} to=${after} changed=${after !== before ? 1 : 0} algo=${plan.algo} ` +
+    `ms=${r1(plan.ms)} order=${st.stops.filter((s: StopRuntime) => isOpen(s.status))
+      .map((s: StopRuntime) => s.poiId).join(',')}`);
   if (after !== before) {
-    fx.log(EngineLog.REPLAN, `from=${before} to=${after}`);
+    if (st.targetIdx >= 0) {             // §4.7: "New plan: we'll visit {b} first." (guidance re-snaps on the new leg)
+      st.replanSeq++;
+      enqueue(st, fx, Priority.P1_NAV, AnnouncementKind.SYSTEM, after,
+        [replanSentence(st.input.lang, st.stops[st.targetIdx].name)], `replan:${st.replanSeq}`,
+        ContentTier.REVIEWED_HISTORIAN);
+    }
     if (st.phase === TourPhase.APPROACHING) {
       for (const s of st.stops) {
         if (s.status === StopStatus.APPROACHING) {
@@ -482,7 +536,9 @@ function onStartTour(st: TourState, fx: Fx): void {
   }
   setPhase(st, fx, TourPhase.WALKING, EngineEventType.START_TOUR, '');
   fx.log(EngineLog.TOUR_CONFIG, st.cfg.toLogKv() + ` adaptive=${st.input.adaptiveLength} ` +
-    `directions=${st.input.spokenDirections} brief=${st.input.briefOnly === true} lang=${st.input.lang} voice=${st.voiceLabel} src=${st.source}`);
+    `directions=${st.spokenDirections} brief=${st.input.briefOnly === true} lang=${st.input.lang} ` +
+    `voice=${st.voiceLabel} src=${st.source} legs=${st.input.legs === undefined ? 0 : st.input.legs.length} ` +
+    `${st.nav.toLogKv()}`);
   fx.mediaState(MediaPlayState.PLAY);
   const t: StopRuntime = st.stops[st.targetIdx];
   emitMeta(st, fx, t.name);
@@ -568,6 +624,7 @@ function onFix(st: TourState, fx: Fx, fix: Fix): void {
   } else {
     checkArrivalAndApproach(st, fx, fix, f.triggerGrade);
   }
+  updateNav(st, fx, fix, f.triggerGrade);
   pump(st, fx);
 }
 
@@ -608,7 +665,7 @@ function checkArrivalAndApproach(st: TourState, fx: Fx, fix: Fix, triggerGrade: 
       setPhase(st, fx, TourPhase.APPROACHING, EngineEventType.FIX, t.poiId);
       fx.log(EngineLog.POI_APPROACH, `id=${t.poiId} d=${r1(d)}`);
       const line: string = approachSentence(st.input.lang, t.name, relDirTo(st, t, d), d, st.cfg.walkSpeedMps,
-        st.input.spokenDirections);
+        st.spokenDirections);
       enqueue(st, fx, Priority.P3_APPROACH, AnnouncementKind.APPROACH, t.poiId, [line], `approach:${t.poiId}`,
         ContentTier.REVIEWED_HISTORIAN);
     }
@@ -636,13 +693,14 @@ function arrive(st: TourState, fx: Fx, idx: number, fix: Fix): void {
   st.userAskedMore = false;
   st.approachFarSinceMs = Number.NaN;
   st.queue.removeWaiting(`approach:${s.poiId}`);
+  clearNav(st, fx, 'arrival');
   setPhase(st, fx, TourPhase.AT_STOP, EngineEventType.FIX, s.poiId);
   fx.log(EngineLog.POI_ENTER, `id=${s.poiId} d=${r1(d)} acc=${r1(fix.accuracyM)} spd=${fix.speedMps.toFixed(1)}`);
   fx.haptic(HapticKind.ARRIVE);
   emitMeta(st, fx, s.name);
 
   const lines: string[] = arrivalSentences(st.input.lang, s.name, relDirTo(st, s, d), s.view,
-    st.input.spokenDirections);
+    st.spokenDirections);
   if (st.speechText) {
     const n: NextNotice = { poiId: s.poiId, title: s.name, text: lines.join(' '), distanceM: Math.round(d) };
     fx.notify(n);
@@ -681,6 +739,211 @@ function onFixTimeout(st: TourState, fx: Fx): void {
   pump(st, fx);
 }
 
+// ---------------------------------------------------------------- turn-by-turn and off-route (A9)
+
+/** Drops nav cue items still waiting in the queue (a newer cue, arrival, off-route or directions off). */
+function dropWaitingNav(st: TourState): void {
+  for (const k of st.navWaiting) {
+    st.queue.removeWaiting(k);
+  }
+  st.navWaiting = [];
+}
+
+/** Forgets the tracked leg (arrival, end, new target). The off-route flag goes with it. */
+function clearNav(st: TourState, fx: Fx, why: string): void {
+  if (st.offRoute()) {
+    fx.log(EngineLog.ON_ROUTE, `reason=${why} leg=${st.navKey}`);
+  }
+  dropWaitingNav(st);
+  st.navKey = '';
+  st.tracker = undefined;
+  st.candidates = [];
+  st.maneuverText = '';
+  st.maneuverDistM = Number.NaN;
+}
+
+function findLeg(st: TourState, from: string, to: string): RouteLeg | undefined {
+  const legs: RouteLeg[] | undefined = st.input.legs;
+  if (legs === undefined) {
+    return undefined;
+  }
+  for (const l of legs) {
+    if (l.fromPoiId === from && l.toPoiId === to) {
+      return l;
+    }
+  }
+  return undefined;
+}
+
+/** New leg: the direct leg from the last stop if the pack has it, else every leg ending at the target (leg 0). */
+function startLeg(st: TourState, from: string, to: string): void {
+  st.tracker = undefined;
+  st.candidates = [];
+  const direct: RouteLeg | undefined = from.length > 0 ? findLeg(st, from, to) : undefined;
+  if (direct !== undefined) {
+    const t: LegTracker = new LegTracker(direct, st.nav);
+    if (t.usable()) {
+      st.candidates.push(t);
+      return;
+    }
+  }
+  const legs: RouteLeg[] = st.input.legs === undefined ? [] : st.input.legs;
+  for (const l of legs) {
+    if (l.toPoiId === to) {
+      const t: LegTracker = new LegTracker(l, st.nav);
+      if (t.usable()) {
+        st.candidates.push(t);
+      }
+    }
+  }
+}
+
+function updateNav(st: TourState, fx: Fx, fix: Fix, triggerGrade: boolean): void {
+  if ((st.phase !== TourPhase.WALKING && st.phase !== TourPhase.APPROACHING) || st.targetIdx < 0) {
+    if (st.navKey.length > 0) {
+      clearNav(st, fx, st.phase);
+    }
+    return;
+  }
+  const target: StopRuntime = st.stops[st.targetIdx];
+  const from: string = st.lastStopIdx >= 0 ? st.stops[st.lastStopIdx].poiId : '';
+  const key: string = `${from}>${target.poiId}`;
+  if (key !== st.navKey) {
+    clearNav(st, fx, 'new_leg');
+    st.navKey = key;
+    startLeg(st, from, target.poiId);
+  }
+  const x: number = st.projection.x(fix.lng);
+  const y: number = st.projection.y(fix.lat);
+  if (st.tracker === undefined && triggerGrade && st.candidates.length > 0) {
+    let best: LegTracker | undefined = undefined;
+    let bestD: number = st.nav.snapRadiusM;
+    for (const c of st.candidates) {
+      const d: number = c.distanceTo(x, y);
+      if (d <= bestD) {
+        bestD = d;
+        best = c;
+      }
+    }
+    st.tracker = best;
+  }
+  const t: LegTracker | undefined = st.tracker;
+  if (t !== undefined) {
+    const u: LegUpdate = t.update(x, y, fix.accuracyM, fix.timestampMs, triggerGrade);
+    if (u.snappedNow) {
+      fx.log(EngineLog.NAV_CUE, `kind=snap leg=${t.key} xt=${r1(t.crossTrackM)} along=${r1(t.alongM)} ` +
+        `len=${r1(t.lengthM())} steps=${t.leg.steps.length} src=${fix.source}`);
+    }
+    for (const k of u.passedSteps) {
+      st.queue.removeWaiting(navKeyOf(t, k, CueKind.PREPARE));
+      st.queue.removeWaiting(navKeyOf(t, k, CueKind.NOW));
+    }
+    if (u.offRoute === OffRouteChange.ENTERED) {
+      enterOffRoute(st, fx, t, target, fix);
+    } else if (u.offRoute === OffRouteChange.CLEARED) {
+      fx.log(EngineLog.ON_ROUTE, `leg=${t.key} xt=${r1(t.crossTrackM)} offS=` +
+        `${r1((fix.timestampMs - t.offRouteEnteredAtMs) / 1000)} along=${r1(t.alongM)} src=${fix.source}`);
+    }
+    for (const c of u.cues) {
+      speakCue(st, fx, t, c, fix);
+    }
+  }
+  updateManeuverText(st, target);
+}
+
+function navKeyOf(t: LegTracker, stepIdx: number, kind: CueKind): string {
+  return `nav:${t.key}:${stepIdx}:${kind}`;
+}
+
+/** A tour stop (other than the target) lying along the long straight segment of step k, for "Walk past {it}". */
+function landmarkFor(st: TourState, t: LegTracker, k: number, target: StopRuntime): string {
+  const step: RouteStep = t.leg.steps[k];
+  const a: number = t.stepAlongM[k];
+  for (const s of st.stops) {
+    if (s === target) {
+      continue;
+    }
+    const h: PolyHit = t.project(st.projection.x(s.lng), st.projection.y(s.lat));
+    if (h.distM <= st.nav.snapRadiusM && h.alongM > a + st.nav.prepareM && h.alongM < a + step.distanceM) {
+      return s.name;
+    }
+  }
+  return '';
+}
+
+function speakCue(st: TourState, fx: Fx, t: LegTracker, c: NavCue, fix: Fix): void {
+  const step: RouteStep = t.leg.steps[c.stepIdx];
+  const then: RouteStep | undefined = c.thenStepIdx >= 0 ? t.leg.steps[c.thenStepIdx] : undefined;
+  const lang: Lang = st.input.lang;
+  const target: StopRuntime = st.stops[st.targetIdx];
+  let text: string = '';
+  if (c.kind === CueKind.PREPARE) {
+    text = prepareText(lang, step, c.distM, st.cfg.walkSpeedMps, then);
+  } else if (c.kind === CueKind.NOW) {
+    text = nowText(lang, step, then);
+  } else {
+    text = continueText(lang, step, st.cfg.walkSpeedMps, landmarkFor(st, t, c.stepIdx, target));
+  }
+  const key: string = navKeyOf(t, c.stepIdx, c.kind);
+  let spoken: boolean = st.spokenDirections;
+  if (spoken) {
+    dropWaitingNav(st);                  // a newer cue makes any waiting one stale (coalesced, never stacked)
+    if (c.kind === CueKind.NOW) {
+      st.queue.removeWaiting(navKeyOf(t, c.stepIdx, CueKind.PREPARE));
+    }
+    spoken = enqueue(st, fx, Priority.P1_NAV, AnnouncementKind.NAV_CUE, target.poiId, [text], key,
+      ContentTier.REVIEWED_HISTORIAN).length > 0;
+    if (spoken) {
+      st.navWaiting.push(key);
+    }
+  }
+  fx.log(EngineLog.NAV_CUE, `kind=${c.kind} leg=${t.key} step=${c.stepIdx} man=${step.maneuver.split(' ').join('_')} ` +
+    `mod=${step.modifier.split(' ').join('_')} dist=${r1(c.distM)} then=${c.thenStepIdx} ` +
+    `spoken=${spoken ? 1 : 0} src=${fix.source} text=${text}`);
+}
+
+/** §4.7: P0 line (once per 60 s), HAPTIC(offRoute), REQUEST_REPLAN. */
+function enterOffRoute(st: TourState, fx: Fx, t: LegTracker, target: StopRuntime, fix: Fix): void {
+  st.offRouteEpisodes++;
+  fx.log(EngineLog.OFF_ROUTE, `xt=${r1(t.crossTrackM)} thr=${r1(t.enteredThresholdM)} ` +
+    `heldS=${r1(t.enteredHeldMs / 1000)} spanM=${r1(t.enteredSpanM)} fixes=${t.enteredFixes} ` +
+    `acc=${r1(fix.accuracyM)} leg=${t.key} next=${target.poiId} src=${fix.source}`);
+  dropWaitingNav(st);
+  if (st.nowMs - st.lastOffRouteCueMs >= st.nav.offRouteCueIntervalMs) {
+    st.lastOffRouteCueMs = st.nowMs;
+    const d: number = distanceTo(st, target);
+    enqueue(st, fx, Priority.P0_SYSTEM, AnnouncementKind.SYSTEM, target.poiId,
+      offRouteSentences(st.input.lang, target.name, d, relDirTo(st, target, d), st.cfg.walkSpeedMps,
+        st.spokenDirections), `offroute:${st.offRouteEpisodes}`, ContentTier.REVIEWED_HISTORIAN);
+  }
+  fx.haptic(HapticKind.OFF_ROUTE);
+  fx.replan();
+}
+
+/** EngineSnapshot.next.maneuverText / maneuverDistM: the next maneuver, else bearing guidance to the target. */
+function updateManeuverText(st: TourState, target: StopRuntime): void {
+  const lang: Lang = st.input.lang;
+  const t: LegTracker | undefined = st.tracker;
+  if (t !== undefined && t.snapped && !t.offRoute) {
+    const k: number = t.nextAnnouncedStep();
+    if (k >= 0) {
+      const d: number = Math.max(0, t.distToStepM(k));
+      st.maneuverText = maneuverUiText(lang, t.leg.steps[k], d, st.cfg.walkSpeedMps, st.nav.nowM);
+      st.maneuverDistM = d;
+      return;
+    }
+    const rest: number = t.remainingM();
+    const d0: number = distanceTo(st, target);
+    st.maneuverText = bearingText(lang, target.name, rest, relDirTo(st, target, d0), st.cfg.walkSpeedMps, true);
+    st.maneuverDistM = rest;
+    return;
+  }
+  const d: number = distanceTo(st, target);
+  st.maneuverText = Number.isFinite(d) ?
+    bearingText(lang, target.name, d, relDirTo(st, target, d), st.cfg.walkSpeedMps, true) : '';
+  st.maneuverDistM = Number.NaN;
+}
+
 // ---------------------------------------------------------------- speech
 
 /** Event label of the AtStop -> Walking/Finished transitions in STATE logs (§4.1 calls it ITEM_DONE). */
@@ -694,6 +957,7 @@ function finishStop(st: TourState, fx: Fx, status: StopStatus): void {
   st.stage = StopStage.DONE;
   st.storyItemId = '';
   st.userAskedMore = false;
+  clearNav(st, fx, 'stop_done');
   fx.persist();
   const next: number = firstOpen(st);
   st.targetIdx = next;
@@ -942,6 +1206,7 @@ function onEnd(st: TourState, fx: Fx): void {
   st.textDueMs = Number.NaN;
   st.activeIdx = -1;
   st.storyItemId = '';
+  clearNav(st, fx, 'end');
   fx.stopSpeech(false);
   fx.mediaState(MediaPlayState.STOP);
   setPhase(st, fx, TourPhase.ABORTED, EngineEventType.USER_END, '');
@@ -1084,6 +1349,17 @@ export class TourEngine {
     return out;
   }
 
+  /**
+   * UserSettings.spokenDirections changed mid-tour (A9). Off: no turn cue is spoken any more (waiting ones are
+   * dropped); maneuverText keeps updating. Not an engine event (contracts are fixed); the caller owns the state.
+   */
+  static setSpokenDirections(state: TourState, on: boolean): void {
+    state.spokenDirections = on;
+    if (!on) {
+      dropWaitingNav(state);
+    }
+  }
+
   /** The EngineSnapshot the UI renders. PlatformStatus is left at defaults; the controller fills it in. */
   static snapshot(st: TourState): EngineSnapshot {
     const stops: StopProgress[] = [];
@@ -1100,7 +1376,7 @@ export class TourEngine {
         poiId: t.poiId, distanceM: d, etaS: Number.isFinite(d) ? d / st.cfg.walkSpeedMps : Number.NaN,
         relDir: relDirTo(st, t, d),
         bearingDeg: f === undefined ? Number.NaN : bearingDeg(f.lat, f.lng, t.lat, t.lng),
-        maneuverText: '', maneuverDistM: Number.NaN
+        maneuverText: st.maneuverText, maneuverDistM: st.maneuverDistM
       };
     }
     let nowPlaying: NowPlaying | undefined = undefined;
@@ -1144,7 +1420,7 @@ export class TourEngine {
     const snap: EngineSnapshot = {
       phase: st.phase, tourId: st.input.tour.id, stops: stops,
       currentStopIdx: st.activeIdx >= 0 ? st.activeIdx : st.targetIdx,
-      next: next, nowPlaying: nowPlaying, user: user, signal: st.signal, offRoute: false, paused: st.paused,
+      next: next, nowPlaying: nowPlaying, user: user, signal: st.signal, offRoute: st.offRoute(), paused: st.paused,
       speechText: st.speechText, plannedOrder: st.stops.map((s: StopRuntime) => s.poiId),
       walkedM: st.walkedM, remainingM: remainingM, issues: st.issues.slice(), voiceLabel: st.voiceLabel,
       source: st.source, platform: platform

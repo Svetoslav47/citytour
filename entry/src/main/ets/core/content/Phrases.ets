@@ -7,9 +7,13 @@
  * Gate G9: with directions off (spokenDirections = false, or relDir unreliable) the arrival line names the
  * place and says "Look for {feature}" with no left/right.
  * Polish is shown as text only (no Polish voice); its phrases avoid case agreement on inserted names.
+ * A9 (turn-by-turn, ARCHITECTURE §4.6/§4.7, DESIGN §5.4): maneuverAction() maps every OSRM maneuver x modifier to a
+ * short verb phrase per language; the NAV_* templates wrap it ("In 30 metres, turn left onto Grodzka.",
+ * "Now turn left, then turn right."). Street names: en "onto {street}", pl "({street})" (no case agreement),
+ * zh never (Polish names through the zh voice are unintelligible). OFF_ROUTE / REPLAN_NEW: the §4.7 lines.
  * Pure: no platform imports.
  */
-import { Lang, LocalizedText, LookDir, ViewHint } from '../../contracts/Model';
+import { Lang, LocalizedText, LookDir, Maneuver, ViewHint } from '../../contracts/Model';
 import { RelDir } from '../../contracts/EngineTypes';
 
 export enum PhraseKey {
@@ -28,14 +32,40 @@ export enum PhraseKey {
   WELCOME_SIMULATED = 'welcomeSimulated',
   GPS_LOST = 'gpsLost',
   FINISH = 'finish',
-  FINISH_THANKS = 'finishThanks'
+  FINISH_THANKS = 'finishThanks',
+  // A9 turn-by-turn ({action} = maneuverAction(), with the street already attached where the language allows it)
+  NAV_PREPARE = 'navPrepare',          // "In {dist}, {action}."
+  NAV_PREPARE_THEN = 'navPrepareThen', // "In {dist}, {action}, then {next}."
+  NAV_NOW = 'navNow',                  // "Now {action}."
+  NAV_NOW_THEN = 'navNowThen',         // "Now {action}, then {next}."
+  NAV_CONTINUE = 'navContinue',        // "Continue straight for about {dist}."
+  NAV_CONTINUE_STREET = 'navContinueStreet', // "Continue along {street} for about {dist}." (zh: no street)
+  NAV_PASS = 'navPass',                // "Walk straight past {name}."
+  NAV_BEARING = 'navBearing',          // "{name} is about {dist} {dir}." (leg 0 / off-route bearing guidance)
+  NAV_BEARING_NO_DIR = 'navBearingNoDir',
+  OFF_ROUTE = 'offRoute',              // "You've left the route."
+  REPLAN_NEW = 'replanNew'             // "New plan: we'll visit {name} first."
 }
 
 export const ALL_PHRASE_KEYS: PhraseKey[] = [
   PhraseKey.ARRIVAL, PhraseKey.ARRIVAL_HERE, PhraseKey.LOOK_UP, PhraseKey.LOOK_LEVEL, PhraseKey.LOOK_DOWN,
   PhraseKey.LOOK_FOR, PhraseKey.APPROACH, PhraseKey.APPROACH_NO_DIR, PhraseKey.NEXT_STOP,
   PhraseKey.NEXT_STOP_NO_DIST, PhraseKey.WELCOME, PhraseKey.WELCOME_HINT, PhraseKey.WELCOME_SIMULATED,
-  PhraseKey.GPS_LOST, PhraseKey.FINISH, PhraseKey.FINISH_THANKS
+  PhraseKey.GPS_LOST, PhraseKey.FINISH, PhraseKey.FINISH_THANKS,
+  PhraseKey.NAV_PREPARE, PhraseKey.NAV_PREPARE_THEN, PhraseKey.NAV_NOW, PhraseKey.NAV_NOW_THEN, PhraseKey.NAV_CONTINUE,
+  PhraseKey.NAV_CONTINUE_STREET, PhraseKey.NAV_PASS, PhraseKey.NAV_BEARING, PhraseKey.NAV_BEARING_NO_DIR,
+  PhraseKey.OFF_ROUTE, PhraseKey.REPLAN_NEW
+];
+
+/** Every OSRM maneuver type of the pack (contracts Model.Maneuver). */
+export const ALL_MANEUVERS: Maneuver[] = [
+  Maneuver.DEPART, Maneuver.TURN, Maneuver.CONTINUE, Maneuver.NEW_NAME, Maneuver.FORK, Maneuver.END_OF_ROAD,
+  Maneuver.ROUNDABOUT, Maneuver.ARRIVE, Maneuver.OTHER
+];
+
+/** Every OSRM step modifier ('' = none). */
+export const ALL_MODIFIERS: string[] = [
+  'uturn', 'sharp right', 'right', 'slight right', 'straight', 'slight left', 'left', 'sharp left', ''
 ];
 
 export const ALL_REL_DIRS: RelDir[] = [
@@ -52,6 +82,9 @@ export interface PhraseArgs {
   dist?: string;
   feature?: string;
   tour?: string;
+  action?: string;   // A9: maneuverAction() (+ street)
+  next?: string;     // A9: the following maneuver of a coalesced cue
+  street?: string;   // A9: street name (never in zh templates)
 }
 
 function enTemplate(key: PhraseKey): string {
@@ -72,6 +105,17 @@ function enTemplate(key: PhraseKey): string {
     case PhraseKey.GPS_LOST: return 'I\'ve lost the GPS signal. I\'ll continue when it\'s back.';
     case PhraseKey.FINISH: return 'That\'s the end of our walk.';
     case PhraseKey.FINISH_THANKS: return 'Thank you for walking with me.';
+    case PhraseKey.NAV_PREPARE: return 'In {dist}, {action}.';
+    case PhraseKey.NAV_PREPARE_THEN: return 'In {dist}, {action}, then {next}.';
+    case PhraseKey.NAV_NOW: return 'Now {action}.';
+    case PhraseKey.NAV_NOW_THEN: return 'Now {action}, then {next}.';
+    case PhraseKey.NAV_CONTINUE: return 'Continue straight for about {dist}.';
+    case PhraseKey.NAV_CONTINUE_STREET: return 'Continue along {street} for about {dist}.';
+    case PhraseKey.NAV_PASS: return 'Walk straight past {name}.';
+    case PhraseKey.NAV_BEARING: return '{name} is about {dist} {dir}.';
+    case PhraseKey.NAV_BEARING_NO_DIR: return '{name} is about {dist} away.';
+    case PhraseKey.OFF_ROUTE: return 'You\'ve left the route.';
+    case PhraseKey.REPLAN_NEW: return 'New plan: we\'ll visit {name} first.';
     default: return '';
   }
 }
@@ -94,6 +138,17 @@ function zhTemplate(key: PhraseKey): string {
     case PhraseKey.GPS_LOST: return 'GPS信号暂时丢失，恢复后我们继续。';
     case PhraseKey.FINISH: return '我们的游览到此结束。';
     case PhraseKey.FINISH_THANKS: return '感谢您与我一同漫步。';
+    case PhraseKey.NAV_PREPARE: return '前方{dist}，{action}。';
+    case PhraseKey.NAV_PREPARE_THEN: return '前方{dist}，{action}，然后{next}。';
+    case PhraseKey.NAV_NOW: return '现在{action}。';
+    case PhraseKey.NAV_NOW_THEN: return '现在{action}，然后{next}。';
+    case PhraseKey.NAV_CONTINUE: return '继续直行大约{dist}。';
+    case PhraseKey.NAV_CONTINUE_STREET: return '沿这条路继续直行大约{dist}。';
+    case PhraseKey.NAV_PASS: return '直行，经过{name}。';
+    case PhraseKey.NAV_BEARING: return '{name}{dir}，大约{dist}。';
+    case PhraseKey.NAV_BEARING_NO_DIR: return '{name}距离大约{dist}。';
+    case PhraseKey.OFF_ROUTE: return '您已偏离路线。';
+    case PhraseKey.REPLAN_NEW: return '新的路线：我们先去{name}。';
     default: return '';
   }
 }
@@ -116,6 +171,17 @@ function plTemplate(key: PhraseKey): string {
     case PhraseKey.GPS_LOST: return 'Brak sygnału GPS. Ruszymy dalej, gdy wróci.';
     case PhraseKey.FINISH: return 'To już koniec naszego spaceru.';
     case PhraseKey.FINISH_THANKS: return 'Dziękuję za wspólny spacer.';
+    case PhraseKey.NAV_PREPARE: return 'Za {dist} {action}.';
+    case PhraseKey.NAV_PREPARE_THEN: return 'Za {dist} {action}, potem {next}.';
+    case PhraseKey.NAV_NOW: return 'Teraz {action}.';
+    case PhraseKey.NAV_NOW_THEN: return 'Teraz {action}, potem {next}.';
+    case PhraseKey.NAV_CONTINUE: return 'Idź dalej prosto przez około {dist}.';
+    case PhraseKey.NAV_CONTINUE_STREET: return 'Idź dalej prosto ({street}) przez około {dist}.';
+    case PhraseKey.NAV_PASS: return 'Idź prosto, mijając: {name}.';
+    case PhraseKey.NAV_BEARING: return '{name}: około {dist}, {dir}.';
+    case PhraseKey.NAV_BEARING_NO_DIR: return '{name}: około {dist} stąd.';
+    case PhraseKey.OFF_ROUTE: return 'Zeszliśmy z trasy.';
+    case PhraseKey.REPLAN_NEW: return 'Nowy plan: najpierw {name}.';
     default: return '';
   }
 }
@@ -182,6 +248,9 @@ export function fillTemplate(template: string, args: PhraseArgs): string {
   s = replaceAll(s, '{dist}', args.dist);
   s = replaceAll(s, '{feature}', args.feature);
   s = replaceAll(s, '{tour}', args.tour);
+  s = replaceAll(s, '{action}', args.action);
+  s = replaceAll(s, '{next}', args.next);
+  s = replaceAll(s, '{street}', args.street);
   return s;
 }
 
@@ -293,4 +362,143 @@ export function gpsLostSentence(lang: Lang): string {
 /** Finish (DESIGN §5.3 F1). */
 export function finishSentences(lang: Lang): string[] {
   return [phrase(PhraseKey.FINISH, lang, {}), phrase(PhraseKey.FINISH_THANKS, lang, {})];
+}
+
+// ---------------------------------------------------------------- A9: turn-by-turn
+
+/** Direction class of an OSRM modifier. */
+enum TurnDir { LEFT, RIGHT, SLIGHT_LEFT, SLIGHT_RIGHT, SHARP_LEFT, SHARP_RIGHT, STRAIGHT, UTURN }
+
+function turnDirOf(modifier: string): TurnDir {
+  switch (modifier) {
+    case 'left': return TurnDir.LEFT;
+    case 'right': return TurnDir.RIGHT;
+    case 'slight left': return TurnDir.SLIGHT_LEFT;
+    case 'slight right': return TurnDir.SLIGHT_RIGHT;
+    case 'sharp left': return TurnDir.SHARP_LEFT;
+    case 'sharp right': return TurnDir.SHARP_RIGHT;
+    case 'uturn': return TurnDir.UTURN;
+    default: return TurnDir.STRAIGHT;
+  }
+}
+
+function isLeftish(d: TurnDir): boolean {
+  return d === TurnDir.LEFT || d === TurnDir.SLIGHT_LEFT || d === TurnDir.SHARP_LEFT;
+}
+
+function isRightish(d: TurnDir): boolean {
+  return d === TurnDir.RIGHT || d === TurnDir.SLIGHT_RIGHT || d === TurnDir.SHARP_RIGHT;
+}
+
+function baseTurn(d: TurnDir, lang: Lang): string {
+  if (lang === Lang.ZH) {
+    switch (d) {
+      case TurnDir.LEFT: return '左转';
+      case TurnDir.RIGHT: return '右转';
+      case TurnDir.SLIGHT_LEFT: return '向左前方走';
+      case TurnDir.SLIGHT_RIGHT: return '向右前方走';
+      case TurnDir.SHARP_LEFT: return '向左后方急转';
+      case TurnDir.SHARP_RIGHT: return '向右后方急转';
+      case TurnDir.UTURN: return '掉头';
+      default: return '直行';
+    }
+  }
+  if (lang === Lang.PL) {
+    switch (d) {
+      case TurnDir.LEFT: return 'skręć w lewo';
+      case TurnDir.RIGHT: return 'skręć w prawo';
+      case TurnDir.SLIGHT_LEFT: return 'odbij w lewo';
+      case TurnDir.SLIGHT_RIGHT: return 'odbij w prawo';
+      case TurnDir.SHARP_LEFT: return 'skręć ostro w lewo';
+      case TurnDir.SHARP_RIGHT: return 'skręć ostro w prawo';
+      case TurnDir.UTURN: return 'zawróć';
+      default: return 'idź prosto';
+    }
+  }
+  switch (d) {
+    case TurnDir.LEFT: return 'turn left';
+    case TurnDir.RIGHT: return 'turn right';
+    case TurnDir.SLIGHT_LEFT: return 'bear left';
+    case TurnDir.SLIGHT_RIGHT: return 'bear right';
+    case TurnDir.SHARP_LEFT: return 'turn sharp left';
+    case TurnDir.SHARP_RIGHT: return 'turn sharp right';
+    case TurnDir.UTURN: return 'turn around';
+    default: return 'go straight on';
+  }
+}
+
+function sideWord(d: TurnDir, lang: Lang, left: string, right: string, straight: string): string {
+  return isLeftish(d) ? left : (isRightish(d) ? right : straight);
+}
+
+/**
+ * Short spoken-style verb phrase for an OSRM maneuver x modifier (ARCHITECTURE §4.6 "Templates"), lower case so
+ * it can follow "In 30 metres," / "Now". Deterministic code, not AI. Never empty.
+ */
+export function maneuverAction(m: Maneuver, modifier: string, lang: Lang): string {
+  const d: TurnDir = turnDirOf(modifier);
+  const base: string = baseTurn(d, lang);
+  switch (m) {
+    case Maneuver.END_OF_ROAD:
+      if (lang === Lang.ZH) {
+        return `在路的尽头${base}`;
+      }
+      return lang === Lang.PL ? `na końcu ulicy ${base}` : `${base} at the end of the street`;
+    case Maneuver.FORK:
+      if (d === TurnDir.UTURN) {
+        return base;
+      }
+      if (lang === Lang.ZH) {
+        return `在岔路口${sideWord(d, lang, '靠左', '靠右', '直行')}`;
+      }
+      if (lang === Lang.PL) {
+        return `na rozwidleniu ${sideWord(d, lang, 'trzymaj się lewej', 'trzymaj się prawej', 'idź prosto')}`;
+      }
+      return sideWord(d, lang, 'keep left at the fork', 'keep right at the fork', 'keep straight on at the fork');
+    case Maneuver.ROUNDABOUT:
+      if (lang === Lang.ZH) {
+        return '绕过环岛';
+      }
+      return lang === Lang.PL ? 'obejdź rondo' : 'go around the roundabout';
+    case Maneuver.CONTINUE:
+    case Maneuver.NEW_NAME:
+      if (d !== TurnDir.STRAIGHT) {
+        return base;
+      }
+      if (lang === Lang.ZH) {
+        return '继续直行';
+      }
+      return lang === Lang.PL ? 'idź dalej prosto' : 'continue straight';
+    case Maneuver.DEPART:
+      if (lang === Lang.ZH) {
+        return `出发，${base}`;
+      }
+      if (lang === Lang.PL) {
+        return `ruszaj: ${base}`;
+      }
+      return sideWord(d, lang, 'set off to the left', 'set off to the right', 'set off straight ahead');
+    case Maneuver.ARRIVE:
+      if (lang === Lang.ZH) {
+        return sideWord(d, lang, '目的地在左侧', '目的地在右侧', '到达目的地');
+      }
+      if (lang === Lang.PL) {
+        return sideWord(d, lang, 'cel jest po lewej', 'cel jest po prawej', 'jesteś u celu');
+      }
+      return sideWord(d, lang, 'the stop is on your left', 'the stop is on your right', 'you arrive at the stop');
+    default:
+      return base;   // TURN, OTHER
+  }
+}
+
+/** The action with the street attached where the language speaks it: en "onto X", pl "(X)", zh never. */
+export function actionWithStreet(action: string, street: string, lang: Lang): string {
+  if (street.length === 0 || lang === Lang.ZH) {
+    return action;
+  }
+  return lang === Lang.PL ? `${action} (${street})` : `${action} onto ${street}`;
+}
+
+/** First letter upper case (UI captions that start with the action). */
+export function capitalize(s: string): string {
+  return s.length === 0 ? s : s.charAt(0).toUpperCase() + s.substring(1);
 }

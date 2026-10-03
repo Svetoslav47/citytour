@@ -19,8 +19,9 @@ import {
 } from '../main/ets/contracts/EngineTypes';
 import { Fix, FixSource, Utterance, VoicePlan } from '../main/ets/contracts/Ports';
 import {
-  ContentTier, Lang, Narration, NarrationLength, Poi, ProvenanceKind
+  ContentTier, Lang, LatLng, Maneuver, Narration, NarrationLength, Poi, ProvenanceKind, RouteLeg, RouteStep
 } from '../main/ets/contracts/Model';
+import { KRAKOW_PROJECTION } from '../main/ets/core/geo/Projection';
 import { VoiceLabel } from '../main/ets/contracts/Settings';
 import {
   MINI_BARBICAN, MINI_CLOTH_HALL, MINI_PERSONA_ID, MINI_ST_MARYS, MINI_TOUR_ID, miniNarrations, miniPois, miniTour
@@ -446,6 +447,85 @@ function expectSeq(actual: string[], expected: string[]): void {
   expect(actual.length).assertEqual(expected.length);
 }
 
+
+// ---------------------------------------------------------------- A9: a walking leg St Mary's -> Cloth Hall
+
+/**
+ * Projected path of the fixture leg: from St Mary's 60 m south, right onto "Grodzka" (west) to below the Cloth Hall,
+ * right again (north) to the Cloth Hall. In the pack's projection, like RouteLeg.geometry.
+ */
+function smChPath(): number[] {
+  const sm: Poi = poiById(MINI_ST_MARYS);
+  const ch: Poi = poiById(MINI_CLOTH_HALL);
+  const sx: number = KRAKOW_PROJECTION.x(sm.lng);
+  const sy: number = KRAKOW_PROJECTION.y(sm.lat);
+  const cx: number = KRAKOW_PROJECTION.x(ch.lng);
+  const cy: number = KRAKOW_PROJECTION.y(ch.lat);
+  return [sx, sy, sx, sy - 60, cx, sy - 60, cx, cy];
+}
+
+function navStep(m: Maneuver, mod: string, street: string, dist: number, idx: number, g: number[]): RouteStep {
+  const st: RouteStep = {
+    maneuver: m, modifier: mod, streetName: street, distanceM: dist, durationS: dist / 1.3, geomIndex: idx,
+    x: g[idx * 2], y: g[idx * 2 + 1]
+  };
+  return st;
+}
+
+function smChLeg(): RouteLeg {
+  const g: number[] = smChPath();
+  const l1: number = Math.hypot(g[4] - g[2], g[5] - g[3]);
+  const l2: number = Math.hypot(g[6] - g[4], g[7] - g[5]);
+  const leg: RouteLeg = {
+    fromPoiId: MINI_ST_MARYS, toPoiId: MINI_CLOTH_HALL, distanceM: 60 + l1 + l2, durationS: (60 + l1 + l2) / 1.3,
+    geometry: g,
+    steps: [
+      navStep(Maneuver.DEPART, 'straight', '', 60, 0, g),
+      navStep(Maneuver.TURN, 'right', 'Grodzka', l1, 1, g),
+      navStep(Maneuver.TURN, 'right', '', l2, 2, g),
+      navStep(Maneuver.ARRIVE, 'left', '', 0, 3, g)
+    ]
+  };
+  return leg;
+}
+
+function navInput(text: boolean): TourInput {
+  const i: TourInput = input(text, false);
+  i.legs = [smChLeg()];
+  return i;
+}
+
+/** Walks the projected polyline (x, y pairs) at `speed` m/s, one fix per second, from vertex `from`. */
+function walkPath(d: Driver, path: number[], from: number, speed: number): void {
+  for (let i = from; i + 3 < path.length; i += 2) {
+    const ax: number = path[i];
+    const ay: number = path[i + 1];
+    const dx: number = path[i + 2] - ax;
+    const dy: number = path[i + 3] - ay;
+    const len: number = Math.hypot(dx, dy);
+    const course: number = ((Math.atan2(dx, dy) * 180 / Math.PI) + 360) % 360;
+    for (let s = speed; s <= len; s += speed) {
+      const p: LatLng = KRAKOW_PROJECTION.toLatLng(ax + dx * s / len, ay + dy * s / len);
+      d.placeAt(p.lat, p.lng);
+      d.second(speed, course);
+    }
+  }
+}
+
+/** St Mary's story heard, the walker standing at St Mary's, the leg to the Cloth Hall next. */
+function atStMarysDone(text: boolean): Driver {
+  const d: Driver = new Driver(navInput(text));
+  d.ticks = text;
+  d.placeNear(MINI_ST_MARYS, 0, 0);
+  d.start([MINI_ST_MARYS, MINI_CLOTH_HALL]);
+  d.dwellUntilQuiet();
+  return d;
+}
+
+function navLogs(d: Driver, kind: string): string[] {
+  return d.logsWith('NAV_CUE', [`kind=${kind} `]);
+}
+
 export default function tourEngineTest() {
   describe('TourEngine', () => {
     it('scripted_3_stop_tour_exact_effect_sequence', 0, () => {
@@ -706,12 +786,15 @@ export default function tourEngineTest() {
         type: EngineEventType.PLAN_READY, nowMs: d.t, plan: plan([MINI_BARBICAN, MINI_CLOTH_HALL, MINI_ST_MARYS])
       };
       d.send(same);
-      expect(d.count('LOG REPLAN')).assertEqual(0);      // the next stop did not change
+      // A9: every mid-tour plan is logged (the off-route re-plan must show in the logs); the next stop did not change
+      expect(d.logsWith('REPLAN', ['changed=0', `to=${MINI_BARBICAN}`]).length).assertEqual(1);
+      expect(d.count('SPEAK New plan')).assertEqual(0);
       expect(d.snap().plannedOrder.join(',')).assertEqual([MINI_BARBICAN, MINI_CLOTH_HALL, MINI_ST_MARYS].join(','));
       const mark: number = d.sigs.length;
       const other: EngineEvent = { type: EngineEventType.PLAN_READY, nowMs: d.t, plan: plan(ORDER_SM_CH_B) };
       d.send(other);
       expect(d.since(mark).indexOf('LOG REPLAN') >= 0).assertTrue();
+      expect(d.logsWith('REPLAN', ['changed=1', `to=${MINI_ST_MARYS}`]).length).assertEqual(1);
       expect(d.since(mark).indexOf('NOTIFY poi_mini_st_marys') >= 0).assertTrue();
       expect(d.snap().next !== undefined && d.snap().next?.poiId === MINI_ST_MARYS).assertTrue();
     });
@@ -883,6 +966,114 @@ export default function tourEngineTest() {
       expect(d.since(mark).filter((x: string) => x.indexOf('SPEAK Next stop: Cloth Hall') === 0).length)
         .assertEqual(1);
       expect(d.count('STOP')).assertEqual(0);              // nothing was playing, nothing to cut
+    });
+
+    it('a9_turn_cues_on_the_leg_prepare_and_now_once_each_as_p1_items', 0, () => {
+      const d: Driver = atStMarysDone(false);
+      expect(d.st.phase).assertEqual(TourPhase.WALKING);
+      const path: number[] = smChPath();
+      walkPath(d, [path[0], path[1], path[0], path[1] - 40], 0, 1.3);   // 39 m south: 21 m before the corner
+      const mid: EngineSnapshot = d.snap();
+      expect(mid.next !== undefined ? mid.next.maneuverText : '').assertEqual('In 20 metres, turn right onto Grodzka.');
+      expect(mid.next !== undefined && Math.abs(mid.next.maneuverDistM - 21) < 1).assertTrue();
+      walkPath(d, [path[0], path[1] - 39, path[2], path[3]], 0, 1.3);
+      walkPath(d, path, 2, 1.3);
+      d.dwellUntilQuiet();
+      expect(navLogs(d, 'snap').length).assertEqual(1);
+      expect(navLogs(d, 'prepare').map((l: string) => l.split(' ')[3]).join(',')).assertEqual('step=1,step=2');
+      expect(navLogs(d, 'now').map((l: string) => l.split(' ')[3]).join(',')).assertEqual('step=1,step=2');
+      expect(d.logsWith('NAV_CUE', ['spoken=0']).length).assertEqual(0);
+      expect(d.spoken.indexOf('In 30 metres, turn right onto Grodzka.') >= 0).assertTrue();
+      expect(d.spoken.indexOf('Now turn right onto Grodzka.') >= 0).assertTrue();
+      expect(d.spoken.indexOf('Now turn right.') >= 0).assertTrue();
+      expect(d.logsWith('STORY_QUEUE', ['prio=P1', 'kind=navCue']).length).assertEqual(4);
+      expect(d.count('STOP')).assertEqual(0);         // a cue never cuts a sentence
+      expect(d.logsWith('POI_ENTER', [`id=${MINI_CLOTH_HALL}`]).length).assertEqual(1);
+      expect(d.count('LOG OFF_ROUTE')).assertEqual(0);
+      expect(d.count('REPLAN')).assertEqual(0);
+      // at the stop the directions card is empty again
+      expect(d.snap().offRoute).assertFalse();
+    });
+
+    it('a9_off_route_p0_line_haptic_replan_then_back_on_route', 0, () => {
+      const d: Driver = atStMarysDone(false);
+      const path: number[] = smChPath();
+      const sx: number = path[0];
+      const sy: number = path[1];
+      walkPath(d, [sx, sy, sx, sy - 20], 0, 1.3);
+      expect(d.snap().offRoute).assertFalse();
+      const mark: number = d.sigs.length;
+      walkPath(d, [sx, sy - 20, sx + 55, sy - 20], 0, 1.3);   // 55 m east, away from the leg
+      for (let i = 0; i < 15 && d.count('LOG OFF_ROUTE') === 0; i++) {
+        d.second(0, Number.NaN);
+      }
+      const after: string[] = d.since(mark);
+      expect(after.indexOf('LOG OFF_ROUTE') >= 0).assertTrue();
+      expect(after.indexOf('HAPTIC offRoute') > after.indexOf('LOG OFF_ROUTE')).assertTrue();
+      expect(after.indexOf('REPLAN') > after.indexOf('LOG OFF_ROUTE')).assertTrue();
+      expect(d.logsWith('OFF_ROUTE', [`leg=${MINI_ST_MARYS}>${MINI_CLOTH_HALL}`, 'src=demo']).length).assertEqual(1);
+      expect(d.logsWith('STORY_QUEUE', ['prio=P0', 'kind=system']).length).assertEqual(1);
+      const s: EngineSnapshot = d.snap();
+      expect(s.offRoute).assertTrue();
+      expect(s.next !== undefined && s.next.maneuverText.indexOf('Cloth Hall is about') === 0).assertTrue();
+      d.dwell(6);
+      expect(d.spoken.indexOf('You\'ve left the route.') >= 0).assertTrue();
+      // the controller answers REQUEST_REPLAN with PLAN_READY (same next stop here)
+      const re: EngineEvent = { type: EngineEventType.PLAN_READY, nowMs: d.t, plan: plan([MINI_CLOTH_HALL]) };
+      d.send(re);
+      expect(d.logsWith('REPLAN', ['changed=0', `to=${MINI_CLOTH_HALL}`]).length).assertEqual(1);
+      expect(d.snap().offRoute).assertTrue();          // still off until back on the leg
+      // standing there longer is one episode: no second line, no second re-plan
+      d.dwell(30);
+      expect(d.count('LOG OFF_ROUTE')).assertEqual(1);
+      expect(d.count('REPLAN')).assertEqual(1);
+      walkPath(d, [sx + 55, sy - 20, sx, sy - 30], 0, 1.3);   // back onto the leg
+      expect(d.count('LOG ON_ROUTE')).assertEqual(1);
+      expect(d.snap().offRoute).assertFalse();
+      walkPath(d, path, 2, 1.3);
+      expect(navLogs(d, 'now').length).assertEqual(2);         // guidance resumes on the leg
+    });
+
+    it('a9_spoken_directions_off_no_cue_speech_but_maneuver_text_updates', 0, () => {
+      const d: Driver = atStMarysDone(false);
+      TourEngine.setSpokenDirections(d.st, false);
+      const path: number[] = smChPath();
+      walkPath(d, [path[0], path[1], path[0], path[1] - 40], 0, 1.3);
+      const s: EngineSnapshot = d.snap();
+      expect(s.next !== undefined ? s.next.maneuverText : '').assertEqual('In 20 metres, turn right onto Grodzka.');
+      walkPath(d, [path[0], path[1] - 39, path[2], path[3]], 0, 1.3);
+      walkPath(d, path, 2, 1.3);
+      d.dwellUntilQuiet();
+      expect(navLogs(d, 'now').length).assertEqual(2);
+      expect(d.logsWith('NAV_CUE', ['spoken=1']).length).assertEqual(0);
+      expect(d.logsWith('STORY_QUEUE', ['prio=P1', 'kind=navCue']).length).assertEqual(0);
+      expect(d.spoken.filter((t: string) => t.indexOf('turn right') >= 0).length).assertEqual(0);
+    });
+
+    it('a9_leg0_bearing_guidance_then_snaps_onto_a_leg_ending_at_the_target', 0, () => {
+      const d: Driver = new Driver(navInput(false));
+      const path: number[] = smChPath();
+      const far: LatLng = KRAKOW_PROJECTION.toLatLng(path[0] + 200, path[1]);
+      d.placeAt(far.lat, far.lng);
+      d.start([MINI_CLOTH_HALL]);
+      d.second(0, Number.NaN);
+      const s: EngineSnapshot = d.snap();
+      expect(s.next !== undefined && s.next.maneuverText.indexOf('Cloth Hall is about') === 0).assertTrue();
+      expect(navLogs(d, 'snap').length).assertEqual(0);
+      walkPath(d, [path[0] + 200, path[1], path[0], path[1]], 0, 1.3);
+      expect(navLogs(d, 'snap').length).assertEqual(1);
+      expect(d.count('LOG OFF_ROUTE')).assertEqual(0);         // no route, no off-route before the snap
+      walkPath(d, path, 0, 1.3);
+      expect(navLogs(d, 'now').length).assertEqual(2);
+    });
+
+    it('a9_text_only_cues_are_captions_paced_by_tick', 0, () => {
+      const d: Driver = atStMarysDone(true);
+      walkPath(d, smChPath(), 0, 1.3);
+      d.dwellUntilQuiet();
+      expect(d.count('SPEAK')).assertEqual(0);
+      expect(navLogs(d, 'now').length).assertEqual(2);
+      expect(d.logsWith('STORY_START', ['kind=navCue', 'mode=text']).length >= 1).assertTrue();
     });
   });
 }
