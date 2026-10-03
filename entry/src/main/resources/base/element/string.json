@@ -269,6 +269,10 @@
       "value": "Map of %1$s with %2$d stops"
     },
     {
+      "name": "place_map_a11y",
+      "value": "Map around %s"
+    },
+    {
       "name": "tour_not_found",
       "value": "This tour isn't in the offline data."
     },
