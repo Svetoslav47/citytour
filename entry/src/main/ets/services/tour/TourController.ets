@@ -26,6 +26,16 @@
  * The snapshot's platform fields are filled here (A3 note); snapshots are published at most every 250 ms.
  * Pure TypeScript/ArkTS: no @kit import, so the local unit tests can drive it with fake ports
  * (entry/src/test/TourController.test.ets). Platform calls are all behind ports and wrapped in try/catch + .catch.
+ *
+ * Error matrix (task A10, ARCHITECTURE §9): every row the controller can see ends as an AppIssue in the snapshot
+ * plus one log line with the row's code. Rows 1/3/7: location source errors map through locationErrorIssue()
+ * (PERM_DENIED / LOC_SWITCH_OFF / LOC_UNAVAILABLE) and clear on the next fix or a switch to the Demo walk. Row 2:
+ * PERM_APPROX_ONLY on the first real fix (approximate fixes are > 40 m, so the engine's accuracy gate keeps
+ * triggers off). Row 8: LOC_OUT_OF_AREA at plan time and on the first real fix of a tour. Rows 9/10: voiceIssueFor()
+ * on the voice plan (TTS_INIT_FAIL when the platform leaves only text, VOICE_UNAVAILABLE when the zh voice stands
+ * in for English). Rows 12/13: onAudioInterrupt()/onAudioRouteLost(), fed by NarrationPlayer through AppContainer
+ * (no SpeechPort contract change). Row 14: BG_FAIL/BG_CANCEL keep the screen on (deps.keepScreenOn). Row 16:
+ * NotifierPort.requestEnable() false => NOTIF_DENIED, no next-stop notices. Row 17: PACK_ERR (BLOCKING).
  */
 import {
   Announcement, AppIssue, Effect, EffectType, EngineEvent, EngineEventType, EngineSnapshot, IssueCode, IssueSeverity,
@@ -96,6 +106,8 @@ export interface TourControllerDeps {
   notifier: () => NotifierPort | undefined;
   haptics: () => HapticsPort | undefined;
   permissions: () => PermissionPort | undefined;
+  /** §9 row 14: window keep-screen-on while the continuous task is missing (AppContainer: setWindowKeepScreenOn). */
+  keepScreenOn?: (on: boolean) => void;
 }
 
 /** Tour settings the controller applies at plan() time (UserSettings once B9 lands). */
@@ -161,6 +173,57 @@ export function openStopIds(st: TourState): string[] {
     }
   }
   return out;
+}
+
+/** §9 location error codes (LocationSource onError: LocationError -1..-5 or a Location Kit exception code). */
+export const LOC_ERR_PERMISSION: number = -2;
+export const LOC_ERR_SWITCH_OFF: number = -4;
+const LOC_CODES_PERMISSION: number[] = [LOC_ERR_PERMISSION, 201];
+const LOC_CODES_SWITCH_OFF: number[] = [LOC_ERR_SWITCH_OFF, 3301100];
+const LOC_CODES_UNAVAILABLE: number[] = [3301000, 801];
+/** Issues that describe the active location source; a fix or a source switch clears them. */
+const LOCATION_ISSUES: IssueCode[] = [
+  IssueCode.PERM_DENIED, IssueCode.LOC_SWITCH_OFF, IssueCode.LOC_UNAVAILABLE, IssueCode.LOC_NOFIX
+];
+
+/** §9 rows 1/3/7: the issue a location source error code maps to. */
+export function locationErrorIssue(code: number, kind: FixSource): AppIssue {
+  let c: IssueCode = IssueCode.LOC_UNAVAILABLE;
+  let sev: IssueSeverity = IssueSeverity.WARN;
+  if (LOC_CODES_PERMISSION.indexOf(code) >= 0) {
+    c = IssueCode.PERM_DENIED;
+    sev = IssueSeverity.BLOCKING;
+  } else if (LOC_CODES_SWITCH_OFF.indexOf(code) >= 0) {
+    c = IssueCode.LOC_SWITCH_OFF;
+    sev = IssueSeverity.BLOCKING;
+  } else if (LOC_CODES_UNAVAILABLE.indexOf(code) >= 0) {
+    sev = IssueSeverity.BLOCKING;
+  }
+  const i: AppIssue = { code: c, severity: sev, detail: `${kind} code=${code}` };
+  return i;
+}
+
+/**
+ * §9 rows 9/10: what the voice plan means for the user. TEXT_ONLY_PLATFORM (the platform left no voice, except the
+ * by-design "no Polish voice") => TTS_INIT_FAIL; FALLBACK_ZH_READS_EN (Laura not installed) => VOICE_UNAVAILABLE.
+ * A text-only choice of the user is no issue.
+ */
+export function voiceIssueFor(vp: VoicePlan): AppIssue | undefined {
+  if (vp.label === VoiceLabel.TEXT_ONLY_PLATFORM && vp.reason.indexOf('no_voice_for_lang') < 0) {
+    const i: AppIssue = { code: IssueCode.TTS_INIT_FAIL, severity: IssueSeverity.WARN, detail: vp.reason };
+    return i;
+  }
+  if (vp.label === VoiceLabel.FALLBACK_ZH_READS_EN) {
+    const i: AppIssue = { code: IssueCode.VOICE_UNAVAILABLE, severity: IssueSeverity.INFO, detail: vp.reason };
+    return i;
+  }
+  return undefined;
+}
+
+/** "en_status=DOWNLOADABLE ..." -> "DOWNLOADABLE"; '' if absent. */
+export function enStatusOf(reason: string): string {
+  const m: RegExpMatchArray | null = reason.match(new RegExp('en_status=([A-Z_]+)'));
+  return m !== null && m.length > 1 ? m[1] : '';
 }
 
 function invalidOrigin(): LatLng {
@@ -271,6 +334,9 @@ export class TourController implements TourControl {
   private bgUp: boolean = false;
   private artist: string = 'CityTour · Historian';
   private avsUp: boolean = false;
+  private screenKept: boolean = false;         // §9 row 14: keepScreenOn(true) is in force
+  private notifDenied: boolean = false;        // §9 row 16: no next-stop notices this tour
+  private firstRealFixSeen: boolean = false;   // §9 rows 2/8 at tour time: checked once per session
 
   constructor(deps: TourControllerDeps) {
     this.deps = deps;
@@ -329,6 +395,7 @@ export class TourController implements TourControl {
       }
       this.deps.log.info(LogEvents.LOC_SOURCE, `kind=${kind} action=select from=${this.sourceKind}`);
       this.sourceKind = kind;
+      this.clearLocationIssues();          // e.g. [Try Demo walk] after PERM_DENIED: the old source's banner goes
       if (this.running) {
         this.stopSources();
         this.startSources(false);
@@ -453,6 +520,7 @@ export class TourController implements TourControl {
     this.bgUp = false;
     this.addIssue(IssueCode.BG_FAIL, IssueSeverity.WARN, `cancelled ${reason}`);
     if (this.running) {
+      this.keepScreen(true, `bg_cancel reason=${reason}`);
       const ev: EngineEvent = { type: EngineEventType.BG_CANCELLED, nowMs: this.deps.clock.nowMs(), reason: reason };
       this.dispatch(ev);
       // BackgroundRunner stops the audio with the task (continuous-task guide), which cuts the sentence in flight
@@ -469,6 +537,36 @@ export class TourController implements TourControl {
     this.deps.log.warn(LogEvents.BG_SUSPEND, `reason=${reason} where=controller`);
     this.addIssue(IssueCode.BG_FAIL, IssueSeverity.WARN, `suspended ${reason}`);
     this.schedulePublish();
+  }
+
+  /**
+   * §9 row 12: an audio focus interrupt seen by the speech service (NarrationPlayer via AppContainer). hint is
+   * 'PAUSE' | 'STOP' | 'RESUME'. Outside a running tour it is only logged.
+   */
+  onAudioInterrupt(hint: string): void {
+    try {
+      if (!this.running || this.state === undefined) {
+        this.deps.log.info(LogEvents.AUDIO_INTERRUPT, `hint=${hint} action=ignored reason=no_tour`);
+        return;
+      }
+      const ev: EngineEvent = { type: EngineEventType.AUDIO_INTERRUPT, nowMs: this.deps.clock.nowMs(), hint: hint };
+      this.dispatch(ev);
+    } catch (e) {
+      this.deps.log.error(LogEvents.UNCAUGHT, `where=TourController.onAudioInterrupt ${errText(e as Object)}`);
+    }
+  }
+
+  /** §9 row 13: the headphones went away (output fell back to the loudspeaker). */
+  onAudioRouteLost(devices: string): void {
+    try {
+      if (!this.running || this.state === undefined) {
+        this.deps.log.info(LogEvents.AUDIO_ROUTE, `device=SPEAKER action=ignored reason=no_tour devices=${devices}`);
+        return;
+      }
+      this.dispatchType(EngineEventType.AUDIO_ROUTE_LOST);
+    } catch (e) {
+      this.deps.log.error(LogEvents.UNCAUGHT, `where=TourController.onAudioRouteLost ${errText(e as Object)}`);
+    }
   }
 
   onMediaCommand(cmd: MediaCommand): void {
@@ -519,6 +617,7 @@ export class TourController implements TourControl {
     }
     await this.primeOrigin();
     const vp: VoicePlan = this.resolveVoice();
+    this.reportVoice(vp);
     const origin: LatLng = this.planningOrigin();
     const p: TourPlan = this.solve(tour, tour.stops.map((s: TourStop) => s.poiId), origin, budgetMin > 0 ? budgetMin * 60 : 0);
     this.tour = tour;
@@ -602,6 +701,22 @@ export class TourController implements TourControl {
       };
       return t;
     }
+  }
+
+  /** §9 rows 9/10: one issue + one log line for a voice plan the user should know about. */
+  private reportVoice(vp: VoicePlan): void {
+    const i: AppIssue | undefined = voiceIssueFor(vp);
+    if (i === undefined) {
+      return;
+    }
+    if (i.code === IssueCode.TTS_INIT_FAIL) {
+      this.deps.log.error(LogEvents.TTS_INIT_FAIL, `lang=${vp.textLang} reason=${vp.reason} action=text_only where=controller`);
+    } else {
+      const st: string = enStatusOf(vp.reason);
+      this.deps.log.warn(LogEvents.VOICE_STATUS, `lang=en person=8 status=${st.length > 0 ? st : 'unknown'} ` +
+        `action=fallback_voice label=${vp.label} where=controller`);
+    }
+    this.addIssue(i.code, i.severity, i.detail);
   }
 
   /**
@@ -786,6 +901,8 @@ export class TourController implements TourControl {
     this.noopLogged.clear();
     this.timeoutSent = false;
     this.noFixLogged = false;
+    this.firstRealFixSeen = false;
+    this.notifDenied = false;
     this.deps.speech.setListener(new SpeechBridge(this, gen));
     await this.startPlatform(gen);
     if (gen !== this.generation) {
@@ -809,15 +926,21 @@ export class TourController implements TourControl {
         bg.setListener(new BackgroundBridge(this));
         this.bgUp = await this.withTimeout<boolean>(bg.start(), PLATFORM_START_TIMEOUT_MS, false);
         if (!this.bgUp) {
-          this.deps.log.error(LogEvents.BG_FAIL, 'where=controller result=false');
+          this.deps.log.error(LogEvents.BG_FAIL, 'where=controller result=false action=foreground_only');
           this.addIssue(IssueCode.BG_FAIL, IssueSeverity.WARN, 'continuous task not running');
+          this.keepScreen(true, 'bg_fail');
         }
       } catch (e) {
         this.bgUp = false;
-        this.deps.log.error(LogEvents.BG_FAIL, `where=controller ${errText(e as Object)}`);
+        this.deps.log.error(LogEvents.BG_FAIL, `where=controller ${errText(e as Object)} action=foreground_only`);
         this.addIssue(IssueCode.BG_FAIL, IssueSeverity.WARN, 'continuous task failed');
+        this.keepScreen(true, 'bg_fail');
       }
     }
+    if (gen !== this.generation) {
+      return;
+    }
+    this.requestNotifications(gen);
     if (gen !== this.generation) {
       return;
     }
@@ -955,6 +1078,7 @@ export class TourController implements TourControl {
       }
     }
     this.avsUp = false;
+    this.keepScreen(false, why);
     this.deps.log.info(LogEvents.STATE, `from=${this.phase()} to=${this.phase()} ev=TEARDOWN why=${why}`);
     this.schedulePublish();
   }
@@ -980,6 +1104,11 @@ export class TourController implements TourControl {
     }
     this.lastActiveFixMs = now;
     this.timeoutSent = false;
+    this.clearLocationIssues();
+    if (kind === FixSource.REAL && this.running && !this.firstRealFixSeen) {
+      this.firstRealFixSeen = true;
+      this.checkFirstRealFix(gen, fix);
+    }
     const ev: EngineEvent = { type: EngineEventType.FIX, nowMs: now, fix: fix };
     this.dispatch(ev);
   }
@@ -989,9 +1118,47 @@ export class TourController implements TourControl {
       return;
     }
     this.deps.log.warn(LogEvents.LOC_ERR, `src=${kind} code=${code} ${msg.startsWith('msg=') ? msg : 'msg=' + msg}`);
-    if (kind === this.sourceKind) {
-      this.addIssue(IssueCode.LOC_UNAVAILABLE, IssueSeverity.WARN, `${kind} code=${code}`);
-      this.schedulePublish();
+    if (kind !== this.sourceKind) {
+      return;                            // the §5 shadow source: the HUD shows "Real GPS: n/a", nothing else
+    }
+    const i: AppIssue = locationErrorIssue(code, kind);
+    const kv: string = `src=${kind} code=${code} where=controller`;
+    if (i.code === IssueCode.PERM_DENIED) {
+      this.deps.log.error(LogEvents.PERM_DENIED, `perm=LOCATION ${kv} action=offer_settings_or_demo`);
+    } else if (i.code === IssueCode.LOC_SWITCH_OFF) {
+      this.deps.log.warn(LogEvents.LOC_SWITCH_OFF, `${kv} action=offer_switch_or_demo`);
+    } else {
+      this.deps.log.error(LogEvents.LOC_UNAVAILABLE, `${kv} action=offer_demo`);
+    }
+    this.addIssue(i.code, i.severity, i.detail);
+    this.schedulePublish();
+  }
+
+  /** §9 rows 2 and 8 during a tour on real GPS: approximate-only permission, far from the pack. */
+  private checkFirstRealFix(gen: number, fix: Fix): void {
+    const km: number = kmOutsideBbox(fix.lat, fix.lng, this.packBbox);
+    if (Number.isFinite(km) && km > OUT_OF_AREA_KM) {
+      this.deps.log.info(LogEvents.LOC_OUT_OF_AREA, `km=${Math.round(km)} src=${fix.source} action=suggest_demo`);
+      this.addIssue(IssueCode.LOC_OUT_OF_AREA, IssueSeverity.INFO, `km=${Math.round(km)}`);
+    }
+    const perms: PermissionPort | undefined = this.safeGet(this.deps.permissions, 'permissions');
+    if (perms === undefined) {
+      return;
+    }
+    try {
+      perms.locationState().then((ps: PermissionState) => {
+        if (gen !== this.generation || ps !== PermissionState.APPROX_ONLY) {
+          return;
+        }
+        this.deps.log.warn(LogEvents.PERM_APPROX_ONLY, `acc=${Math.round(fix.accuracyM)} where=controller ` +
+          'action=stories_need_precise');
+        this.addIssue(IssueCode.PERM_APPROX_ONLY, IssueSeverity.WARN, 'approximate location only');
+        this.schedulePublish();
+      }).catch((e: Object) => {
+        this.deps.log.warn(LogEvents.LOC_ERR, `where=approx_check ${errText(e)}`);
+      });
+    } catch (e) {
+      this.deps.log.warn(LogEvents.LOC_ERR, `where=approx_check ${errText(e as Object)}`);
     }
   }
 
@@ -1184,6 +1351,9 @@ export class TourController implements TourControl {
     if (fx.notice === undefined) {
       return;
     }
+    if (this.notifDenied) {
+      return;                            // §9 row 16: nothing else changes
+    }
     const n: NotifierPort | undefined = this.safeGet(this.deps.notifier, 'notifier');
     if (n === undefined) {
       this.noop('notify', LogEvents.NOTIF_PUBLISH, `poi=${fx.notice.poiId} d=${fx.notice.distanceM} noop=no_service`);
@@ -1320,6 +1490,50 @@ export class TourController implements TourControl {
     }
     this.noopLogged.add(key);
     this.deps.log.info(event, kv);
+  }
+
+  /** §9 row 16: ask once per tour, never wait for the dialog; a refusal only stops the next-stop notices. */
+  private requestNotifications(gen: number): void {
+    const n: NotifierPort | undefined = this.safeGet(this.deps.notifier, 'notifier');
+    if (n === undefined) {
+      return;
+    }
+    try {
+      n.requestEnable().then((ok: boolean) => {
+        if (gen !== this.generation || ok) {
+          return;
+        }
+        this.notifDenied = true;
+        this.deps.log.info(LogEvents.NOTIF_DENIED, 'where=controller action=no_next_notice');
+        this.addIssue(IssueCode.NOTIF_DENIED, IssueSeverity.INFO, 'notifications off');
+        this.schedulePublish();
+      }).catch((e: Object) => {
+        this.deps.log.warn(LogEvents.NOTIF_DENIED, `where=requestEnable ${errText(e)}`);
+      });
+    } catch (e) {
+      this.deps.log.warn(LogEvents.NOTIF_DENIED, `where=requestEnable ${errText(e as Object)}`);
+    }
+  }
+
+  /** §9 row 14: keep the screen on while guiding without the continuous task; released at teardown. */
+  private keepScreen(on: boolean, why: string): void {
+    const f: ((on: boolean) => void) | undefined = this.deps.keepScreenOn;
+    if (f === undefined || on === this.screenKept) {
+      return;
+    }
+    this.screenKept = on;
+    try {
+      f(on);
+      this.deps.log.info(LogEvents.SETTINGS, `keepScreenOn=${on} why=${why}`);
+    } catch (e) {
+      this.deps.log.error(LogEvents.UNCAUGHT, `where=keepScreenOn ${errText(e as Object)}`);
+    }
+  }
+
+  private clearLocationIssues(): void {
+    if (this.ctrlIssues.length > 0) {
+      this.ctrlIssues = this.ctrlIssues.filter((i: AppIssue) => LOCATION_ISSUES.indexOf(i.code) < 0);
+    }
   }
 
   private addIssue(code: IssueCode, severity: IssueSeverity, detail: string): void {
