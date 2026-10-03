@@ -1523,6 +1523,10 @@
     {
       "name": "hud_live",
       "value": "live values"
+    },
+    {
+      "name": "walk_menu_lang",
+      "value": "Continue in %s"
     }
   ]
 }

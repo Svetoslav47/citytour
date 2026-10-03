@@ -55,6 +55,7 @@ export class LogEvents {
   static readonly TTS_INIT_FAIL: string = 'TTS_INIT_FAIL';
   static readonly VOICE_STATUS: string = 'VOICE_STATUS';
   static readonly VOICE_PLAN: string = 'VOICE_PLAN';
+  static readonly LANG_SWITCH: string = 'LANG_SWITCH';      // X2: mid-tour story language switch
   static readonly VOICE_DL_FAIL: string = 'VOICE_DL_FAIL';
   static readonly TTS_ERR: string = 'TTS_ERR';
   static readonly UTT_START: string = 'UTT_START';

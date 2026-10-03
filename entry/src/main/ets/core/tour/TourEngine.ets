@@ -54,6 +54,7 @@ import {
   evaluateTrigger
 } from './TriggerPolicy';
 import { TourConfig } from './TourConfig';
+import { RemapResult, firstUnplayedIndex, matchStory, remapItemTexts } from './LangSwitch';
 import { FilteredFix, FixFilter } from '../geo/FixFilter';
 import { CourseEstimate, CourseEstimator, CourseSource } from '../geo/CourseEstimator';
 import { bearingDeg, haversineM, relDir } from '../geo/GeoMath';
@@ -93,6 +94,7 @@ export class EngineLog {
   static readonly BG_CANCEL: string = 'BG_CANCEL';
   static readonly NAV_CUE: string = 'NAV_CUE';
   static readonly OFF_ROUTE: string = 'OFF_ROUTE';
+  static readonly LANG_SWITCH: string = 'LANG_SWITCH';
   static readonly ON_ROUTE: string = 'ON_ROUTE';
 }
 
@@ -122,7 +124,7 @@ export enum StopStage { NONE = 'none', TEASER = 'teaser', LINGER = 'linger', FUL
 /** One stop of the planned order, with its geofence. */
 export class StopRuntime {
   readonly poiId: string;
-  readonly name: string;
+  name: string;                    // localized; X2 relocalizes it on a mid-tour language switch
   readonly lat: number;
   readonly lng: number;
   readonly view: ViewHint | undefined;
@@ -1087,7 +1089,7 @@ function onUtteranceEnd(st: TourState, fx: Fx, id: string, failed: boolean, code
 }
 
 function onTick(st: TourState, fx: Fx): void {
-  if (st.speechText && Number.isFinite(st.textDueMs) && st.nowMs >= st.textDueMs) {
+  if (Number.isFinite(st.textDueMs) && st.nowMs >= st.textDueMs) {   // X2: a caption shown before a switch to voice
     const u: Utterance | undefined = st.queue.inFlight();
     if (u !== undefined) {
       onUtteranceEnd(st, fx, u.id, false, 0);
@@ -1131,7 +1133,7 @@ function onSkip(st: TourState, fx: Fx): void {
   if (item === undefined) {
     const head: Announcement | undefined = st.queue.headItem();    // paused: skip the item waiting to resume
     item = head === undefined ? undefined : st.queue.removeWaiting(head.dedupeKey);
-  } else if (st.speechText) {
+  } else if (st.speechText || Number.isFinite(st.textDueMs)) {
     st.queue.interrupt();                // no audio to finish: the caption moves on at once
     st.textDueMs = Number.NaN;
   } else {
@@ -1265,6 +1267,53 @@ function onAudioRouteLost(st: TourState, fx: Fx): void {
   st.pausedByAudio = false;          // an interrupt RESUME must not undo this pause
 }
 
+// ---------------------------------------------------------------- mid-tour language switch (X2)
+
+const STORY_LENGTHS: NarrationLength[] = [NarrationLength.TEASER, NarrationLength.FULL, NarrationLength.DEEP];
+
+function storyTexts(n: Narration | undefined): string[] {
+  return n !== undefined ? n.sentences : [];
+}
+
+/**
+ * Rewrites one queued item for the new language (core/tour/LangSwitch). Returns the number of sentences changed.
+ * `oldNarr`: the narration lookup of the old language.
+ */
+function switchItem(st: TourState, a: Announcement, oldNarr: NarrationFn, inFlightItemId: string,
+  log: string[]): number {
+  const poiId: string = a.poiId === undefined ? '' : a.poiId;
+  const texts: string[] = a.utterances.map((u: Utterance) => u.text);
+  const from: number = firstUnplayedIndex(a.cursor, a.id === inFlightItemId);
+  let oldStory: string[] = [];
+  let newStory: string[] = [];
+  let newPrefix: string[] = [];
+  if (poiId.length > 0) {
+    const olds: string[][] = STORY_LENGTHS.map((l: NarrationLength) => storyTexts(oldNarr(poiId, l)));
+    const k: number = matchStory(texts, olds);
+    if (k >= 0) {
+      oldStory = olds[k];
+      newStory = storyTexts(st.input.narration(poiId, STORY_LENGTHS[k]));
+      const s: StopRuntime | undefined = st.stops.find((x: StopRuntime) => x.poiId === poiId);
+      if (s !== undefined && a.dedupeKey === `story:${poiId}` && texts.length > oldStory.length) {
+        const d: number = distanceTo(st, s);
+        newPrefix = arrivalSentences(st.input.lang, s.name, relDirTo(st, s, d), s.view, st.spokenDirections);
+      }
+    }
+  }
+  const r: RemapResult = remapItemTexts(texts, from, oldStory, newStory, newPrefix);
+  for (let i = r.from; i < texts.length; i++) {
+    if (r.texts[i] !== texts[i]) {
+      const u: Utterance = {
+        id: `${a.id}.${i}.${st.input.lang}`, itemId: a.id, text: r.texts[i], lang: st.input.lang,
+        personaId: a.utterances[i].personaId
+      };
+      a.utterances[i] = u;          // a new id: a prefetch of the old-language sentence is never reused
+    }
+  }
+  log.push(`${a.id}:${r.reason}:${r.changed}`);
+  return r.changed;
+}
+
 // ---------------------------------------------------------------- public API
 
 export class TourEngine {
@@ -1367,6 +1416,50 @@ export class TourEngine {
     if (!on) {
       dropWaitingNav(state);
     }
+  }
+
+  /**
+   * X2: switch the story language of a running (or READY) tour. The in-flight sentence finishes in the old
+   * language; every later sentence of the queued stories continues at the same index in the new one (captions follow
+   * the queue). Stop names, phrases and later stories use `lang` from now on. `voice` is the story voice plan for
+   * `lang` (the controller re-runs it, VOICE_PLAN). Not an engine event (contracts are fixed); the caller owns the
+   * state and executes the returned effects (LANG_SWITCH log, SET_MEDIA_META with the new label and stop name).
+   */
+  static switchLang(state: TourState, lang: Lang, narration: NarrationFn, voice: VoicePlan, nowMs: number): Effect[] {
+    const st: TourState = state;
+    const fx: Fx = new Fx();
+    st.nowMs = nowMs;
+    const from: Lang = st.input.lang;
+    const oldNarr: NarrationFn = st.input.narration;
+    const wasText: boolean = st.speechText;
+    st.input.lang = lang;
+    st.input.narration = narration;
+    st.input.voice = voice;
+    for (const s of st.stops) {
+      const p: Poi | undefined = findPoi(st, s.poiId);
+      if (p !== undefined) {
+        s.name = localized(p.names, lang);
+      }
+    }
+    st.speechText = voice.speechMode === 'text';
+    st.voiceLabel = voice.label;
+    st.ttsErrorStreak = 0;
+    const flight: Utterance | undefined = st.queue.inFlight();
+    const flightItem: string = flight !== undefined ? flight.itemId : '';
+    const items: string[] = [];
+    let changed: number = 0;
+    for (const a of st.queue.pending()) {
+      changed += switchItem(st, a, oldNarr, flightItem, items);
+    }
+    fx.log(EngineLog.LANG_SWITCH, `from=${from} to=${lang} mode=${wasText ? 'text' : 'voice'}>` +
+      `${st.speechText ? 'text' : 'voice'} label=${st.voiceLabel} inFlight=${flight !== undefined} ` +
+      `paused=${st.paused} phase=${st.phase} stage=${st.stage} changed=${changed} items=${items.join(',')}`);
+    if (isTouring(st.phase)) {
+      const cur: StopRuntime | undefined = st.activeIdx >= 0 ? st.stops[st.activeIdx] :
+        (st.targetIdx >= 0 ? st.stops[st.targetIdx] : undefined);
+      emitMeta(st, fx, cur === undefined ? tourTitle(st) : cur.name);
+    }
+    return fx.list;
   }
 
   /** The EngineSnapshot the UI renders. PlatformStatus is left at defaults; the controller fills it in. */

@@ -1523,6 +1523,10 @@
     {
       "name": "hud_live",
       "value": "wartości na żywo"
+    },
+    {
+      "name": "walk_menu_lang",
+      "value": "Kontynuuj: %s"
     }
   ]
 }

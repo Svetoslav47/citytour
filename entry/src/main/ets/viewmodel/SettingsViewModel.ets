@@ -293,6 +293,11 @@ export class SettingsViewModel {
       Log.e(LogEvents.UNCAUGHT, `where=SettingsViewModel.setStoryLang ${Log.errKv(e as Object)}`);
     }
     SettingsViewModel.applyToTour();
+    try {
+      AppContainer.tourControl().setStoryLang(p.textLang);   // X2: a running tour switches at the next sentence
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=SettingsViewModel.setStoryLang.live ${Log.errKv(e as Object)}`);
+    }
     this.updateVoiceRow();
     this.logChange('storyLang', l);
   }
