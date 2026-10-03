@@ -1449,6 +1449,26 @@
       "value": "Use"
     },
     {
+      "name": "courses_play_now",
+      "value": "Play now"
+    },
+    {
+      "name": "courses_preparing",
+      "value": "Preparing…"
+    },
+    {
+      "name": "courses_streaming",
+      "value": "Streaming"
+    },
+    {
+      "name": "courses_play_failed",
+      "value": "Couldn't start the walk. Check your connection and try again, or download it for offline use."
+    },
+    {
+      "name": "home_all_places_download",
+      "value": "Download this walk to explore every place offline"
+    },
+    {
       "name": "courses_failed",
       "value": "Download failed. Nothing was changed; Try again continues where it stopped."
     },
@@ -1550,11 +1570,11 @@
     },
     {
       "name": "home_empty_title",
-      "value": "Download your first walk"
+      "value": "Pick a walk to start"
     },
     {
       "name": "home_empty_body",
-      "value": "Download a walk to get started. It works offline afterwards."
+      "value": "Play a walk now, or download it to use offline."
     },
     {
       "name": "home_empty_cta",

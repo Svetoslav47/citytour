@@ -7,7 +7,9 @@
  * Notes: server disabled -> "No course server"; offline -> the cached list (or nothing) with an "Offline" note and
  * Try again; an empty catalog -> "No walks are published yet". DESIGN.md tokens (Tokens.ets, app colours),
  * SafeArea insets.
- * Ids: pageCourses, courseRow_<id>, btnCourseDownload_<id>, btnCourseCancel_<id>, btnCourseUse_<id>,
+ * Play now (stream, the primary action of a course that is not downloaded) / "Preparing…" / "Streaming" on the
+ * active streamed course; Download stays next to it as the offline option.
+ * Ids: btnCoursePlay_<id>, pageCourses, courseRow_<id>, btnCourseDownload_<id>, btnCourseCancel_<id>, btnCourseUse_<id>,
  * btnCourseDelete_<id>, courseCover_<id>, noteCourses.
  */
 import { Log } from '../app/Log';
@@ -29,7 +31,12 @@ export struct CoursesPage {
 
   aboutToAppear(): void {
     Log.i(LogEvents.APP_PAGE, 'page=Courses');
+    this.vm.visible = true;
     this.vm.open(this.app.textLang);
+  }
+
+  aboutToDisappear(): void {
+    this.vm.visible = false;
   }
 
   private confirmDelete(it: CourseItem): void {
@@ -157,6 +164,44 @@ export struct CoursesPage {
         .fontColor($r('app.color.text_secondary'))
         .enabled(!it.cancelling)
         .onClick(() => this.vm.cancel(it.id))
+    } else if (it.preparing) {
+      Row({ space: Space.S2 }) {
+        LoadingProgress()
+          .width(20)
+          .height(20)
+          .color($r('app.color.accent'))
+        Text($r('app.string.courses_preparing'))
+          .fontSize(Type.CALLOUT)
+          .fontColor($r('app.color.text_secondary'))
+      }
+    } else if (it.state === CourseState.AVAILABLE && (it.playNow || it.streaming)) {
+      if (it.playNow) {
+        Button($r('app.string.courses_play_now'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.EMPHASIZED })
+          .id(`btnCoursePlay_${it.id}`)
+          .height(36)
+          .fontSize(Type.CALLOUT)
+          .backgroundColor($r('app.color.accent'))
+          .enabled(!this.vm.tourRunning)
+          .onClick(() => {
+            this.vm.play(it.id);
+          })
+      } else {
+        Text($r('app.string.courses_streaming'))
+          .fontSize(Type.CALLOUT)
+          .fontColor($r('app.color.accent'))
+      }
+      if (this.vm.enabled) {
+        Button(it.failed ? $r('app.string.courses_retry') :
+          (it.size !== '' ? $r('app.string.courses_download', it.size) : $r('app.string.courses_download_plain')),
+          { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
+          .id(`btnCourseDownload_${it.id}`)
+          .height(Size.TOUCH)
+          .fontSize(Type.CALLOUT)
+          .fontColor($r('app.color.accent'))
+          .onClick(() => {
+            this.vm.download(it.id);
+          })
+      }
     } else if (it.state === CourseState.AVAILABLE || it.state === CourseState.UPDATE) {
       Button(it.failed ? $r('app.string.courses_retry') :
         (it.state === CourseState.UPDATE ? $r('app.string.courses_update') :
@@ -231,6 +276,12 @@ export struct CoursesPage {
           }
         }
 
+        if (it.playFailed) {
+          Text($r('app.string.courses_play_failed'))
+            .fontSize(Type.FOOTNOTE)
+            .lineHeight(Type.FOOTNOTE_LH)
+            .fontColor($r('app.color.signal_error'))
+        }
         if (it.failed) {
           Text($r('app.string.courses_failed'))
             .fontSize(Type.FOOTNOTE)
@@ -253,7 +304,7 @@ export struct CoursesPage {
                 this.vm.select(it.id);
               })
           }
-          if (it.canDelete && !it.downloading) {
+          if (it.canDelete && !it.downloading && !it.preparing) {
             Button($r('app.string.courses_delete'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
               .id(`btnCourseDelete_${it.id}`)
               .height(Size.TOUCH)
@@ -292,7 +343,8 @@ export struct CoursesPage {
               }, (it: CourseItem) =>
                 // rebuild() makes new CourseItem objects: key on the row state too, or ForEach keeps the old row
                 // bound to the old object and never shows "downloading" / the progress bar.
-                `${it.id}|${it.state}|${it.downloading}|${it.active}|${it.failed}|${it.cancelling}`)
+                `${it.id}|${it.state}|${it.downloading}|${it.active}|${it.failed}|${it.cancelling}|${it.playNow}|` +
+                `${it.streaming}|${it.preparing}|${it.playFailed}`)
             }
             .width('100%')
             .padding({ left: Space.S4, right: Space.S4, bottom: Space.S6 + this.sa.bottom })

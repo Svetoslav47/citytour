@@ -333,7 +333,8 @@ export struct HomePage {
           .lineHeight(Type.BODY_LH)
           .fontWeight(FontWeight.Medium)
           .fontColor($r('app.color.text_primary'))
-        Text($r('app.string.home_places_count', this.vm.placesCount))
+        Text(this.vm.allPlaces ? $r('app.string.home_places_count', this.vm.placesCount) :
+          $r('app.string.home_all_places_download'))
           .fontSize(Type.CALLOUT)
           .lineHeight(Type.CALLOUT_LH)
           .fontFeature(TABULAR)
@@ -348,7 +349,8 @@ export struct HomePage {
     .backgroundColor($r('app.color.bg_surface'))
     .accessibilityGroup(true)
     .id('rowAllPlaces')
-    .onClick(() => this.app.openFullMap('explore'))   // B13: full map, explore mode (all places)
+    // B13: full map, explore mode (all places). A streamed walk has only its stops: Courses offers the Download.
+    .onClick(() => this.vm.allPlaces ? this.app.openFullMap('explore') : this.app.openCourses())
   }
 
   /** SERVER.md §6: Home -> Courses. Hidden when the build has no course server (RemoteConfig.BASE_URL ''). */

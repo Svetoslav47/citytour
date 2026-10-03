@@ -1449,6 +1449,26 @@
       "value": "使用"
     },
     {
+      "name": "courses_play_now",
+      "value": "立即播放"
+    },
+    {
+      "name": "courses_preparing",
+      "value": "准备中…"
+    },
+    {
+      "name": "courses_streaming",
+      "value": "在线播放"
+    },
+    {
+      "name": "courses_play_failed",
+      "value": "无法开始路线。请检查网络连接后重试，或下载路线以便离线使用。"
+    },
+    {
+      "name": "home_all_places_download",
+      "value": "下载此路线即可离线浏览所有地点"
+    },
+    {
       "name": "courses_failed",
       "value": "下载失败，未作任何更改；重试会从中断处继续。"
     },
@@ -1550,11 +1570,11 @@
     },
     {
       "name": "home_empty_title",
-      "value": "下载你的第一条路线"
+      "value": "选择一条路线开始"
     },
     {
       "name": "home_empty_body",
-      "value": "下载一条路线即可开始，之后可离线使用。"
+      "value": "立即播放路线，或下载后离线使用。"
     },
     {
       "name": "home_empty_cta",

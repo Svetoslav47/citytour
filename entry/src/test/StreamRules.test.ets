@@ -11,6 +11,7 @@ import {
 } from '../main/ets/core/remote/StreamRules';
 import { InstalledCourse } from '../main/ets/core/remote/CourseRules';
 import { CourseFile } from '../main/ets/core/remote/ServerApi';
+import { ClipEntry, ClipIndex, ClipReason } from '../main/ets/core/speech/ClipSelection';
 
 function file(path: string): CourseFile {
   const f = new CourseFile();
@@ -127,6 +128,20 @@ export default function streamRulesTest() {
       expect(got.join(',')).assertEqual('/s/audio/en/a/full_1.mp3,/s/audio/en/a/full_2.mp3,/s/audio/en/a/full_3.mp3');
       expect(prefetchAfter(all, clip('a', 4)).length).assertEqual(0);
       expect(prefetchAfter(all, clip('', 0)).length).assertEqual(0);   // system lines: on demand only
+    });
+
+    it('lateClipPlaysAgain', 0, () => {
+      // A streamed clip that missed its 3 s budget is marked unavailable (the sentence falls back), then plays again
+      // once it arrives.
+      const e: ClipEntry = {
+        lang: 'en', poiId: 'a', personaId: 'guide', length: 'full', n: 0, file: '/s/a.mp3', textSha256: 'f'.repeat(64),
+        durationMs: 0
+      };
+      const idx = new ClipIndex([e]);
+      idx.markFailed('/s/a.mp3');
+      expect(idx.find('f'.repeat(64), 'en', 'guide').reason).assertEqual(ClipReason.CLIP_FAILED);
+      idx.clearFailed('/s/a.mp3');
+      expect(idx.find('f'.repeat(64), 'en', 'guide').reason).assertEqual(ClipReason.HASH_MATCH);
     });
   });
 }
