@@ -6,7 +6,7 @@
 
 CityTour is a mobile tour guide that follows you through the city. It tracks where you are and which way you are walking. When you reach a place of historic or cultural significance, it explains that place to you.
 
-**The app ships no built-in course.** On first start Home says "Download your first walk"; the Kraków course (pack + 1155 studio-voice clips, ~40 MB, 1167 signed files) is downloaded once from the course server ([`server/`](server/README.md), deployed at `https://citytour-server.onrender.com`). After that everything works offline: the downloaded pack, the downloaded clips, and the built-in voice only as the last resort. See [Courses](#courses-and-online-voice).
+**The app ships no built-in course.** On first start Home says "Pick a walk to start": a course can be streamed (**Play now**) or downloaded; the Kraków course (pack + 1155 studio-voice clips, ~40 MB, 1167 signed files) is downloaded once from the course server ([`server/`](server/README.md), deployed at `https://citytour-server.onrender.com`). After that everything works offline: the downloaded pack, the downloaded clips, and the built-in voice only as the last resort. See [Courses](#courses-and-online-voice).
 
 Project scope and decisions are recorded in [`HACKATHON_BRIEF.md`](HACKATHON_BRIEF.md).
 
@@ -187,7 +187,7 @@ Environment, Docker, Render deploy and the smoke test: [`server/README.md`](serv
 The app ships **no built-in course** (product decision: a thin client, and the download flow is part of the demo). A
 small server ([`docs/SERVER.md`](docs/SERVER.md), `server/`) provides:
 
-- **First run.** Home shows **Download your first walk** › **Browse walks**, which opens Courses; the catalog loads on
+- **First run.** Home shows **Pick a walk to start** › **Browse walks**, which opens Courses; the catalog loads on
   open. The first course downloaded becomes the active course on its own and Home shows its tour. If the server cannot
   be reached the Courses screen says so with **Try again** (every call has a timeout; no endless spinner). Deleting the
   active course switches to another downloaded one, or back to the empty state. Onboarding works without a course (its
@@ -202,6 +202,16 @@ small server ([`docs/SERVER.md`](docs/SERVER.md), `server/`) provides:
   discards them. Hashing and file IO are asynchronous (off the UI thread). The last good catalog is kept for offline use
   ("Offline" note). **Use** makes a downloaded course the active one for Home, Tour detail and the tour (not during a
   running tour).
+- **Play now (stream) or Download.** A course that is not downloaded offers **Play now** first and **Download** next
+  to it. Play now verifies the same signed catalog and manifests, fetches only the small files the walk needs (the
+  course without its clips, plus the city's `city.json` and map: about 2.5 MB, 1.5 s from node against the live
+  server for `krakow`, instead of ~41 MB) into `filesDir/stream/`, makes it the active course and returns to Home
+  (**Pick a walk to start** on first run). Each clip is then fetched on demand from `/v1/blobs/<sha256>` (verified,
+  cached), the next three sentences of the story are prefetched, and a clip that is not there within 3 s falls back
+  for that sentence only (studio voice from `/v1/tts`, built-in voice, text for Polish). "All places" needs the whole
+  city, so a streamed walk shows it as "Download this walk…" (it opens Courses). **Download** upgrades a streamed walk
+  to fully offline, reusing the files already fetched; **Delete** removes the stream too. Logs: `COURSE
+  event=stream_ready`, `NARR_AUDIO event=stream_clip result=ok|fail`.
 - **Online studio voice** (always on). A sentence with no pre-rendered clip is requested from
   `POST /v1/tts` within 2.5 s. The reply must carry `X-Text-Sha256` equal to the sentence's own SHA-256, or it is
   dropped. Accepted audio is cached forever in `filesDir/tts/` and plays like a shipped clip. On a timeout, 429 (daily
