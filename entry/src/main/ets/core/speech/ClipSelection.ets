@@ -13,9 +13,20 @@
  * rendering simply has no match and falls back to TTS; dynamic lines (directions, welcome, GPS lost) never match.
  * The user's explicit "text only" choice (VoiceLabel.TEXT_ONLY_USER) is respected: no clip then either.
  * A text-only plan for lack of a platform voice (Polish) does use a clip: that is the point of pre-rendering.
+ * The user's cross-language choice ("listen in English, read in Polish") is respected too: no clip, one voice.
+ *
+ * Phase 2 (tour level):
+ *   storyVoicePlan(base, clipsForLang) is the plan a tour and the UI use: when the manifest has clips for the
+ *   story language (and the user has not chosen text only or a cross-language voice) the label becomes
+ *   PRERENDERED ("Studio voice") and the mode 'voice', so the engine emits SPEAK and Polish is spoken. The base
+ *   plan (engine/person) still voices the dynamic lines and any sentence without a clip.
+ *   storyClipCoverage() + ClipIndex.exclude(): where the fallback is text (Polish), a story whose sentences are
+ *   only partly covered plays entirely as text, never half spoken / half silent. en/zh fall back per sentence.
  */
 import { VoiceLabel } from '../../contracts/Settings';
+import { VoicePlan } from '../../contracts/Ports';
 import { sha256Hex } from './Sha256';
+import { isListenChoice, LISTEN_REASON_PREFIX, SPEECH_MODE_TEXT, SPEECH_MODE_VOICE } from './VoicePolicy';
 
 export const AUDIO_SRC_PRERENDERED: string = 'prerendered';
 export const AUDIO_SRC_TTS: string = 'tts';
@@ -32,6 +43,8 @@ export class ClipReason {
   static readonly PERSONA_MISMATCH: string = 'persona_mismatch';
   static readonly CLIP_FAILED: string = 'clip_failed';         // the clip failed to open/play earlier (e.g. deleted)
   static readonly USER_TEXT_ONLY: string = 'user_text_only';
+  static readonly LISTEN_CHOICE: string = 'listen_choice';     // the user picked a voice in another language
+  static readonly STORY_INCOMPLETE: string = 'story_incomplete'; // excluded: the story is not fully covered
 }
 
 export interface ClipEntry {
@@ -137,6 +150,7 @@ export class ClipLookup {
 export class ClipIndex {
   private byHash: Map<string, ClipEntry[]> = new Map<string, ClipEntry[]>();
   private failed: Set<string> = new Set<string>();
+  private excluded: Set<string> = new Set<string>();
   private count: number = 0;
 
   constructor(entries: ClipEntry[]) {
@@ -155,11 +169,12 @@ export class ClipIndex {
     return this.count;
   }
 
-  /** Langs that have at least one clip (e.g. for "Polish is spoken" decisions later). */
-  hasLang(lang: string): boolean {
+  /** True when at least one clip exists for this language (and persona, when given). */
+  hasLang(lang: string, personaId?: string): boolean {
     let found = false;
     this.byHash.forEach((list: ClipEntry[]) => {
-      if (!found && list.some((e: ClipEntry) => e.lang === lang)) {
+      if (!found && list.some((e: ClipEntry) => e.lang === lang &&
+        (personaId === undefined || personaId === '' || e.personaId === personaId))) {
         found = true;
       }
     });
@@ -172,6 +187,20 @@ export class ClipIndex {
 
   isFailed(file: string): boolean {
     return this.failed.has(file);
+  }
+
+  /** Never play the clip of this sentence hash (its story is only partly covered, see storyClipCoverage). */
+  exclude(sha: string): void {
+    this.excluded.add(sha);
+  }
+
+  isExcluded(sha: string): boolean {
+    return this.excluded.has(sha);
+  }
+
+  /** Clears the exclusions (a new tour recomputes them). Failed clips stay failed. */
+  clearExclusions(): void {
+    this.excluded.clear();
   }
 
   /** Exact text hash + language + persona; skips clips that already failed. */
@@ -190,6 +219,10 @@ export class ClipIndex {
     const samePersona = sameLang.filter((e: ClipEntry) => e.personaId === personaId);
     if (samePersona.length === 0) {
       out.reason = ClipReason.PERSONA_MISMATCH;
+      return out;
+    }
+    if (this.excluded.has(sha)) {
+      out.reason = ClipReason.STORY_INCOMPLETE;
       return out;
     }
     for (const e of samePersona) {
@@ -211,6 +244,7 @@ export interface ClipQuery {
   personaId: string;
   planSpeechMode: string;   // VoicePlan.speechMode: 'voice' | 'text'
   planLabel: VoiceLabel;
+  planReason?: string;      // VoicePlan.reason: a cross-language listen choice gets no clip
 }
 
 export class AudioDecision {
@@ -229,6 +263,10 @@ export function selectAudio(index: ClipIndex | undefined, q: ClipQuery): AudioDe
     d.reason = ClipReason.USER_TEXT_ONLY;
     return d;
   }
+  if (q.planReason !== undefined && isListenReason(q.planReason)) {
+    d.reason = ClipReason.LISTEN_CHOICE;
+    return d;
+  }
   if (index === undefined || index.size() === 0) {
     d.reason = ClipReason.NO_MANIFEST;
     return d;
@@ -241,6 +279,61 @@ export function selectAudio(index: ClipIndex | undefined, q: ClipQuery): AudioDe
     d.clip = l.entry;
   }
   return d;
+}
+
+function isListenReason(reason: string): boolean {
+  return reason.startsWith(LISTEN_REASON_PREFIX);
+}
+
+/**
+ * The plan for stop stories (tour engine, Now Walking, Settings, onboarding): base unchanged unless the story
+ * language has clips and the user wants a voice in that language; then 'voice' + PRERENDERED. Pure and total.
+ */
+export function storyVoicePlan(base: VoicePlan, clipsForLang: boolean): VoicePlan {
+  if (!clipsForLang || base.label === VoiceLabel.TEXT_ONLY_USER || isListenChoice(base)) {
+    return base;
+  }
+  const p: VoicePlan = {
+    textLang: base.textLang, speechMode: SPEECH_MODE_VOICE, engineLocale: base.engineLocale, person: base.person,
+    languageContext: base.languageContext, label: VoiceLabel.PRERENDERED,
+    reason: `${base.reason} clips=${base.textLang} fallback=${base.label}`
+  };
+  return p;
+}
+
+/** True when a sentence without a clip would be silent (text): stories must then be all clips or none. */
+export function storiesAllOrNothing(base: VoicePlan): boolean {
+  return base.speechMode === SPEECH_MODE_TEXT;
+}
+
+export enum StoryClips { ALL = 'all', PARTIAL = 'partial', NONE = 'none' }
+
+export class StoryCoverage {
+  total: number = 0;
+  matched: number = 0;
+  shas: string[] = [];      // hashes of the sentences that have a clip
+  state: StoryClips = StoryClips.NONE;
+}
+
+/** How many sentences of one story have a playable clip in this language/persona. Never throws. */
+export function storyClipCoverage(index: ClipIndex | undefined, sentences: string[], lang: string,
+  personaId: string): StoryCoverage {
+  const c = new StoryCoverage();
+  c.total = sentences.length;
+  if (index === undefined || index.size() === 0) {
+    return c;
+  }
+  for (const s of sentences) {
+    const sha = sha256Hex(s);
+    const l = index.find(sha, lang, personaId);
+    if (l.entry !== undefined) {
+      c.matched++;
+      c.shas.push(sha);
+    }
+  }
+  c.state = c.total > 0 && c.matched === c.total ? StoryClips.ALL : c.matched > 0 ? StoryClips.PARTIAL :
+    StoryClips.NONE;
+  return c;
 }
 
 /** Short hash prefix for logs. */

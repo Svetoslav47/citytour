@@ -181,8 +181,8 @@ export class NarrationPlayer implements SpeechPort {
    */
   init(): Promise<SpeechCapabilities> {
     const t0 = Date.now();
-    this.loadClipManifest();
-    return this.voice.capabilities().then((caps: SpeechCapabilities): Promise<SpeechCapabilities> => {
+    // The manifest is read before the caps resolve, so the tour's storyVoicePlan already knows the clip languages.
+    return this.loadClipManifest().then(() => this.voice.capabilities()).then((caps: SpeechCapabilities): Promise<SpeechCapabilities> => {
       const p = this.voice.plan(Lang.EN);
       Log.i(LogEvents.TTS_INIT, `event=speech_init mode=${this.systemPlayback ? 'system_playType1' : 'pcm_playType0'}` +
         ` en_label=${p.label} ms=${Date.now() - t0}`);
@@ -242,6 +242,16 @@ export class NarrationPlayer implements SpeechPort {
       Log.e(LogEvents.NARR_AUDIO, `event=manifest_fail ${Log.errKv(e)}`);
     });
     return this.clipLoad;
+  }
+
+  /** The loaded clip index (undefined until the manifest is read, or when there is none). */
+  loadedClips(): ClipIndex | undefined {
+    return this.clipIndex;
+  }
+
+  /** True when the manifest has clips for this story language (and persona, when given). */
+  hasClips(lang: string, personaId?: string): boolean {
+    return this.clipIndex !== undefined && this.clipIndex.hasLang(lang, personaId);
   }
 
   /** Number of usable clips in the manifest (0 = none loaded). */
@@ -421,7 +431,7 @@ export class NarrationPlayer implements SpeechPort {
     if (this.clips !== undefined) {
       const q: ClipQuery = {
         text: u.text, lang: u.lang, personaId: u.personaId, planSpeechMode: job.plan.speechMode,
-        planLabel: job.plan.label
+        planLabel: job.plan.label, planReason: job.plan.reason
       };
       let d: AudioDecision;
       try {

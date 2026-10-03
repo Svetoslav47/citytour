@@ -50,6 +50,9 @@ import {
   LatLng, Lang, Narration, NarrationLength, PackManifest, Poi, RouteLeg, Tour, TourStop
 } from '../../contracts/Model';
 import { VoiceLabel } from '../../contracts/Settings';
+import {
+  ClipIndex, StoryClips, StoryCoverage, storiesAllOrNothing, storyClipCoverage, storyVoicePlan
+} from '../../core/speech/ClipSelection';
 import { StepResult, TourEngine, TourInput, TourState } from '../../core/tour/TourEngine';
 import { TourConfig } from '../../core/tour/TourConfig';
 import { CityPack, PlanInputs, buildCostInputs, plan as planRoute } from '../../core/route/Planner';
@@ -110,6 +113,10 @@ export interface TourControllerDeps {
   permissions: () => PermissionPort | undefined;
   /** §9 row 14: window keep-screen-on while the continuous task is missing (AppContainer: setWindowKeepScreenOn). */
   keepScreenOn?: (on: boolean) => void;
+  /** A13: the pre-rendered clip index (NarrationPlayer's manifest); undefined = no clips, native TTS only. */
+  clips?: () => ClipIndex | undefined;
+  /** A13: the label of the sentence playing right now (studio clip / native / fallback TTS), undefined when idle. */
+  liveVoiceLabel?: () => VoiceLabel | undefined;
 }
 
 /** Tour settings the controller applies at plan() time (B9: SettingsViewModel.applyToTour from UserSettings). */
@@ -430,6 +437,12 @@ export class TourController implements TourControl {
       s = this.idleSnapshot();
     }
     s.platform = this.platformStatus(st);
+    if (st !== undefined && !st.speechText) {
+      const live: VoiceLabel | undefined = this.liveLabel();
+      if (live !== undefined) {
+        s.voiceLabel = live;             // A13: "Studio voice" while a clip plays, "Fallback voice" while TTS does
+      }
+    }
     if (st === undefined) {
       s.source = this.sourceKind;
     }
@@ -620,8 +633,9 @@ export class TourController implements TourControl {
       this.deps.log.error(LogEvents.TTS_INIT_FAIL, `where=TourController.plan ${errText(e as Object)}`);
     }
     await this.primeOrigin();
-    const vp: VoicePlan = this.resolveVoice();
-    this.reportVoice(vp);
+    const base: VoicePlan = this.resolveVoice();
+    this.reportVoice(base);
+    const vp: VoicePlan = this.applyClips(tour, base);
     const origin: LatLng = this.planningOrigin();
     const p: TourPlan = this.solve(tour, tour.stops.map((s: TourStop) => s.poiId), origin, budgetMin > 0 ? budgetMin * 60 : 0);
     this.tour = tour;
@@ -705,6 +719,59 @@ export class TourController implements TourControl {
       };
       return t;
     }
+  }
+
+  /**
+   * A13: the stop-story plan. With clips for the story language the tour runs in voice mode labelled
+   * PRERENDERED (Polish becomes spoken); the base plan still voices dynamic lines and sentences without a clip.
+   * Where that fallback is text (Polish), a story only partly covered by clips is excluded from clip playback,
+   * so it is read as text from start to end instead of switching between spoken and silent sentences.
+   */
+  private applyClips(tour: Tour, base: VoicePlan): VoicePlan {
+    let idx: ClipIndex | undefined = undefined;
+    try {
+      idx = this.deps.clips !== undefined ? this.deps.clips() : undefined;
+    } catch (e) {
+      this.deps.log.error(LogEvents.UNCAUGHT, `where=TourController.clips ${errText(e as Object)}`);
+    }
+    const lang: Lang = this.opts.lang;
+    const has: boolean = idx !== undefined && idx.hasLang(lang, tour.personaId);
+    const vp: VoicePlan = storyVoicePlan(base, has);
+    if (idx === undefined || vp.label !== VoiceLabel.PRERENDERED) {
+      this.deps.log.info(LogEvents.NARR_AUDIO, `event=story_voice lang=${lang} clips=${has ? 'yes' : 'no'} ` +
+        `label=${vp.label}`);
+      return vp;
+    }
+    idx.clearExclusions();
+    const strict: boolean = storiesAllOrNothing(base);
+    let all = 0;
+    let partial = 0;
+    let none = 0;
+    const lens: NarrationLength[] = [NarrationLength.TEASER, NarrationLength.FULL, NarrationLength.DEEP];
+    for (const stop of tour.stops) {
+      for (const len of lens) {
+        const n: Narration | undefined = this.narrationFor(stop.poiId, tour.personaId, lang, len);
+        if (n === undefined || n.sentences.length === 0) {
+          continue;
+        }
+        const c: StoryCoverage = storyClipCoverage(idx, n.sentences, lang, tour.personaId);
+        if (c.state === StoryClips.ALL) {
+          all++;
+        } else if (c.state === StoryClips.NONE) {
+          none++;
+        } else {
+          partial++;
+          if (strict) {
+            c.shas.forEach((sha: string) => idx!.exclude(sha));
+          }
+          this.deps.log.warn(LogEvents.NARR_AUDIO, `event=story_incomplete poi=${stop.poiId} len=${len} ` +
+            `matched=${c.matched}/${c.total} action=${strict ? 'text_whole_story' : 'tts_per_sentence'}`);
+        }
+      }
+    }
+    this.deps.log.info(LogEvents.NARR_AUDIO, `event=story_voice lang=${lang} clips=yes label=${vp.label} ` +
+      `fallback=${base.label} stories_all=${all} partial=${partial} none=${none}`);
+    return vp;
   }
 
   /** §9 rows 9/10: one issue + one log line for a voice plan the user should know about. */
@@ -1453,6 +1520,20 @@ export class TourController implements TourControl {
       platform: this.platformStatus(undefined)
     };
     return s;
+  }
+
+  /** The label of what is audible now: a clip, native or fallback TTS. Text sentences keep the tour label. */
+  private liveLabel(): VoiceLabel | undefined {
+    try {
+      const f = this.deps.liveVoiceLabel;
+      const l: VoiceLabel | undefined = f !== undefined ? f() : undefined;
+      if (l === VoiceLabel.PRERENDERED || l === VoiceLabel.NATIVE || l === VoiceLabel.FALLBACK_ZH_READS_EN) {
+        return l;
+      }
+    } catch (e) {
+      // status only; never fail a snapshot
+    }
+    return undefined;
   }
 
   private schedulePublish(): void {
