@@ -794,7 +794,7 @@
     },
     {
       "name": "about_ai_body",
-      "value": "Opowieści na trasach powstały z pomocą modelu AI (Claude firmy Anthropic) na podstawie Wikipedii, Wikidanych i miejskiego rejestru zabytków; część z nich sprawdził i zredagował człowiek. Wersje polska i chińska są tłumaczone maszynowo."
+      "value": "Opowieści na trasach powstały z pomocą modelu AI (Claude firmy Anthropic) na podstawie Wikipedii, Wikidanych i miejskiego rejestru zabytków; każdy fakt jest sprawdzany z cytowanym źródłem. Wersje polska i chińska są tłumaczone maszynowo."
     },
     {
       "name": "about_osm",

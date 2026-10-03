@@ -794,7 +794,7 @@
     },
     {
       "name": "about_ai_body",
-      "value": "The tour stories were drafted with an AI model (Claude by Anthropic) from Wikipedia, Wikidata and the city's heritage records; some have been reviewed and edited by a person. Polish and Chinese versions are machine-translated."
+      "value": "The tour stories were drafted with an AI model (Claude by Anthropic) from Wikipedia, Wikidata and the city's heritage records; every fact is checked against a quoted source. Polish and Chinese versions are machine-translated."
     },
     {
       "name": "about_osm",
