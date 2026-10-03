@@ -1,5 +1,6 @@
 {
   "string": [
+    { "name": "loc_reason", "value": "Spike: test location on emulator" },
     {
       "name": "module_desc",
       "value": "module description"
