@@ -6,6 +6,8 @@
  *   开发指南/Ability_Kit_程序框架服务/应用模型/应用组件/UIAbility组件/启动应用内的UIAbility组件/
  *   uiability-intra-device-interaction ("启动UIAbility的指定页面").
  * - onBackground does nothing to the tour; onDestroy calls AppContainer.shutdown().
+ * - Safe areas (issue #63): onWindowStageCreate makes the main window edge to edge and starts SafeAreaWatcher
+ *   (getWindowAvoidArea + on('avoidAreaChange') -> SafeArea in AppStorageV2); every page pads by those insets.
  */
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { window } from '@kit.ArkUI';
@@ -13,6 +15,7 @@ import { AppConfig } from '../app/AppConfig';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
+import { SafeAreaWatcher } from '../viewmodel/SafeArea';
 
 const PAGE_INDEX: string = 'pages/Index';
 const PAGE_DEV: string = 'pages/DevPanel';
@@ -36,6 +39,7 @@ export default class EntryAbility extends UIAbility {
   private launchPage: string = PAGE_INDEX;
   private currentPage: string = '';
   private stage: window.WindowStage | undefined = undefined;
+  private readonly safeArea: SafeAreaWatcher = new SafeAreaWatcher();
 
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     try {
@@ -63,10 +67,16 @@ export default class EntryAbility extends UIAbility {
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
     this.stage = windowStage;
+    try {
+      this.safeArea.attach(windowStage.getMainWindowSync());
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=EntryAbility.safeArea ${Log.errKv(e as Object)}`);
+    }
     this.loadPage(windowStage, this.launchPage);
   }
 
   onWindowStageDestroy(): void {
+    this.safeArea.detach();
     this.stage = undefined;
   }
 
