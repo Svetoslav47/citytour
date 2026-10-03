@@ -33,6 +33,7 @@ export struct OnboardingPage {
   @Param asRoute: boolean = false;
   @Local vm: OnboardingViewModel = new OnboardingViewModel();
   @Local app: AppViewModel = AppViewModel.get();
+  private voiceScroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
     this.vm.start(this.asRoute);
@@ -47,6 +48,20 @@ export struct OnboardingPage {
   onPackChanged(): void {
     if (this.app.packState === PackState.READY) {
       this.vm.refreshPreview();
+    }
+  }
+
+  /** The sample caption sits below Play a sample: bring it into view (it is the only output for Polish). */
+  @Monitor('vm.sampleText')
+  onSampleText(): void {
+    if (this.vm.sampleText !== '') {
+      setTimeout(() => {
+        try {
+          this.voiceScroller.scrollEdge(Edge.Bottom);
+        } catch (e) {
+          // scrolling is cosmetic
+        }
+      }, 50);
     }
   }
 
@@ -457,7 +472,7 @@ export struct OnboardingPage {
 
   @Builder
   stepVoice() {
-    Scroll() {
+    Scroll(this.voiceScroller) {
       Column() {
         Column({ space: Space.S2 }) {
           this.title($r('app.string.onb2_title'), false)
@@ -677,7 +692,7 @@ export struct OnboardingPage {
         Column() {
           this.title($r('app.string.onb3_title'), false)
         }
-        .padding({ left: Space.S4, right: Space.S4, top: Space.S4 })
+        .padding({ top: Space.S4 })
 
         Column() {
           this.locationRow()

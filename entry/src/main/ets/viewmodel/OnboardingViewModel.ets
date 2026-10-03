@@ -141,6 +141,7 @@ export class OnboardingViewModel {
   private sampleId: string = '';
   private sampleGuard: number = -1;
   private finished: boolean = false;
+  private choiceApplied: boolean = false;
 
   start(asRoute: boolean): void {
     this.asRoute = asRoute;
@@ -210,6 +211,10 @@ export class OnboardingViewModel {
   // ---------- step 2: language and voice ----------
 
   select(lang: Lang): void {
+    if (lang === this.selected && this.choiceApplied) {
+      return;   // the row tap and the Radio's onChange both report the same choice
+    }
+    this.choiceApplied = true;
     if (lang !== this.selected) {
       this.stopSample();
     }
