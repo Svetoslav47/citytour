@@ -240,6 +240,7 @@ export struct TourDetailPage {
             Stack({ alignContent: Alignment.TopStart }) {
               MapCanvas({ map: this.vm.map, scene: this.vm.scene, bounds: this.vm.sceneBounds, boxHeight: 260,
                 topInset: 40, mapId: 'mapTourDetail' })
+                .onClick(() => this.app.openFullMap('tour'))
                 .accessibilityText($r('app.string.tour_map_a11y', this.vm.title, this.vm.stops.length))
               FloatingIconButton({
                 symbol: $r('sys.symbol.chevron_backward'),

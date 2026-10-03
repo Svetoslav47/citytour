@@ -7,6 +7,7 @@ import { UserSettings } from '../contracts/Settings';
 import { AppViewModel, Routes } from '../viewmodel/AppViewModel';
 import { OnboardingViewModel } from '../viewmodel/OnboardingViewModel';
 import { HomePage } from './HomePage';
+import { MapPage } from './MapPage';
 import { NowWalkingPage } from './NowWalkingPage';
 import { OnboardingPage } from './OnboardingPage';
 import { RouteReadyPage } from './RouteReadyPage';
@@ -33,6 +34,8 @@ struct Index {
       RouteReadyPage()
     } else if (name === Routes.NOW_WALKING) {
       NowWalkingPage()
+    } else if (name === Routes.FULL_MAP) {
+      MapPage({ mode: param as string })
     } else if (name === Routes.ONBOARDING) {
       NavDestination() {
         OnboardingPage({ asRoute: true })

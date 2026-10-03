@@ -19,6 +19,7 @@ export class Routes {
   static readonly TOUR_DETAIL: string = 'TourDetail';
   static readonly ROUTE_READY: string = 'RouteReady';
   static readonly NOW_WALKING: string = 'NowWalking';
+  static readonly FULL_MAP: string = 'FullMap';
   static readonly ONBOARDING: string = 'Onboarding';   // A12: first run is Index's root; Settings can reopen it here
 }
 
@@ -103,6 +104,11 @@ export class AppViewModel {
       Log.e(LogEvents.UNCAUGHT, `where=AppViewModel.openNowWalking ${Log.errKv(e as Object)}`);
     }
     this.push(Routes.NOW_WALKING, '');
+  }
+
+  /** Full map; `mode` is 'walk' (live tour) or 'tour' (planned route). */
+  openFullMap(mode: string): void {
+    this.push(Routes.FULL_MAP, mode);
   }
 
   back(): void {
