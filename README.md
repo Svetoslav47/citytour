@@ -187,13 +187,21 @@ Environment, Docker, Render deploy and the smoke test: [`server/README.md`](serv
 The app ships **no built-in course** (product decision: a thin client, and the download flow is part of the demo). A
 small server ([`docs/SERVER.md`](docs/SERVER.md), `server/`) provides:
 
-- **First run.** Home shows **Pick a walk to start** › **Browse walks**, which opens Courses; the catalog loads on
-  open. The first course downloaded becomes the active course on its own and Home shows its tour. If the server cannot
+- **Home = the city's walks, one tap to walk.** Home says **You're in Kraków** (your location is inside the city) or
+  **Walks in Kraków** and lists every walk the server has for that city, one card each: cover photo, title,
+  "11 stops · 2.0 km · ~55 min", languages. **Start** on the card streams the walk if it is not on the phone
+  ("Preparing…" on the card), asks for location if needed, plans every stop in the shortest order and opens Now
+  Walking: no second page, no extra step. **Demo walk** on the same card replays a recorded walk (labelled
+  SIMULATED). A small download button keeps a walk offline (progress ring, then ✓; ⋯ › Remove download). Tap the photo
+  for the stops and the map. While a walk runs its card says **Continue**. With location denied the card shows the
+  friendly banner with **Allow location** and the demo.
+- **First run.** Home lists the catalog straight away (no separate Courses page). The first walk started or
+  downloaded becomes the active course. If the server cannot
   be reached the Courses screen says so with **Try again** (every call has a timeout; no endless spinner). Deleting the
   active course switches to another downloaded one, or back to the empty state. Onboarding works without a course (its
   voice sample falls back to a built-in-voice line).
-- **Courses.** Home › **More courses** lists the server's catalog: title, city, stops · km · minutes, languages
-  and size, with **Download**, progress with **Cancel**, **Downloaded ✓**, **Update**, **Try again**, **Delete** and **Use**. The catalog and each
+- **Courses.** The walk cards on Home (an internal Courses list is kept in code but not reachable) hold
+  **Download**, progress, **Downloaded ✓**, **Update**, **Try again** and **Remove download**. The catalog and each
   course manifest are Ed25519-signed; the app verifies them with the public key in
   [`app/RemoteConfig.ets`](entry/src/main/ets/app/RemoteConfig.ets) and rejects anything unsigned. Every file is checked
   against its SHA-256 and size, written to a temp folder, and swapped into `filesDir/courses/<id>/<version>/` with one

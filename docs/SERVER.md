@@ -206,6 +206,12 @@ The server runs on one instance with a persistent volume. That is enough for a h
   `city.json` `names` (UI language, nominative slot), the media session album is `"{city} · {tour}"`, the
   narration check's city-specific proper nouns come from `city.json` `properNouns`, and the SIMULATED Demo walk is
   the course pack's own `demo-walk.json` (offered for any course that ships one).
+- **Home (2026-10-04):** Home itself lists the walks of the current city from the catalog (cached catalog offline;
+  streamed and downloaded courses always), one card each with **Start** / **Demo walk** and a small download button
+  (`core/remote/HomeRules.cardActions`). Start makes the walk active (`CourseRepository.activate` when downloaded, else
+  `stream`), waits for its pack (`AppViewModel.reloadPack`), checks location, plans every stop and starts. Header
+  "You're in {city}" when the latest real fix is inside the active city's `city.json` bbox, else "Walks in {city}"
+  (`homeHeader`, `homeCity`). The Courses screen below is no longer reachable from the UI.
 - **Courses screen:** shows catalog rows with *Download* (size), progress + *Cancel*, *Downloaded*, *Update*, *Try again* (resumes: verified files in the temp folder are kept after a failure), and *Delete*. The last good catalog is kept for offline use.
 - **Streaming a course ("Play now", no server change).** Courses offers *Play now* (primary) next to *Download*.
   `CourseRepository.stream` verifies the signed catalog, course and city manifests as for a download, then installs

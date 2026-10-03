@@ -25,7 +25,7 @@ import { CoverChoice, rowHasCover } from '../core/remote/CoverRules';
 import { CourseSource, courseSource, streamRowActions, StreamRowActions } from '../core/remote/StreamRules';
 import { CatalogSource, CatalogState, OpResult } from '../services/remote/CourseRepository';
 import { CancelToken, InstallProgress } from '../services/remote/CourseStore';
-import { AppViewModel } from './AppViewModel';
+import { AppViewModel, PackState } from './AppViewModel';
 import { withTimeout } from './Async';
 import { MapCache } from './MapViewModel';
 
@@ -87,6 +87,8 @@ export enum RowAction { NONE = 'none', DOWNLOAD = 'download', UPDATE = 'update',
 @ObservedV2
 export class CourseItem {
   id: string = '';
+  /** Catalog city id ('' = unknown): Home lists the walks of one city. */
+  cityId: string = '';
   @Trace title: string = '';
   @Trace city: string = '';
   @Trace stops: number = 0;
@@ -214,6 +216,7 @@ export class CoursesViewModel {
         it.id = r.summary.id;
         it.title = courseTitle(r.summary, ui);
         it.city = repo.cityLabel(r.summary, ui);
+        it.cityId = r.summary.cityId;
         it.stops = r.summary.stops;
         it.km = r.summary.km > 0 ? `${r.summary.km}` : '';
         it.minutes = r.summary.minutes;
@@ -322,6 +325,67 @@ export class CoursesViewModel {
     if (this.visible) {
       AppViewModel.get().back();   // Home shows the walk, ready to start
     }
+  }
+
+  /**
+   * Home's one-tap Start: make course `id` the active course (already active and loaded: nothing to do; downloaded:
+   * activate; else stream it, "Preparing…" on its card) and wait until its pack is loaded. Resolves true when the
+   * walk can be planned. Never rejects; a failure marks the card (playFailed).
+   */
+  async ensureActive(id: string): Promise<boolean> {
+    const app = AppViewModel.get();
+    const repo = AppContainer.courses();
+    if (repo.activeId() === id && app.packState === PackState.READY) {
+      return true;
+    }
+    if (this.preparing.has(id) || this.progress.has(id) || AppContainer.tourController().isRunning()) {
+      return false;
+    }
+    this.playFailed.delete(id);
+    this.failed.delete(id);
+    this.preparing.add(id);
+    this.rebuild();
+    const cancel = new CancelToken();
+    const timedOut = new OpResult();
+    timedOut.error = 'timeout';
+    let r: OpResult;
+    try {
+      const downloaded = repo.installed().some((i: InstalledCourse) => i.id === id);
+      r = downloaded ?
+        await withTimeout(repo.activate(id), SWITCH_TIMEOUT_MS, timedOut, 'courses.activate') :
+        await withTimeout(repo.stream(id, cancel, (p: InstallProgress) => {}), PLAY_TIMEOUT_MS, timedOut,
+          'courses.stream');
+    } catch (e) {
+      r = new OpResult();
+      r.error = 'exception';
+    }
+    if (r.error === 'timeout') {
+      cancel.cancelled = true;
+    }
+    let ok = r.ok;
+    if (ok) {
+      MapCache.reset();
+      ok = await app.reloadPack();
+    }
+    this.preparing.delete(id);
+    if (!ok) {
+      this.playFailed.add(id);
+      Log.w(LogEvents.COURSE, `event=ui_start_prepare_fail id=${id} reason=${r.error}`);
+    } else {
+      Log.i(LogEvents.COURSE, `event=ui_start_prepare_ok id=${id}`);
+    }
+    this.rebuild();
+    return ok;
+  }
+
+  /** Home: a Start / Demo walk of `id` failed after the walk was ready (plan / start): mark its card. */
+  markFailed(id: string, failed: boolean): void {
+    if (failed) {
+      this.playFailed.add(id);
+    } else {
+      this.playFailed.delete(id);
+    }
+    this.rebuild();
   }
 
   /** Download or update; progress shows on the row. */

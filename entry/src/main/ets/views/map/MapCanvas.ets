@@ -31,6 +31,9 @@ export struct MapCanvas {
   @Param bottomInset: number = 0;
   @Param boxHeight: number = 260;
   @Param mapId: string = 'map';
+  /** Multiplies the layers' minimum scale (1 = normal LOD). A static preview fitted to a long route passes < 1 so
+   * the streets and buildings still show at its small scale. */
+  @Param lodScale: number = 1;
   /** B13: all places as dots (full map), tappable when `interactive`. */
   @Param places: PoiLayer | undefined = undefined;
   /** Bumped by the page when the layer's selection changes, to redraw. */
@@ -93,7 +96,7 @@ export struct MapCanvas {
     try {
       this.renderer.setMap(this.map);
       const ms = this.renderer.draw(this.ctx, this.w, this.boxHeight, this.cam, this.scene, this.palette(), fast,
-        false, this.places);
+        false, this.places, this.lodScale);
       this.frames++;
       if (this.frames % 30 === 1 || ms > 33) {
         Log.i(MAP_FRAME, `id=${this.mapId} ms=${ms} s=${this.cam.s.toFixed(2)} layers=${this.renderer.layerCount()} ` +

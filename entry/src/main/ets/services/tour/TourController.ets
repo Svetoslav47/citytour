@@ -515,6 +515,11 @@ export class TourController implements TourControl {
     return this.running;
   }
 
+  /** The latest fix seen (any source; undefined before the first). Home's "You're in {city}" uses a REAL one. */
+  lastFix(): Fix | undefined {
+    return this.latestFix;
+  }
+
   /** EntryAbility.onDestroy (via AppContainer.shutdown): stop everything, no new speech, keep no timers. */
   shutdown(): void {
     try {

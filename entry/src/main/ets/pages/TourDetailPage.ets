@@ -1,7 +1,8 @@
 /*
  * Tour detail (DESIGN §3.3): hero cover photo with the title (or, for a course without a cover, the route preview
  * as before), stats, the route map in its own "Route" section when the hero is a photo, guide row (name and
- * language), the stop list from the pack and the sticky "Start tour" (id btnStartTour). Location is checked
+ * language), the stop list from the pack and the sticky "Start tour" (id btnStartTour): one tap plans every stop
+ * (optimised order, default settings) and starts, then Now Walking (no Route ready); a running walk just reopens. Location is checked
  * here, in context (Flow D): a denied/approximate/switched-off state shows a banner that always offers the
  * Demo walk, so the flow never dead-ends.
  */
@@ -20,6 +21,9 @@ import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { SafeArea } from '../viewmodel/SafeArea';
 
+/** The route card is fitted to the whole walk (s ~0.25 for a 2 km route): show streets/buildings at that scale. */
+const ROUTE_CARD_LOD: number = 0.4;
+
 @ComponentV2
 export struct TourDetailPage {
   @Param tourId: string = '';
@@ -28,15 +32,29 @@ export struct TourDetailPage {
   /** Window avoid areas (edge-to-edge window, issue #63): the map runs under the status bar, the CTA bar under the
    * navigation indicator; the back button and the button stay clear of both. */
   @Local sa: SafeArea = SafeArea.get();
+  /** The hero has scrolled under the status bar: a canvas-coloured scrim keeps the text below the status bar. */
+  @Local pastHero: boolean = false;
+  private scroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
     this.vm.load(this.tourId, this.app.textLang);
   }
 
   private async onStartTour(): Promise<void> {
+    if (this.vm.tourRunning()) {
+      this.app.openNowWalking();   // the walk is already running: continue it
+      return;
+    }
     const ok = await this.vm.startTour();
     if (ok) {
-      this.app.openRouteReady();
+      await this.go();
+    }
+  }
+
+  /** One tap: plan all stops (optimised order, default settings) and start; Now Walking (no Route ready). */
+  private async go(): Promise<void> {
+    if (await this.vm.startNow()) {
+      this.app.openNowWalking();
     }
   }
 
@@ -44,14 +62,14 @@ export struct TourDetailPage {
     const ok = this.vm.locBanner === LocBanner.SWITCH_OFF ? await this.vm.turnOnLocationSwitch() :
       await this.vm.allowLocation();
     if (ok) {
-      this.app.openRouteReady();
+      await this.go();
     }
   }
 
   private async onDemo(): Promise<void> {
     const ok = await this.vm.useDemo();
     if (ok) {
-      this.app.openRouteReady();
+      await this.go();
     }
   }
 
@@ -78,7 +96,7 @@ export struct TourDetailPage {
   @Builder
   routeMap(boxHeight: number, topInset: number) {
     MapCanvas({ map: this.vm.map, scene: this.vm.scene, bounds: this.vm.sceneBounds,
-      boxHeight: boxHeight, topInset: topInset, mapId: 'mapTourDetail' })
+      boxHeight: boxHeight, topInset: topInset, mapId: 'mapTourDetail', lodScale: ROUTE_CARD_LOD })
       .onClick(() => this.app.openFullMap('tour'))
       .accessibilityText($r('app.string.tour_map_a11y', this.vm.title, this.vm.stops.length))
   }
@@ -226,8 +244,11 @@ export struct TourDetailPage {
           }
         })
       }
+      if (this.vm.startFailed) {
+        IssueBanner({ message: $r('app.string.route_start_failed'), code: IssueCode.UNCAUGHT })
+      }
       Button({ type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.EMPHASIZED }) {
-        if (this.vm.checking) {
+        if (this.vm.checking || this.vm.starting) {
           LoadingProgress()
             .width(24)
             .height(24)
@@ -243,7 +264,7 @@ export struct TourDetailPage {
       .width('100%')
       .height(Size.BUTTON_H)
       .backgroundColor($r('app.color.accent'))
-      .enabled(this.vm.found && !this.vm.checking)
+      .enabled(this.vm.found && !this.vm.checking && !this.vm.starting)
       .onClick(() => {
         this.onStartTour();
       })
@@ -262,7 +283,7 @@ export struct TourDetailPage {
   build() {
     NavDestination() {
       Stack({ alignContent: Alignment.Bottom }) {
-        Scroll() {
+        Scroll(this.scroller) {
           Column() {
             Stack({ alignContent: Alignment.TopStart }) {
               if (this.photoHero()) {
@@ -302,6 +323,24 @@ export struct TourDetailPage {
         .align(Alignment.Top)
         .width('100%')
         .height('100%')
+        .onDidScroll(() => {
+          const hero = this.photoHero() ? 280 : 260;   // hero height below the status bar (see the hero above)
+          const past = this.scroller.currentOffset().yOffset >= hero;
+          if (past !== this.pastHero) {
+            this.pastHero = past;
+          }
+        })
+
+        // Status-bar scrim (edge-to-edge window, issue #63): once the hero is gone the body stops below the clock.
+        if (this.pastHero && this.sa.top > 0) {
+          Column()
+            .id('scrimTourDetail')
+            .width('100%')
+            .height(this.sa.top)
+            .backgroundColor($r('app.color.bg_canvas'))
+            .position({ x: 0, y: 0 })
+            .hitTestBehavior(HitTestMode.Transparent)
+        }
 
         this.bottomBar()
       }

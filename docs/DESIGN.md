@@ -270,6 +270,17 @@ Sentence by sentence (Polish): "Polskie opowieści są wyświetlane jako tekst. 
 
 ### 3.2 Home
 
+> **Current (2026-10-04, user decision: "It should say that you are in Kraków right now and these are the walks we
+> have. When you start it, it starts. I don't like a second page and extra actions."):** Home is the list of the
+> current city's walks from the catalog. Large title "You're in Kraków" (a real fix inside the city's bbox) or
+> "Walks in Kraków"; the Now walking card when a tour runs; one card per walk: cover 16:10, title,
+> "11 stops · 2.0 km · ~55 min", languages chip, a small offline button (download / progress ring / ✓) and ⋯ "Remove
+> download", and on the card **Start** (one tap: stream if needed, inline "Preparing…", location check, every stop in
+> the optimised order, start, Now Walking; no Route ready, no Before-you-go sheet) and **Demo walk** (SIMULATED).
+> The running walk's card says **Continue**; another walk's Start asks to end the running tour first. Cover/title →
+> Tour detail (its Start is the same one tap). "All places in {city}" below. There is no Courses page in the flow.
+> Rules: `core/remote/HomeRules.ets`. The sketch below is the original single-tour design.
+
 **Purpose:** start or continue the one tour. Secondary: browse all places, open settings.
 
 ```
