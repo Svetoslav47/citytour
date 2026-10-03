@@ -1179,6 +1179,114 @@
     {
       "name": "map_you",
       "value": "Your location"
+    },
+    {
+      "name": "kind_monument",
+      "value": "Monument"
+    },
+    {
+      "name": "kind_church",
+      "value": "Church"
+    },
+    {
+      "name": "kind_castle",
+      "value": "Castle"
+    },
+    {
+      "name": "kind_square",
+      "value": "Square"
+    },
+    {
+      "name": "kind_gate",
+      "value": "Gate"
+    },
+    {
+      "name": "kind_museum",
+      "value": "Museum"
+    },
+    {
+      "name": "kind_building",
+      "value": "Building"
+    },
+    {
+      "name": "kind_plaque",
+      "value": "Plaque"
+    },
+    {
+      "name": "kind_viewpoint",
+      "value": "Viewpoint"
+    },
+    {
+      "name": "kind_synagogue",
+      "value": "Synagogue"
+    },
+    {
+      "name": "kind_other",
+      "value": "Place"
+    },
+    {
+      "name": "place_stop_overline",
+      "value": "Stop %d"
+    },
+    {
+      "name": "place_look_up",
+      "value": "Look up"
+    },
+    {
+      "name": "place_look_level",
+      "value": "Look straight ahead"
+    },
+    {
+      "name": "place_look_down",
+      "value": "Look down"
+    },
+    {
+      "name": "place_see_sources",
+      "value": "See sources"
+    },
+    {
+      "name": "place_source_a11y",
+      "value": "Source %1$d: %2$s. %3$s. Opens in the browser."
+    },
+    {
+      "name": "place_reviewed_on",
+      "value": "Reviewed by a person on %s."
+    },
+    {
+      "name": "place_extract_note",
+      "value": "Quoted from the source as it is. Nothing was added."
+    },
+    {
+      "name": "place_basic_note",
+      "value": "There is no story for this place yet, only its name."
+    },
+    {
+      "name": "place_not_found",
+      "value": "This place isn't in the offline data."
+    },
+    {
+      "name": "about_data_title",
+      "value": "Data and licences"
+    },
+    {
+      "name": "about_pack_title",
+      "value": "Offline pack"
+    },
+    {
+      "name": "about_pack_line",
+      "value": "Version %1$s · built %2$s · %3$d places"
+    },
+    {
+      "name": "about_arcgis_terms",
+      "value": "Licence terms not published; used for positions and names only, with attribution."
+    },
+    {
+      "name": "about_ai_disclosure_title",
+      "value": "AI disclosure"
+    },
+    {
+      "name": "about_ai_model",
+      "value": "Stories drafted with Claude (Anthropic) from the cited sources, prompt historian-v1, then reviewed and edited by a person. No AI runs on your phone."
     }
   ]
 }

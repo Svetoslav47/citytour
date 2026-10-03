@@ -20,6 +20,8 @@ export class Routes {
   static readonly ROUTE_READY: string = 'RouteReady';
   static readonly NOW_WALKING: string = 'NowWalking';
   static readonly FULL_MAP: string = 'FullMap';
+  static readonly PLACE_DETAIL: string = 'PlaceDetail';
+  static readonly ABOUT_SOURCES: string = 'AboutSources';
   static readonly ONBOARDING: string = 'Onboarding';   // A12: first run is Index's root; Settings can reopen it here
 }
 
@@ -41,6 +43,10 @@ export class AppViewModel {
   readonly stack: NavPathStack = new NavPathStack();
   @Trace packState: PackState = PackState.LOADING;
   @Trace packIssues: AppIssue[] = [];
+  /** From the pack manifest, for About & licences. */
+  @Trace packVersion: string = '';
+  @Trace packBuiltAt: string = '';
+  @Trace packPois: number = 0;
   /** Language of narration text and place names. B9/B10 bind it to UserSettings.textLang. */
   @Trace textLang: Lang = Lang.EN;
   /** Demo walk replay speed last applied to TourControl (TourControl has no getter for it). */
@@ -82,6 +88,11 @@ export class AppViewModel {
     const res = await withTimeout(AppContainer.packRepository().load(), PACK_LOAD_TIMEOUT_MS, failed, 'pack.load');
     this.packIssues = res.issues;
     this.packState = res.ok ? PackState.READY : PackState.ERROR;
+    if (res.manifest !== undefined) {
+      this.packVersion = res.manifest.version;
+      this.packBuiltAt = res.manifest.builtAt.substring(0, 10);
+      this.packPois = res.manifest.counts.pois;
+    }
     if (!res.ok) {
       Log.e(LogEvents.PACK_ERR, `where=ui issues=${res.issues.length}`);
     }
@@ -109,6 +120,14 @@ export class AppViewModel {
   /** Full map; `mode` is 'walk' (live tour) or 'tour' (planned route). */
   openFullMap(mode: string): void {
     this.push(Routes.FULL_MAP, mode);
+  }
+
+  openPlace(poiId: string): void {
+    this.push(Routes.PLACE_DETAIL, poiId);
+  }
+
+  openAbout(): void {
+    this.push(Routes.ABOUT_SOURCES, '');
   }
 
   back(): void {
