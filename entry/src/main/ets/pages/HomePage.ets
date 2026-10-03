@@ -11,11 +11,14 @@ import { MapCanvas } from '../views/map/MapCanvas';
 import { SimulatedBadge } from '../views/common/SimulatedBadge';
 import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
 import { IssueCode, StopProgress } from '../contracts/EngineTypes';
+import { SafeArea } from '../viewmodel/SafeArea';
 
 @ComponentV2
 export struct HomePage {
   @Local app: AppViewModel = AppViewModel.get();
   @Local vm: HomeViewModel = new HomeViewModel();
+  /** Window avoid areas (edge-to-edge window, issue #63). */
+  @Local sa: SafeArea = SafeArea.get();
 
   aboutToAppear(): void {
     this.vm.attach();
@@ -359,45 +362,52 @@ export struct HomePage {
   }
 
   build() {
-    Scroll() {
-      Column() {
-        this.header()
-        if (this.app.packState === PackState.LOADING) {
-          Row({ space: Space.S2 }) {
-            LoadingProgress()
-              .width(24)
-              .height(24)
-              .color($r('app.color.accent'))
-            Text($r('app.string.home_loading'))
-              .fontSize(Type.CALLOUT)
-              .fontColor($r('app.color.text_secondary'))
+    // Edge-to-edge window (issue #63): the canvas colour runs under the status bar and the navigation indicator.
+    // The list scrolls below the status bar (top inset on the frame); its end clears the navigation indicator.
+    Column() {
+      Scroll() {
+        Column() {
+          this.header()
+          if (this.app.packState === PackState.LOADING) {
+            Row({ space: Space.S2 }) {
+              LoadingProgress()
+                .width(24)
+                .height(24)
+                .color($r('app.color.accent'))
+              Text($r('app.string.home_loading'))
+                .fontSize(Type.CALLOUT)
+                .fontColor($r('app.color.text_secondary'))
+            }
+            .margin({ top: Space.S6 })
+          } else if (this.app.packState === PackState.ERROR) {
+            this.packError()
+          } else {
+            if (this.vm.sessionActive()) {
+              this.continueCard()
+            }
+            this.sectionHeader($r('app.string.home_guided_tours'))
+            if (this.vm.hasTour) {
+              this.tourCard()
+            }
+            this.demoButton()
+            this.sectionHeader($r('app.string.home_explore'))
+            this.exploreRow()
           }
-          .margin({ top: Space.S6 })
-        } else if (this.app.packState === PackState.ERROR) {
-          this.packError()
-        } else {
-          if (this.vm.sessionActive()) {
-            this.continueCard()
-          }
-          this.sectionHeader($r('app.string.home_guided_tours'))
-          if (this.vm.hasTour) {
-            this.tourCard()
-          }
-          this.demoButton()
-          this.sectionHeader($r('app.string.home_explore'))
-          this.exploreRow()
         }
+        .alignItems(HorizontalAlign.Start)
+        .width('100%')
+        .constraintSize({ maxWidth: Size.PAGE_MAX_W })
+        .padding({ left: Space.S4, right: Space.S4, bottom: Space.S5 + this.sa.bottom })
       }
-      .alignItems(HorizontalAlign.Start)
+      .id('pageHome')
+      .scrollBar(BarState.Off)
+      .align(Alignment.Top)
       .width('100%')
-      .constraintSize({ maxWidth: Size.PAGE_MAX_W })
-      .padding({ left: Space.S4, right: Space.S4, bottom: Space.S5 })
+      .layoutWeight(1)
     }
-    .id('pageHome')
-    .scrollBar(BarState.Off)
-    .align(Alignment.Top)
     .width('100%')
     .height('100%')
+    .padding({ top: this.sa.top, left: this.sa.left, right: this.sa.right })
     .backgroundColor($r('app.color.bg_canvas'))
   }
 }

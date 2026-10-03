@@ -22,6 +22,7 @@ import { DemoControlsSheet } from '../views/walk/DemoControlsSheet';
 import { NextStopBlock } from '../views/walk/NextStopBlock';
 import { NowPlayingCard } from '../views/walk/NowPlayingCard';
 import { WalkControls } from '../views/walk/WalkControls';
+import { SafeArea } from '../viewmodel/SafeArea';
 
 const MAP_H: number = 300;
 const MAP_H_READING: number = 200;
@@ -30,6 +31,9 @@ const MAP_H_READING: number = 200;
 export struct NowWalkingPage {
   @Local app: AppViewModel = AppViewModel.get();
   @Local vm: NowWalkingViewModel = new NowWalkingViewModel();
+  /** Window avoid areas (edge-to-edge window, issue #63): the map runs under the status bar (DESIGN §3.6), the
+   * header capsule and chips sit below it, the panel runs under the navigation indicator and its controls clear it. */
+  @Local sa: SafeArea = SafeArea.get();
 
   aboutToAppear(): void {
     this.vm.attach(this.app.textLang);
@@ -229,7 +233,7 @@ export struct NowWalkingPage {
       ])
     }
     .width('100%')
-    .padding({ left: Space.S2, right: Space.S2, top: Space.S2 })
+    .padding({ left: Space.S2 + this.sa.left, right: Space.S2 + this.sa.right, top: Space.S2 + this.sa.top })
   }
 
   @Builder
@@ -279,7 +283,7 @@ export struct NowWalkingPage {
     }
     .alignItems(HorizontalAlign.End)
     .width('100%')
-    .padding({ right: Space.S3, top: 64 })
+    .padding({ right: Space.S3 + this.sa.right, top: 64 + this.sa.top })
     .hitTestBehavior(HitTestMode.Transparent)   // the header buttons underneath stay tappable
   }
 
@@ -346,62 +350,74 @@ export struct NowWalkingPage {
 
   @Builder
   panel() {
-    Scroll() {
-      Column({ space: Space.S4 }) {
-        this.banner()
-        NextStopBlock({
-          overline: this.overline(),
-          title: this.title(),
-          hero: this.hero(),
-          approx: this.vm.weakGps(),
-          sub: this.sub(),
-          dim: this.vm.paused(),
-          showCue: !this.finished() && this.vm.state() !== WalkState.NO_GPS && this.vm.state() !== WalkState.IDLE,
-          angleDeg: this.vm.dialDeg,
-          relDir: this.vm.relDir(),
-          lookUp: this.vm.lookUp && (this.atStop() || this.vm.state() === WalkState.APPROACHING),
-          landmark: this.vm.stopName,
-          emphasised: this.vm.state() === WalkState.APPROACHING
-        })
-        this.playingOrDirections()
-        this.controls()
-        if (!this.finished() && this.vm.totalStops > 0) {
-          Row() {
-            if (this.vm.stopName !== '' && this.vm.snap !== undefined && this.vm.snap.next !== undefined) {
-              Button($r('app.string.walk_transcript'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
-                .id('btnTranscript')
+    // The surface runs under the navigation indicator; the scroll viewport (and so every control) stays above it.
+    Column() {
+      Scroll() {
+        Column({ space: Space.S4 }) {
+          this.banner()
+          NextStopBlock({
+            overline: this.overline(),
+            title: this.title(),
+            hero: this.hero(),
+            approx: this.vm.weakGps(),
+            sub: this.sub(),
+            dim: this.vm.paused(),
+            showCue: !this.finished() && this.vm.state() !== WalkState.NO_GPS && this.vm.state() !== WalkState.IDLE,
+            angleDeg: this.vm.dialDeg,
+            relDir: this.vm.relDir(),
+            lookUp: this.vm.lookUp && (this.atStop() || this.vm.state() === WalkState.APPROACHING),
+            landmark: this.vm.stopName,
+            emphasised: this.vm.state() === WalkState.APPROACHING
+          })
+          this.playingOrDirections()
+          this.controls()
+          if (!this.finished() && this.vm.totalStops > 0) {
+            Row() {
+              if (this.vm.stopName !== '' && this.vm.snap !== undefined && this.vm.snap.next !== undefined) {
+                Button($r('app.string.walk_transcript'),
+                  { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
+                  .id('btnTranscript')
+                  .height(Size.TOUCH)
+                  .fontSize(Type.CALLOUT)
+                  .fontColor($r('app.color.accent'))
+                  .onClick(() => this.app.openPlace(this.vm.snap?.next?.poiId ?? ''))
+              }
+              Blank()
+              Button($r('app.string.walk_stops', this.vm.totalStops),
+                { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
+                .id('btnStops')
                 .height(Size.TOUCH)
                 .fontSize(Type.CALLOUT)
                 .fontColor($r('app.color.accent'))
-                .onClick(() => this.app.openPlace(this.vm.snap?.next?.poiId ?? ''))
+                .onClick(() => this.vm.openStops())
+                .bindSheet(this.vm.showStopsSheet, this.stopsSheet(), {
+                  detents: [SheetSize.MEDIUM, SheetSize.LARGE],
+                  dragBar: true,
+                  showClose: true,
+                  preferType: SheetType.BOTTOM,
+                  title: { title: $r('app.string.stops_sheet_title') },
+                  onDisappear: () => {
+                    this.vm.showStopsSheet = false;
+                  }
+                })
             }
-            Blank()
-            Button($r('app.string.walk_stops', this.vm.totalStops),
-              { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
-              .id('btnStops')
-              .height(Size.TOUCH)
-              .fontSize(Type.CALLOUT)
-              .fontColor($r('app.color.accent'))
-              .onClick(() => this.vm.openStops())
-              .bindSheet(this.vm.showStopsSheet, this.stopsSheet(), {
-                detents: [SheetSize.MEDIUM, SheetSize.LARGE],
-                dragBar: true,
-                showClose: true,
-                preferType: SheetType.BOTTOM,
-                title: { title: $r('app.string.stops_sheet_title') },
-                onDisappear: () => {
-                  this.vm.showStopsSheet = false;
-                }
-              })
+            .width('100%')
           }
-          .width('100%')
         }
+        .width('100%')
+        .padding({
+          left: Space.S4 + this.sa.left,
+          right: Space.S4 + this.sa.right,
+          top: Space.S5,
+          bottom: Space.S5
+        })
       }
+      .scrollBar(BarState.Off)
+      .align(Alignment.Top)
+      .layoutWeight(1)
       .width('100%')
-      .padding({ left: Space.S4, right: Space.S4, top: Space.S5, bottom: Space.S5 })
     }
-    .scrollBar(BarState.Off)
-    .align(Alignment.Top)
+    .padding({ bottom: this.sa.bottom })
     .layoutWeight(1)
     .width('100%')
     .borderRadius({ topLeft: Radius.XL, topRight: Radius.XL })
@@ -443,8 +459,8 @@ export struct NowWalkingPage {
             bounds: this.vm.sceneBounds,
             follow: this.vm.scene.user !== undefined,
             followScale: 1.4,
-            boxHeight: this.vm.state() === WalkState.READING ? MAP_H_READING : MAP_H,
-            topInset: 96,
+            boxHeight: (this.vm.state() === WalkState.READING ? MAP_H_READING : MAP_H) + this.sa.top,
+            topInset: 96 + this.sa.top,
             bottomInset: 24,
             mapId: 'mapWalk'
           })

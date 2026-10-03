@@ -12,6 +12,7 @@ import { Lang } from '../contracts/Model';
 import { EnVoiceRow, LocRow, NotifRow, ONB_STEP_PERMS, ONB_STEPS } from '../core/onboarding/OnboardingRules';
 import { AppViewModel, PackState } from '../viewmodel/AppViewModel';
 import { OnboardingViewModel } from '../viewmodel/OnboardingViewModel';
+import { SafeArea } from '../viewmodel/SafeArea';
 import { Plaque, PlaqueState } from '../views/common/Plaque';
 import { PreviewPoint } from '../views/common/RoutePreview';
 import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
@@ -33,6 +34,8 @@ export struct OnboardingPage {
   @Param asRoute: boolean = false;
   @Local vm: OnboardingViewModel = new OnboardingViewModel();
   @Local app: AppViewModel = AppViewModel.get();
+  /** Window avoid areas (edge-to-edge window, issue #63): Skip below the status bar, Continue above the indicator. */
+  @Local sa: SafeArea = SafeArea.get();
   private voiceScroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
@@ -816,6 +819,7 @@ export struct OnboardingPage {
     .id('pageOnboarding')
     .width('100%')
     .height('100%')
+    .padding({ top: this.sa.top, bottom: this.sa.bottom, left: this.sa.left, right: this.sa.right })
     .backgroundColor($r('app.color.bg_canvas'))
   }
 }

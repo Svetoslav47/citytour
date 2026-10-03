@@ -21,6 +21,7 @@ import {
   Footnote, NavRow, RowDivider, SectionHeader, SegmentOption, SegmentRow, SettingsCard, SettingsHeader, ToggleRow
 } from '../views/settings/SettingsRows';
 import { storyLangRes, uiLangRes, voiceRowRes } from '../views/settings/SettingsText';
+import { SafeArea } from '../viewmodel/SafeArea';
 
 function detailNote(d: DetailLevel): Resource {
   if (d === DetailLevel.BRIEF) {
@@ -74,6 +75,8 @@ const SPEED_OPTIONS: SegmentOption[] = DEMO_SPEEDS.map((x: number) =>
 export struct SettingsPage {
   @Local app: AppViewModel = AppViewModel.get();
   @Local vm: SettingsViewModel = SettingsViewModel.get();
+  /** Window avoid areas (edge-to-edge window, issue #63). */
+  @Local sa: SafeArea = SafeArea.get();
 
   aboutToAppear(): void {
     Log.i(LogEvents.APP_PAGE, `page=Settings ${SettingsViewModel.summaryKv()}`);
@@ -292,7 +295,7 @@ export struct SettingsPage {
             }
           }
           .width('100%')
-          .padding({ left: Space.S4, right: Space.S4, bottom: Space.S6 })
+          .padding({ left: Space.S4, right: Space.S4, bottom: Space.S6 + this.sa.bottom })
         }
         .width('100%')
         .constraintSize({ maxWidth: Size.PAGE_MAX_W })
@@ -305,6 +308,8 @@ export struct SettingsPage {
     }
     .hideTitleBar(true)
     .backgroundColor($r('app.color.bg_canvas'))
+    // The canvas runs under the status bar; the scroll viewport starts below it.
+    .padding({ top: this.sa.top, left: this.sa.left, right: this.sa.right })
     .onShown(() => this.vm.refresh())
   }
 }

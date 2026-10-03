@@ -39,6 +39,7 @@ import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { LocationDevSection } from './DevPanelLocation';
+import { SafeArea } from '../viewmodel/SafeArea';
 
 const EN_SAMPLE: string[] = [
   'Welcome to the Main Market Square in Krakow.[p300]',
@@ -287,6 +288,8 @@ struct DemoTourSection {
 @Entry
 @ComponentV2
 struct DevPanel {
+  /** Window avoid areas (edge-to-edge window, issue #63). */
+  @Local sa: SafeArea = SafeArea.get();
   @Local status: string = 'speech: initialising...';
   @Local capsLine: string = 'voices: ?';
   @Local planLine: string = 'EN plan: ?';
@@ -527,68 +530,74 @@ struct DevPanel {
   }
 
   build() {
-    Scroll() {
-      Column({ space: 8 }) {
-        Text('CityTour DevPanel')
-          .id('devPanelTitle')
-          .fontSize(24)
-          .fontWeight(FontWeight.Bold)
-          .margin({ top: 48 })
-        DemoTourSection()
-        LocationDevSection()
-        Text('Speech (A4)').fontSize(18).fontWeight(FontWeight.Medium)
-        Text(this.chip)
-          .id('voiceChip')
-          .fontSize(13)
-          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-          .borderRadius(12)
-          .backgroundColor('#33808080')
-        Text(this.capsLine).id('voiceCaps').fontSize(12)
-        Text(this.planLine).id('voicePlan').fontSize(12)
-        Text(`strategy: ${this.strategy} | fallback ctx: ${this.ctx}`).id('voiceStrategy').fontSize(12)
-        Text(this.status).id('speechStatus').fontSize(12)
-        Text(this.dlLine).id('dlStatus').fontSize(12)
-        Text(this.caption).id('speechCaption').fontSize(15).fontStyle(FontStyle.Italic)
-        Button('EN sample (3 sentences)').id('btnEnSample').width('100%')
-          .onClick(() => this.play('en', EN_SAMPLE, Lang.EN))
-        Button('ZH sample').id('btnZhSample').width('100%')
-          .onClick(() => this.play('zh', ZH_SAMPLE, Lang.ZH))
-        Button('Text-only sample (PL)').id('btnTextSample').width('100%')
-          .onClick(() => this.play('pl', PL_SAMPLE, Lang.PL))
-        Button(`Strategy: ${this.strategy} (cycle)`).id('btnStrategy').width('100%')
-          .onClick(() => this.cycleStrategy())
-        Button(`Fallback ctx: ${this.ctx} (toggle)`).id('btnCtx').width('100%')
-          .onClick(() => this.toggleCtx())
-        Button('Download English voice').id('btnDlEn').width('100%')
-          .onClick(() => this.download())
-        Row({ space: 8 }) {
-          Button('Pause').id('btnPause').layoutWeight(1).onClick(() => AppContainer.speech().pause())
-          Button('Resume').id('btnResume').layoutWeight(1).onClick(() => AppContainer.speech().resume())
-          Button('Stop').id('btnStop').layoutWeight(1).onClick(() => this.stopAll())
-        }.width('100%')
-        Text('Background + lock screen (A6)').fontSize(18).fontWeight(FontWeight.Medium).margin({ top: 12 })
-        Text(this.bgLine).id('bgStatus').fontSize(12)
-        Text(this.avsLine).id('avsStatus').fontSize(12)
-        Text(this.avsCmdLine).id('avsCmd').fontSize(12)
-        Row({ space: 8 }) {
-          Button('Start continuous task').id('btnBgStart').layoutWeight(1).onClick(() => this.startBg())
-          Button('Stop continuous task').id('btnBgStop').layoutWeight(1).onClick(() => this.stopBg())
-        }.width('100%')
-        Row({ space: 8 }) {
-          Button('Start AVSession').id('btnAvsStart').layoutWeight(1).onClick(() => this.startAvs())
-          Button('Destroy AVSession').id('btnAvsStop').layoutWeight(1).onClick(() => this.destroyAvs())
-        }.width('100%')
-        Button(`Meta: ${AVS_TITLES[this.metaIdx]} (toggle)`).id('btnAvsMeta').width('100%')
-          .onClick(() => this.toggleMeta())
-        Button(this.loopOn ? 'Narration loop: ON (tap to stop)' : 'Narration loop: OFF (EN sample every 45 s)')
-          .id('btnNarrLoop').width('100%')
-          .onClick(() => this.toggleLoop())
-        Text('Card text is dev test data (SIMULATED), artist line shows DEMO.').fontSize(11).fontColor('#888888')
+    // Edge-to-edge window (issue #63): the scroll viewport starts below the status bar, the end clears the indicator.
+    Column() {
+      Scroll() {
+        Column({ space: 8 }) {
+          Text('CityTour DevPanel')
+            .id('devPanelTitle')
+            .fontSize(24)
+            .fontWeight(FontWeight.Bold)
+            .margin({ top: 48 })
+          DemoTourSection()
+          LocationDevSection()
+          Text('Speech (A4)').fontSize(18).fontWeight(FontWeight.Medium)
+          Text(this.chip)
+            .id('voiceChip')
+            .fontSize(13)
+            .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+            .borderRadius(12)
+            .backgroundColor('#33808080')
+          Text(this.capsLine).id('voiceCaps').fontSize(12)
+          Text(this.planLine).id('voicePlan').fontSize(12)
+          Text(`strategy: ${this.strategy} | fallback ctx: ${this.ctx}`).id('voiceStrategy').fontSize(12)
+          Text(this.status).id('speechStatus').fontSize(12)
+          Text(this.dlLine).id('dlStatus').fontSize(12)
+          Text(this.caption).id('speechCaption').fontSize(15).fontStyle(FontStyle.Italic)
+          Button('EN sample (3 sentences)').id('btnEnSample').width('100%')
+            .onClick(() => this.play('en', EN_SAMPLE, Lang.EN))
+          Button('ZH sample').id('btnZhSample').width('100%')
+            .onClick(() => this.play('zh', ZH_SAMPLE, Lang.ZH))
+          Button('Text-only sample (PL)').id('btnTextSample').width('100%')
+            .onClick(() => this.play('pl', PL_SAMPLE, Lang.PL))
+          Button(`Strategy: ${this.strategy} (cycle)`).id('btnStrategy').width('100%')
+            .onClick(() => this.cycleStrategy())
+          Button(`Fallback ctx: ${this.ctx} (toggle)`).id('btnCtx').width('100%')
+            .onClick(() => this.toggleCtx())
+          Button('Download English voice').id('btnDlEn').width('100%')
+            .onClick(() => this.download())
+          Row({ space: 8 }) {
+            Button('Pause').id('btnPause').layoutWeight(1).onClick(() => AppContainer.speech().pause())
+            Button('Resume').id('btnResume').layoutWeight(1).onClick(() => AppContainer.speech().resume())
+            Button('Stop').id('btnStop').layoutWeight(1).onClick(() => this.stopAll())
+          }.width('100%')
+          Text('Background + lock screen (A6)').fontSize(18).fontWeight(FontWeight.Medium).margin({ top: 12 })
+          Text(this.bgLine).id('bgStatus').fontSize(12)
+          Text(this.avsLine).id('avsStatus').fontSize(12)
+          Text(this.avsCmdLine).id('avsCmd').fontSize(12)
+          Row({ space: 8 }) {
+            Button('Start continuous task').id('btnBgStart').layoutWeight(1).onClick(() => this.startBg())
+            Button('Stop continuous task').id('btnBgStop').layoutWeight(1).onClick(() => this.stopBg())
+          }.width('100%')
+          Row({ space: 8 }) {
+            Button('Start AVSession').id('btnAvsStart').layoutWeight(1).onClick(() => this.startAvs())
+            Button('Destroy AVSession').id('btnAvsStop').layoutWeight(1).onClick(() => this.destroyAvs())
+          }.width('100%')
+          Button(`Meta: ${AVS_TITLES[this.metaIdx]} (toggle)`).id('btnAvsMeta').width('100%')
+            .onClick(() => this.toggleMeta())
+          Button(this.loopOn ? 'Narration loop: ON (tap to stop)' : 'Narration loop: OFF (EN sample every 45 s)')
+            .id('btnNarrLoop').width('100%')
+            .onClick(() => this.toggleLoop())
+          Text('Card text is dev test data (SIMULATED), artist line shows DEMO.').fontSize(11).fontColor('#888888')
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, bottom: 32 + this.sa.bottom })
       }
       .width('100%')
-      .padding({ left: 16, right: 16, bottom: 32 })
+      .layoutWeight(1)
     }
     .width('100%')
     .height('100%')
+    .padding({ top: this.sa.top, left: this.sa.left, right: this.sa.right })
   }
 }

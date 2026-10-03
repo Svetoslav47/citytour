@@ -11,6 +11,7 @@ import { DownloadState, SettingsViewModel } from '../../viewmodel/SettingsViewMo
 import { Size, Space, Type } from '../common/Tokens';
 import { Footnote, NavRow, RadioRow, RowDivider, SectionHeader, SettingsCard, SettingsHeader } from './SettingsRows';
 import { voiceRowRes } from './SettingsText';
+import { SafeArea } from '../../viewmodel/SafeArea';
 
 function strategyRes(c: StrategyChoice): Resource {
   if (c === StrategyChoice.ZH) {
@@ -26,6 +27,8 @@ function strategyRes(c: StrategyChoice): Resource {
 export struct VoicePage {
   @Local app: AppViewModel = AppViewModel.get();
   @Local vm: SettingsViewModel = SettingsViewModel.get();
+  /** Window avoid areas (edge-to-edge window, issue #63). */
+  @Local sa: SafeArea = SafeArea.get();
 
   aboutToAppear(): void {
     this.vm.refreshVoice();
@@ -156,7 +159,7 @@ export struct VoicePage {
             }
           }
           .width('100%')
-          .padding({ left: Space.S4, right: Space.S4, bottom: Space.S6 })
+          .padding({ left: Space.S4, right: Space.S4, bottom: Space.S6 + this.sa.bottom })
         }
         .width('100%')
         .constraintSize({ maxWidth: Size.PAGE_MAX_W })
@@ -169,5 +172,7 @@ export struct VoicePage {
     }
     .hideTitleBar(true)
     .backgroundColor($r('app.color.bg_canvas'))
+    // The canvas runs under the status bar; the scroll viewport starts below it.
+    .padding({ top: this.sa.top, left: this.sa.left, right: this.sa.right })
   }
 }
