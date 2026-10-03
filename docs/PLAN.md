@@ -43,7 +43,7 @@
 | Build | `devecocli build` | `--build-mode debug` is the default. Output: `entry/build/default/outputs/default/entry-default-unsigned.hap`. |
 | Install + launch | `devecocli run --device "Pura 90"` | Ends with `Smoke: PASS`. `--uninstall` gives a fresh install (first-run flows). `--skip-build` redeploys. |
 | Unit tests | `scripts/test.sh` (task T1) | Wraps `hvigorw test` and **fails for real**. |
-| Logs | `devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 3m` | Also `--follow`, `--crash`, `--level E`, `--tail N`. |
+| Logs | `devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300` | Also `--follow`, `--crash`, `--level E`, `--tail N`. |
 | Tap by id | `devecocli ui click --device "Pura 90" --id btnDemoWalk` | Needs `.id('btnDemoWalk')` on the component. |
 | Screenshot | `devecocli ui screenshot --device "Pura 90" --path docs/img/x.png` | **`--path` is required** (ARCHITECTURE §11.2 omits it). |
 | Docs | `devecocli docs search <kw>` / `devecocli docs read <id>` | Offline official docs, mostly in Chinese. |
@@ -274,7 +274,7 @@ From 15:45 on, **features add files rather than editing shared ones**. That is t
 devecocli check arkts
 devecocli build
 devecocli run --device "Pura 90"                      # -> Smoke: PASS
-devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 3m | grep APP_START
+devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300 | grep APP_START
 HDC=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc
 $HDC -t 127.0.0.1:5555 shell aa start -a EntryAbility -b com.hackyeah.citytour --ps page dev
 devecocli ui screenshot --device "Pura 90" --path /tmp/ct-devpanel.png
@@ -542,7 +542,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 source scripts/env.sh && devecocli check arkts && devecocli build && scripts/test.sh
 devecocli run --device "Pura 90"
 $HDC -t 127.0.0.1:5555 shell aa start -a EntryAbility -b com.hackyeah.citytour --ps page dev   # tap "EN sample"
-devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 3m | grep -E "VOICE_STATUS|VOICE_PLAN|TTS_INIT|UTT_START|UTT_DONE|TTS_ERR"
+devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300 | grep -E "VOICE_STATUS|VOICE_PLAN|TTS_INIT|UTT_START|UTT_DONE|TTS_ERR"
 ```
 
 **Starter prompt** (after `scripts/wt.sh new cap/tts-pcm` and `cd ../citytour-wt/tts-pcm && claude`):
@@ -591,7 +591,7 @@ source scripts/env.sh && devecocli check arkts && devecocli build && scripts/tes
 node scripts/demo/make-demo-walk.mjs && git diff --stat entry/src/main/resources/rawfile/demo/
 devecocli run --device "Pura 90"
 $HDC -t 127.0.0.1:5555 shell aa start -a EntryAbility -b com.hackyeah.citytour --ps page dev   # tap "Demo walk x8"
-devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 3m | grep -E "LOC_SOURCE|LOC_FIX|LOC_ERR|PERM_"
+devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300 | grep -E "LOC_SOURCE|LOC_FIX|LOC_ERR|PERM_"
 ```
 
 **Starter prompt** (after `scripts/wt.sh new cap/location-sources` and `cd ../citytour-wt/location-sources && claude`):
@@ -634,7 +634,7 @@ source scripts/env.sh && devecocli check arkts && devecocli build && scripts/tes
 devecocli run --device "Pura 90"
 $HDC -t 127.0.0.1:5555 shell power-shell suspend      # screen off; wait 3 min
 $HDC -t 127.0.0.1:5555 shell power-shell wakeup
-devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 3m | grep -E "BG_START|BG_SUSPEND|BG_CANCEL|AVS_|UTT_START|LOC_FIX"
+devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300 | grep -E "BG_START|BG_SUSPEND|BG_CANCEL|AVS_|UTT_START|LOC_FIX"
 devecocli ui screenshot --device "Pura 90" --path docs/img/lockscreen.png
 ```
 
@@ -676,7 +676,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 ```bash
 source scripts/env.sh && devecocli check arkts && devecocli build && scripts/test.sh
 devecocli run --device "Pura 90" && devecocli ui click --device "Pura 90" --id btnDemoWalk
-sleep 120; devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 3m | grep -E "PACK_LOAD|ROUTE_PLAN|LOC_SOURCE|POI_ENTER|STORY_START|UTT_DONE|STATE"
+sleep 120; devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300 | grep -E "PACK_LOAD|ROUTE_PLAN|LOC_SOURCE|POI_ENTER|STORY_START|UTT_DONE|STATE"
 ```
 
 **Starter prompt** (after `scripts/wt.sh new feat/controller` and `cd ../citytour-wt/controller && claude`):
@@ -711,7 +711,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Verify.**
 ```bash
 source scripts/env.sh && devecocli check arkts && devecocli build && scripts/test.sh
-devecocli run --device "Pura 90"; devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 3m | grep -E "NOTIF_|HAPTIC"
+devecocli run --device "Pura 90"; devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300 | grep -E "NOTIF_|HAPTIC"
 ```
 
 **Starter prompt** (after `scripts/wt.sh new cap/notify-haptics` and `cd ../citytour-wt/notify-haptics && claude`):
@@ -750,7 +750,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Verify.**
 ```bash
 source scripts/env.sh && devecocli check arkts && scripts/test.sh && devecocli build
-devecocli run --device "Pura 90"; devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 3m | grep -E "NAV_CUE|OFF_ROUTE|ON_ROUTE|REPLAN"
+devecocli run --device "Pura 90"; devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300 | grep -E "NAV_CUE|OFF_ROUTE|ON_ROUTE|REPLAN"
 ```
 
 **Starter prompt** (after `scripts/wt.sh new feat/turn-by-turn` and `cd ../citytour-wt/turn-by-turn && claude`):
@@ -790,7 +790,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 ```bash
 source scripts/env.sh && scripts/test.sh && devecocli run --device "Pura 90"
 devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --crash --from 30m     # must be empty
-devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 3m | grep -E "PERM_|LOC_SWITCH_OFF|LOC_OUT_OF_AREA|TTS_INIT_FAIL|VOICE_|PACK_ERR|BG_FAIL|UNCAUGHT"
+devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300 | grep -E "PERM_|LOC_SWITCH_OFF|LOC_OUT_OF_AREA|TTS_INIT_FAIL|VOICE_|PACK_ERR|BG_FAIL|UNCAUGHT"
 ```
 
 **Starter prompt** (after `scripts/wt.sh new fix/error-matrix` and `cd ../citytour-wt/error-matrix && claude`):
@@ -1012,7 +1012,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Verify.**
 ```bash
 source scripts/env.sh && devecocli check arkts && scripts/test.sh && devecocli build
-devecocli run --device "Pura 90"; devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 3m | grep -E "PACK_LOAD|PACK_ERR|PACK_DROP"
+devecocli run --device "Pura 90"; devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300 | grep -E "PACK_LOAD|PACK_ERR|PACK_DROP"
 ```
 
 **Starter prompt** (after `scripts/wt.sh new feat/pack-loader` and `cd ../citytour-wt/pack-loader && claude`):
@@ -1155,7 +1155,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 ```bash
 source scripts/env.sh && devecocli check arkts && devecocli build && scripts/test.sh
 devecocli run --device "Pura 90" && devecocli ui click --device "Pura 90" --id btnDemoWalk
-devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 3m | grep MAP_FRAME | tail -5; devecocli ui screenshot --device "Pura 90" --path docs/img/walk-map.png
+devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300 | grep MAP_FRAME | tail -5; devecocli ui screenshot --device "Pura 90" --path docs/img/walk-map.png
 ```
 
 **Starter prompt** (after `scripts/wt.sh new feat/map-canvas` and `cd ../citytour-wt/map-canvas && claude`):
@@ -1269,7 +1269,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Verify.**
 ```bash
 source scripts/env.sh && devecocli check arkts && devecocli build && devecocli run --device "Pura 90"
-devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 3m | grep -E "SETTINGS|LOC_SOURCE|VOICE_PLAN"; devecocli ui screenshot --device "Pura 90" --path docs/img/settings.png
+devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300 | grep -E "SETTINGS|LOC_SOURCE|VOICE_PLAN"; devecocli ui screenshot --device "Pura 90" --path docs/img/settings.png
 ```
 
 **Starter prompt** (after `scripts/wt.sh new feat/settings` and `cd ../citytour-wt/settings && claude`):
