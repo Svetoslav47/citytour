@@ -22,6 +22,7 @@ export class ActivePackRepository implements PackRepository {
   private readonly bundledId: string;
   private startup: Promise<void> = Promise.resolve();
   private loading: Promise<PackLoadResult> | undefined = undefined;
+  private chosen: boolean = false;   // the start-up choice was applied (or timed out); later choices are ignored
 
   constructor(bundled: PackRepository, bundledId: string) {
     this.bundled = bundled;
@@ -48,7 +49,7 @@ export class ActivePackRepository implements PackRepository {
    */
   setStartupChoice(choose: Promise<PackRepository | undefined>, idOf: () => string): void {
     this.startup = choose.then((repo: PackRepository | undefined) => {
-      if (repo !== undefined && this.loading === undefined) {
+      if (repo !== undefined && !this.chosen) {
         const id = idOf();
         this.current = repo;
         this.currentId = id;
@@ -80,6 +81,7 @@ export class ActivePackRepository implements PackRepository {
       Log.e(LogEvents.COURSE, `event=switch_fail id=${id} issues=${r.issues.length} keep=${this.currentId}`);
       return r;
     }
+    this.chosen = true;
     this.current = repo;
     this.currentId = id;
     this.loading = Promise.resolve(r);
@@ -95,6 +97,7 @@ export class ActivePackRepository implements PackRepository {
 
   private async doLoad(): Promise<PackLoadResult> {
     await Promise.race([this.startup, new Promise<void>((resolve) => setTimeout(resolve, STARTUP_CHOICE_TIMEOUT_MS))]);
+    this.chosen = true;
     const repo = this.current;
     let r: PackLoadResult;
     try {
