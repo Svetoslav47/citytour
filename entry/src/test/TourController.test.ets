@@ -841,7 +841,7 @@ export default function tourControllerTest() {
         done();
       });
 
-    it('A13: no clips for the language keeps the plan; the live label wins while a sentence is audible', 0,
+    it('A13: no clips for the language keeps the plan; the label follows the voice heard at UTT_START', 0,
       async (done: Function) => {
         const h: Harness = new Harness(false, true, true);
         h.clips = new ClipIndex([]);
@@ -852,12 +852,28 @@ export default function tourControllerTest() {
         await h.ctrl.plan(MINI_TOUR_ID, 0);
         expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.PRERENDERED);
         expect(h.log.find('NARR_AUDIO', 'action=tts_per_sentence', 0) >= 0).assertTrue(); // en/zh: no exclusion
-        h.placeNear(MINI_BARBICAN, 60, 0);
+        h.placeNear(MINI_BARBICAN, 200, 0);
+        h.speech.sentenceMs = 3000;
+        h.live = VoiceLabel.FALLBACK_ZH_READS_EN;          // the welcome line has no clip: the zh voice reads it
         await h.ctrl.start();
-        h.live = VoiceLabel.FALLBACK_ZH_READS_EN;          // an arrival line read by the zh voice
+        expect(h.speech.spoken.length).assertEqual(1);
         expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.FALLBACK_ZH_READS_EN);
-        h.live = VoiceLabel.TEXT_ONLY_PLATFORM;            // a silent text sentence keeps the tour label
+        const metas: MediaMeta[] = h.media.metas;
+        expect(metas[metas.length - 1].voiceLabel).assertEqual(VoiceLabel.FALLBACK_ZH_READS_EN); // no "Studio voice"
+        expect(h.log.find('NARR_AUDIO', 'event=voice_label from=plan to=fallback', 0) >= 0).assertTrue();
+        h.live = undefined;                                // between sentences: no flicker back to the plan label
+        expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.FALLBACK_ZH_READS_EN);
+        h.live = VoiceLabel.PRERENDERED;                   // the next sentence plays a studio clip
+        h.sched.advance(3000);
+        expect(h.speech.spoken.length).assertEqual(2);
         expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.PRERENDERED);
+        expect(h.media.metas[h.media.metas.length - 1].voiceLabel).assertEqual(VoiceLabel.PRERENDERED);
+        const n: number = h.media.metas.length;
+        h.live = VoiceLabel.TEXT_ONLY_PLATFORM;            // a silent text sentence keeps the last heard label
+        h.sched.advance(3000);
+        expect(h.speech.spoken.length).assertEqual(3);
+        expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.PRERENDERED);
+        expect(h.media.metas.length).assertEqual(n);       // unchanged label: no AVSession update
         h.ctrl.end();
         done();
       });
