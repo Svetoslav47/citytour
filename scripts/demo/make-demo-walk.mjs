@@ -6,9 +6,12 @@
 // same pipeline as real fixes. Everything in the output is labelled simulated (`simulated: true`, `notice`).
 //
 // Input (committed, never fetched here):
-//   data/raw/osrm/royal-route-foot.json  OSRM foot route through the 11 Royal Route stops (geometry + legs)
+//   entry/src/main/resources/rawfile/packs/krakow/{routes,tours,pois}.json  the app's own offline pack (task B2):
+//       the Royal Route stops, their OSRM foot legs (geometry + steps) and the walking-time matrix
 //   data/raw/osm/oldtown-tile*.osm.gz    OSM ways of ul. Floriańska, for the walk from the start point
-//   docs/design/map/map-meta.json        stop names (same order as the OSRM waypoints)
+// The walk follows the pack's legs in the order the app's planner (core/route/Planner, Held-Karp: walking time +
+// dwell, fixed first and last stop) visits the stops, so the simulated walker stays on the route the app draws and
+// guides along (task A9: turn cues and off-route detection run against exactly these legs).
 // Output:
 //   entry/src/main/resources/rawfile/demo/royal-route-walk.json   (default)
 //   entry/src/test/fixtures/DemoTrackMini.ets                     (with --fixture: stops 7-11 for A11's replay test)
@@ -16,11 +19,13 @@
 // The walk (defaults, all seeded and deterministic):
 //   - starts slightly off-route on ul. Floriańska at the Main Square end (a visitor coming from the square),
 //     warms up 8 s (accuracy 30 m -> 6 m), walks up Floriańska, passes St Florian's Gate at walking speed,
-//     reaches the Barbican (tour start) and then follows the OSRM route stop by stop to Wawel;
+//     reaches the Barbican (tour start) and then follows the pack's legs stop by stop to Wawel (planned order:
+//     the Adam Mickiewicz Monument comes before the Cloth Hall);
 //   - walking speed 1.3 +- 0.15 m/s per leg, gentle per-second variation, accelerates from stops, slows at corners;
 //   - GPS-like error: AR(1)-correlated Gaussian jitter, sigma 4 m, reported accuracy 4-9 m;
 //   - course over ground from the direction of motion (+- 4 deg), speed ~0 and course unknown while standing;
-//   - 40 s dwell at every stop, flagged `hold: true` (the player extends a hold while the story plays);
+//   - 40 s dwell at every stop, flagged `hold: true` (the player extends a hold while the story plays), at the
+//     leg's end point (the OSRM snap of the stop), or `dwellTowardPoiM` metres from it towards the stop's POI;
 //   - St Andrew's Church (stop 9) is passed at walking speed (no dwell): the teaser-only case;
 //   - one ~80 m detour off Grodzka between stops 7 and 8: the off-route + re-plan case;
 //   - 10 s of degraded accuracy (60 m, sigma 25 m) in ul. Kanonicza between stops 10 and 11.
@@ -32,11 +37,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { unproject } from '../pack/projection.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const OSRM_FILE = 'data/raw/osrm/royal-route-foot.json';
+const PACK_DIR = 'entry/src/main/resources/rawfile/packs/krakow';
+const TOUR_ID = 'royal-route';
 const OSM_DIR = 'data/raw/osm';
-const META_FILE = 'docs/design/map/map-meta.json';
 const OUT_FILE = 'entry/src/main/resources/rawfile/demo/royal-route-walk.json';
 const FIXTURE_FILE = 'entry/src/test/fixtures/DemoTrackMini.ets';
 
@@ -62,7 +68,13 @@ const P = {
   poorAccS: 10,
   poorAccM: 60,
   poorAccSigmaM: 25,
-  fixtureFromStop: 7
+  fixtureFromStop: 7,
+  detourSide: 'left',      // east of Grodzka (towards stop 8: the re-plan keeps stop 8 as the next stop)
+  // Sts Peter and Paul (stop 8) and St Andrew's (stop 9) are neighbours on Grodzka: the OSRM snap of stop 8 is 39 m
+  // from St Andrew's POI (trigger radius 35 + accuracy allowance), so a walker waiting there would already "arrive"
+  // at the pass-by stop. They wait in the church forecourt instead (30 m from the snap towards the POI: 10 m from
+  // stop 8, 58 m from St Andrew's) and walk back to Grodzka when the story is over.
+  dwellTowardPoiM: { 8: 30 }
 };
 // OSM ways of ul. Floriańska, ordered from the Main Square to St Florian's Gate (data/raw/osm, ODbL).
 const FLORIANSKA_WAYS = ['3989492', '234974342', '359169341', '1013618099'];
@@ -137,35 +149,89 @@ function readJson(rel) {
   }
   return null;
 }
-const osrm = readJson(OSRM_FILE);
-const meta = readJson(META_FILE);
-const route = osrm?.routes?.[0];
-if (osrm?.code !== 'Ok' || !route?.geometry?.coordinates || !Array.isArray(osrm.waypoints)) {
-  die(`${OSRM_FILE} is not an OSRM route response`);
-}
-const coords = route.geometry.coordinates; // [lng, lat]
-LAT0 = coords[0][1];
-LNG0 = coords[0][0];
-KX = Math.cos(LAT0 * RAD);
-const line = coords.map(([lng, lat]) => toXY(lat, lng));
-const names = (meta.stops || []).map((s) => s.name);
-if (names.length !== osrm.waypoints.length) {
-  die(`map-meta has ${names.length} stops but the OSRM route has ${osrm.waypoints.length} waypoints`);
-}
-// Each waypoint is snapped onto the route; find its vertex index (monotonic along the line).
-const stops = [];
-let from = 0;
-osrm.waypoints.forEach((w, k) => {
-  const p = toXY(w.location[1], w.location[0]);
-  let best = from;
-  let bestD = Infinity;
-  for (let i = from; i < line.length; i++) {
-    const d = dist(p, line[i]);
-    if (d < bestD) { bestD = d; best = i; }
+const routes = readJson(`${PACK_DIR}/routes.json`);
+const tours = readJson(`${PACK_DIR}/tours.json`);
+const poisJson = readJson(`${PACK_DIR}/pois.json`);
+const tour = (Array.isArray(tours) ? tours : []).find((t) => t.id === TOUR_ID);
+if (!tour || !Array.isArray(tour.stops) || tour.stops.length < 2) { die(`${PACK_DIR}/tours.json has no tour ${TOUR_ID}`); }
+if (!Array.isArray(routes?.legs) || !Array.isArray(routes?.nodeIds)) { die(`${PACK_DIR}/routes.json has no legs`); }
+const poiById = new Map((Array.isArray(poisJson) ? poisJson : poisJson.pois || []).map((p) => [p.id, p]));
+const order = plannedOrder(tour, routes);
+const legOf = (a, b) => routes.legs.find((l) => l.fromPoiId === a && l.toPoiId === b);
+
+/**
+ * The app planner's order (core/route/Planner + HeldKarp, ARCHITECTURE §6): an open path over the tour's stops that
+ * minimises sum(walk duration + dwell of the stop reached), with the fixed first and last stop. Exact DP (11 stops).
+ */
+function plannedOrder(t, r) {
+  const ids = t.stops.map((x) => x.poiId);
+  const ix = new Map(r.nodeIds.map((id, i) => [id, i]));
+  const dwell = t.stops.map((x) => x.dwellS || 0);
+  const c = (a, b) => {
+    const v = r.durationsS?.[ix.get(ids[a])]?.[ix.get(ids[b])];
+    if (!Number.isFinite(v)) { die(`routes.json has no duration ${ids[a]} -> ${ids[b]}`); }
+    return v + dwell[b];
+  };
+  const first = t.fixedStartPoiId ? ids.indexOf(t.fixedStartPoiId) : 0;
+  const last = t.fixedEndPoiId ? ids.indexOf(t.fixedEndPoiId) : -1;
+  const mid = ids.map((_, i) => i).filter((i) => i !== first && i !== last);
+  const m = mid.length;
+  const full = (1 << m) - 1;
+  const dp = Array.from({ length: 1 << m }, () => new Array(m).fill(Infinity));
+  const par = Array.from({ length: 1 << m }, () => new Array(m).fill(-1));
+  for (let a = 0; a < m; a++) { dp[1 << a][a] = c(first, mid[a]); }
+  for (let S = 1; S <= full; S++) {
+    for (let a = 0; a < m; a++) {
+      if (!((S >> a) & 1) || dp[S][a] === Infinity) { continue; }
+      for (let b = 0; b < m; b++) {
+        if ((S >> b) & 1) { continue; }
+        const v = dp[S][a] + c(mid[a], mid[b]);
+        if (v < dp[S | (1 << b)][b]) { dp[S | (1 << b)][b] = v; par[S | (1 << b)][b] = a; }
+      }
+    }
   }
-  if (bestD > 3) { die(`waypoint ${k + 1} is ${bestD.toFixed(1)} m from the route geometry`); }
-  stops.push({ n: k + 1, name: names[k], lat: w.location[1], lng: w.location[0], idx: best, p: line[best] });
-  from = best;
+  let best = Infinity;
+  let ba = -1;
+  for (let a = 0; a < m; a++) {
+    const v = dp[full][a] + (last >= 0 ? c(mid[a], last) : 0);
+    if (v < best) { best = v; ba = a; }
+  }
+  const path = [];
+  for (let S = full, a = ba; a >= 0;) { path.unshift(mid[a]); const p = par[S][a]; S &= ~(1 << a); a = p; }
+  return [first, ...path, ...(last >= 0 ? [last] : [])].map((i) => ids[i]);
+}
+
+// Local frame around the first stop's leg start.
+const firstLeg = legOf(order[0], order[1]);
+if (!firstLeg) { die(`routes.json has no leg ${order[0]} -> ${order[1]}`); }
+{
+  const ll = unproject(firstLeg.geometry[0], firstLeg.geometry[1]);
+  LAT0 = ll.lat;
+  LNG0 = ll.lng;
+  KX = Math.cos(LAT0 * RAD);
+}
+/** A pack leg (projected pack metres) as points of the local frame. */
+function legPoints(leg) {
+  const pts = [];
+  for (let i = 0; i + 1 < leg.geometry.length; i += 2) {
+    const ll = unproject(leg.geometry[i], leg.geometry[i + 1]);
+    const p = toXY(ll.lat, ll.lng);
+    if (pts.length === 0 || dist(pts[pts.length - 1], p) > 0.05) { pts.push(p); }
+  }
+  return pts;
+}
+const legPts = [];
+for (let k = 1; k < order.length; k++) {
+  const leg = legOf(order[k - 1], order[k]);
+  if (!leg || leg.geometry.length < 4) { die(`routes.json has no leg geometry ${order[k - 1]} -> ${order[k]}`); }
+  legPts.push(legPoints(leg));
+}
+// Stop k (1-based n) is reached at the end of leg k-1; the first stop at the start of leg 0.
+const stops = order.map((id, k) => {
+  const poi = poiById.get(id);
+  if (!poi) { die(`pois.json has no ${id}`); }
+  const p = k === 0 ? legPts[0][0] : legPts[k - 1][legPts[k - 1].length - 1];
+  return { n: k + 1, poiId: id, name: poi.names?.en || poi.names?.pl || id, lat: poi.lat, lng: poi.lng, p };
 });
 
 function florianskaPolyline() {
@@ -222,7 +288,6 @@ function florianskaPolyline() {
 // ---- the plan: a list of pieces ----
 // walk: { pts: XY[], toStop: n | 0 }   dwell: { stop: n, s: seconds }
 const pieces = [];
-const lineSlice = (i, j) => line.slice(i, j + 1);
 if (P.start === 'florianska') {
   const up = florianskaPolyline();
   pieces.push({ kind: 'warmup', at: up[0], s: P.warmupS });
@@ -232,8 +297,25 @@ if (P.start === 'florianska') {
   pieces.push({ kind: 'warmup', at: stops[0].p, s: P.warmupS });
 }
 pieces.push({ kind: 'dwell', stop: 1, s: P.dwellS });
+/** The incoming leg, extended `dwellTowardPoiM` metres from its end towards the stop's POI where asked. */
+function legToStop(k) {
+  let pts = legPts[k - 1];
+  const m = P.dwellTowardPoiM[stops[k].n] || 0;
+  if (m > 0) {
+    const end = pts[pts.length - 1];
+    const poi = toXY(stops[k].lat, stops[k].lng);
+    const d = dist(end, poi);
+    if (d > 0.5) {
+      const p = lerp(end, poi, m / d);
+      pts = [...pts, p];
+      stops[k].p = p;
+    }
+  }
+  return pts;
+}
 for (let k = 1; k < stops.length; k++) {
-  let pts = lineSlice(stops[k - 1].idx, stops[k].idx);
+  let pts = legToStop(k);
+  if (dist(stops[k - 1].p, pts[0]) > 0.5) { pts = [stops[k - 1].p, ...pts]; }   // from where the walker waited
   if (k === P.detourAfterStop) { pts = withDetour(pts); }
   const piece = { kind: 'walk', pts, toStop: stops[k].n };
   if (k === P.poorAccAfterStop) { piece.poorAccAt = P.poorAccAtFraction; }
@@ -249,9 +331,10 @@ function withDetour(pts) {
   const b = pointAt(pts, cum, total * P.detourAtFraction + 30);
   const ux = (b.p.x - a.p.x) / 30;
   const uy = (b.p.y - a.p.y) / 30;
-  // Normal to the right of the direction of travel (west of Grodzka, which runs south).
-  const nx = uy;
-  const ny = -ux;
+  // Normal to the right (west of Grodzka, which runs south) or, with detourSide 'left', to the left (east).
+  const sgn = P.detourSide === 'left' ? -1 : 1;
+  const nx = sgn * uy;
+  const ny = -sgn * ux;
   const off = (d, along) => ({ x: a.p.x + nx * d + ux * along, y: a.p.y + ny * d + uy * along });
   const out = P.detourOutM;
   const excursion = [off(out * 0.35, 4), off(out * 0.7, 8), off(out * 0.95, 12), off(out * 0.95, 18),
@@ -375,12 +458,12 @@ for (const piece of pieces) {
   }
 }
 
-// Detour window = fixes farther than 35 m from the OSRM line (computed on the truth-free output for honesty).
-function distToLine(p) {
+// Detour window = fixes farther than 35 m from the planned leg (computed on the truth-free output for honesty).
+function distToLine(p, poly) {
   let best = Infinity;
-  for (let i = 0; i + 1 < line.length; i++) {
-    const a = line[i];
-    const b = line[i + 1];
+  for (let i = 0; i + 1 < poly.length; i++) {
+    const a = poly[i];
+    const b = poly[i + 1];
     const L2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
     const u = L2 > 0 ? clamp(((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / L2, 0, 1) : 0;
     best = Math.min(best, dist(p, lerp(a, b, u)));
@@ -395,7 +478,7 @@ function distToLine(p) {
   let maxOff = 0;
   for (const f of fixes) {
     if (f.tRelMs <= s7.departMs || f.tRelMs >= s8.arrivalMs) { continue; }
-    const d = distToLine(toXY(f.lat, f.lng));
+    const d = distToLine(toXY(f.lat, f.lng), legPts[P.detourAfterStop - 1]);
     maxOff = Math.max(maxOff, d);
     if (d > 35) {
       if (first < 0) { first = f.tRelMs; }
@@ -418,11 +501,12 @@ const track = {
   simulated: true,
   notice: 'SIMULATED location track for the emulator demo (the emulator GPS is a fixed point). Not recorded GPS.',
   generatedBy: 'scripts/demo/make-demo-walk.mjs',
-  source: `${OSRM_FILE} (OSRM foot route, OSM data ODbL) + ul. Floriańska from ${OSM_DIR} (ODbL)`,
+  source: `${PACK_DIR}/routes.json (the pack's OSRM foot legs in the planner's order, OSM data ODbL) + ` +
+    `ul. Floriańska from ${OSM_DIR} (ODbL)`,
   params: P,
   summary: { fixes: fixes.length, durationS: fixes.length - 1, walkedM: Math.round(walkedM) },
   stops: stops.map((s) => ({
-    n: s.n, name: s.name, lat: s.lat, lng: s.lng,
+    n: s.n, poiId: s.poiId, name: s.name, lat: s.lat, lng: s.lng,
     mode: stopLog.get(s.n).mode, arrivalMs: stopLog.get(s.n).arrivalMs, departMs: stopLog.get(s.n).departMs
   })),
   events,
@@ -465,9 +549,30 @@ if (writeFixture) {
   const t0 = stopLog.get(P.fixtureFromStop).arrivalMs;
   const rows = fixes.filter((f) => f.tRelMs >= t0).map((f) =>
     `[${f.tRelMs - t0}, ${f.lat}, ${f.lng}, ${f.accuracyM}, ${f.speedMps}, ${f.courseDeg === null ? -1 : f.courseDeg}, ${f.hold ? f.stop : 0}]`);
-  const miniStops = track.stops.filter((s) => s.n >= P.fixtureFromStop).map((s) =>
-    `  { n: ${s.n}, name: '${s.name.replace(/'/g, '\\\'')}', lat: ${s.lat}, lng: ${s.lng}, mode: '${s.mode}', ` +
-    `arrivalMs: ${s.arrivalMs - t0}, departMs: ${s.departMs - t0} }`);
+  const fixtureStops = track.stops.filter((s) => s.n >= P.fixtureFromStop);
+  const miniStops = fixtureStops.map((s) =>
+    `  { n: ${s.n}, poiId: '${s.poiId}', name: '${s.name.replace(/'/g, '\\\'')}', lat: ${s.lat}, lng: ${s.lng}, ` +
+    `mode: '${s.mode}', arrivalMs: ${s.arrivalMs - t0}, departMs: ${s.departMs - t0} }`);
+  // The pack's legs between every ordered pair of the fixture stops (a re-plan may pick any of them) and their
+  // walking matrix, verbatim from routes.json (pack projection, like RouteLeg.geometry in the app).
+  const MAN = { 'depart': 'DEPART', 'turn': 'TURN', 'continue': 'CONTINUE', 'new name': 'NEW_NAME', 'fork': 'FORK',
+    'end of road': 'END_OF_ROAD', 'roundabout': 'ROUNDABOUT', 'arrive': 'ARRIVE' };
+  const q = (v) => `'${String(v).replace(/\\/g, '\\\\').replace(/'/g, '\\\'')}'`;
+  const miniIds = fixtureStops.map((s) => s.poiId);
+  const miniLegs = [];
+  for (const a of miniIds) {
+    for (const b of miniIds) {
+      if (a === b) { continue; }
+      const l = legOf(a, b);
+      if (!l) { die(`routes.json has no leg ${a} -> ${b}`); }
+      const steps = l.steps.map((st) => `st(Maneuver.${MAN[st.maneuver] || 'OTHER'}, ${q(st.modifier)}, ` +
+        `${q(st.streetName)}, ${st.distanceM}, ${st.durationS}, ${st.geomIndex}, ${st.x}, ${st.y})`);
+      miniLegs.push(`  leg(${q(a)}, ${q(b)}, ${l.distanceM}, ${l.durationS}, [${l.geometry.join(', ')}], [\n` +
+        `    ${steps.join(',\n    ')}\n  ])`);
+    }
+  }
+  const ix = new Map(routes.nodeIds.map((id, i) => [id, i]));
+  const sub = (mx) => miniIds.map((a) => `[${miniIds.map((b) => mx[ix.get(a)][ix.get(b)]).join(', ')}]`).join(', ');
   const miniEvents = events.filter((e) => e.fromMs >= t0).map((e) =>
     `  { kind: '${e.kind}', fromMs: ${e.fromMs - t0}, toMs: ${e.toMs - t0} }`);
   const ets = `/*
@@ -477,9 +582,11 @@ if (writeFixture) {
  * Row = [tRelMs, lat, lng, accuracyM, speedMps, courseDeg (-1 = unknown), hold stop number (0 = moving)].
  */
 import { DemoFix, DemoTrack } from '../../main/ets/core/sim/DemoWalkPlayer';
+import { Maneuver, RouteLeg, RouteStep } from '../../main/ets/contracts/Model';
 
 export interface MiniStop {
   n: number;
+  poiId: string;     // the pack POI of the stop
   name: string;
   lat: number;
   lng: number;
@@ -501,6 +608,30 @@ ${miniStops.join(',\n')}
 export const DEMO_MINI_EVENTS: MiniEvent[] = [
 ${miniEvents.join(',\n')}
 ];
+
+/** routes.json walking matrix of the fixture stops (DEMO_MINI_STOPS order). */
+export const DEMO_MINI_DIST_M: number[][] = [${sub(routes.distancesM)}];
+export const DEMO_MINI_DUR_S: number[][] = [${sub(routes.durationsS)}];
+
+function st(m: Maneuver, modifier: string, street: string, d: number, t: number, gi: number, x: number,
+  y: number): RouteStep {
+  const s: RouteStep = {
+    maneuver: m, modifier: modifier, streetName: street, distanceM: d, durationS: t, geomIndex: gi, x: x, y: y
+  };
+  return s;
+}
+
+function leg(from: string, to: string, d: number, t: number, g: number[], steps: RouteStep[]): RouteLeg {
+  const l: RouteLeg = { fromPoiId: from, toPoiId: to, distanceM: d, durationS: t, geometry: g, steps: steps };
+  return l;
+}
+
+/** The pack's legs between every ordered pair of fixture stops (routes.json, verbatim). */
+export function demoMiniLegs(): RouteLeg[] {
+  return [
+${miniLegs.join(',\n')}
+  ];
+}
 
 const ROWS: number[][] = [
 ${rows.map((r) => '  ' + r).join(',\n')}

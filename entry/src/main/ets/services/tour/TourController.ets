@@ -46,7 +46,9 @@ import {
   MediaSessionPort, NotifierPort, PackLoadResult, PackRepository, PermissionPort, PermissionState, SnapshotListener,
   SpeechListener, SpeechPort, TourControl, Utterance, VoicePlan, VoicePort
 } from '../../contracts/Ports';
-import { LatLng, Lang, Narration, NarrationLength, PackManifest, Poi, Tour, TourStop } from '../../contracts/Model';
+import {
+  LatLng, Lang, Narration, NarrationLength, PackManifest, Poi, RouteLeg, Tour, TourStop
+} from '../../contracts/Model';
 import { VoiceLabel } from '../../contracts/Settings';
 import { StepResult, TourEngine, TourInput, TourState } from '../../core/tour/TourEngine';
 import { TourConfig } from '../../core/tour/TourConfig';
@@ -469,9 +471,10 @@ export class TourController implements TourControl {
 
   // ================================================================ extras
 
-  /** Applied at the next plan(). */
+  /** Applied at the next plan(); spokenDirections also to the running tour (A9). */
   setOptions(o: TourOptions): void {
     this.opts = o;
+    this.syncDirections(o.spokenDirections);   // A9: the Spoken directions toggle also applies to a running tour
   }
 
   options(): TourOptions {
@@ -818,7 +821,7 @@ export class TourController implements TourControl {
       tour: tour, pois: this.tourPois(tour), lang: lang, personaId: personaId,
       narration: (poiId: string, len: NarrationLength) => this.narrationFor(poiId, personaId, lang, len),
       voice: vp, adaptiveLength: this.opts.adaptiveLength, spokenDirections: this.opts.spokenDirections,
-      briefOnly: this.opts.briefOnly, source: this.sourceKind
+      briefOnly: this.opts.briefOnly, source: this.sourceKind, legs: this.packLegs()
     };
     this.state = TourEngine.init(input, this.opts.config !== undefined ? this.opts.config : new TourConfig());
     this.dispatchType(EngineEventType.START_PLANNING);
@@ -858,6 +861,31 @@ export class TourController implements TourControl {
         `sources=${n.sources.length} sentences=${n.sentences.length}`);
     }
     return n;
+  }
+
+  /** A9: every directed stop-pair leg of the pack (turn-by-turn geometry and OSRM steps); [] if unavailable. */
+  private packLegs(): RouteLeg[] {
+    try {
+      return this.deps.pack.routes().legs;
+    } catch (e) {
+      this.deps.log.error(LogEvents.UNCAUGHT, `where=PackRepository.routes ${errText(e as Object)}`);
+      return [];
+    }
+  }
+
+  /** A9: the Spoken directions toggle: applies to the running tour at once (setOptions calls it too). */
+  setSpokenDirections(on: boolean): void {
+    this.opts.spokenDirections = on;
+    this.syncDirections(on);
+  }
+
+  private syncDirections(on: boolean): void {
+    const st: TourState | undefined = this.state;
+    if (st === undefined || st.spokenDirections === on) {
+      return;
+    }
+    TourEngine.setSpokenDirections(st, on);
+    this.deps.log.info(LogEvents.SETTINGS, `spokenDirections=${on ? 1 : 0} where=tour phase=${st.phase}`);
   }
 
   private replan(): void {

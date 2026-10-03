@@ -6,12 +6,13 @@
 // the simulated welcome line, and the localized-name fallback chain.
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  ALL_LANGS, ALL_PHRASE_KEYS, ALL_REL_DIRS, PhraseKey, approachSentence, arrivalSentences, distancePhrase,
-  finishSentences, gpsLostSentence, localized, nextStopSentence, phrase, phraseTemplate, relDirPhrase,
-  welcomeSentences
+  ALL_LANGS, ALL_MANEUVERS, ALL_MODIFIERS, ALL_PHRASE_KEYS, ALL_REL_DIRS, PhraseKey, actionWithStreet,
+  approachSentence, arrivalSentences, distancePhrase, finishSentences, gpsLostSentence, localized, maneuverAction,
+  nextStopSentence, phrase, phraseTemplate, relDirPhrase, welcomeSentences
 } from '../main/ets/core/content/Phrases';
 import { RelDir } from '../main/ets/contracts/EngineTypes';
-import { Lang, LocalizedText, LookDir, ViewHint } from '../main/ets/contracts/Model';
+import { Lang, LocalizedText, LookDir, Maneuver, RouteStep, ViewHint } from '../main/ets/contracts/Model';
+import { maneuverUiText, nowText, prepareText } from '../main/ets/core/route/Guidance';
 
 const LONG_NAME: string = 'Saint Mary\'s Basilica';
 
@@ -30,7 +31,9 @@ function allFilled(lang: Lang): string[] {
   for (const k of ALL_PHRASE_KEYS) {
     out.push(phrase(k, lang, {
       name: LONG_NAME, dir: relDirPhrase(RelDir.BEHIND_RIGHT, lang), dist: distancePhrase(430, lang, 1.3),
-      feature: 'the taller tower', tour: 'The Royal Route'
+      feature: 'the taller tower', tour: 'The Royal Route',
+      action: maneuverAction(Maneuver.END_OF_ROAD, 'sharp left', lang),
+      next: maneuverAction(Maneuver.FORK, 'slight right', lang), street: 'Floriańska'
     }));
   }
   return out;
@@ -150,6 +153,51 @@ export default function phrasesTest() {
       expect(gpsLostSentence(Lang.EN)).assertEqual('I\'ve lost the GPS signal. I\'ll continue when it\'s back.');
       expect(phrase(PhraseKey.WELCOME, Lang.EN, { tour: 'The Royal Route' }))
         .assertEqual('Welcome! Today\'s walk: The Royal Route.');
+    });
+
+    it('every_maneuver_x_modifier_x_lang_has_a_short_action', 0, () => {
+      for (const lang of ALL_LANGS) {
+        for (const m of ALL_MANEUVERS) {
+          for (const mod of ALL_MODIFIERS) {
+            const a: string = maneuverAction(m, mod, lang);
+            expect(a.length).assertLarger(0);
+            expect(a.indexOf('{') < 0 && a.indexOf('}') < 0).assertTrue();
+            if (lang === Lang.ZH) {
+              expect(/[A-Za-z]/.test(a)).assertFalse();
+              expect(a.length).assertLessOrEqual(12);
+            } else {
+              expect(wordCount(a)).assertLessOrEqual(9);
+            }
+            const st: RouteStep = {
+              maneuver: m, modifier: mod, streetName: 'Floriańska', distanceM: 40, durationS: 30, geomIndex: 0, x: 0,
+              y: 0
+            };
+            const lines: string[] = [prepareText(lang, st, 28, 1.3, undefined), nowText(lang, st, st),
+              maneuverUiText(lang, st, 120, 1.3, 8)];
+            for (const l of lines) {
+              expect(l.indexOf('{') < 0).assertTrue();
+            }
+          }
+        }
+        // left and right never read the same
+        expect(maneuverAction(Maneuver.TURN, 'left', lang) === maneuverAction(Maneuver.TURN, 'right', lang))
+          .assertFalse();
+        expect(maneuverAction(Maneuver.FORK, 'slight left', lang) ===
+          maneuverAction(Maneuver.FORK, 'slight right', lang)).assertFalse();
+      }
+    });
+
+    it('zh_omits_polish_street_names_en_and_pl_keep_them', 0, () => {
+      const st: RouteStep = {
+        maneuver: Maneuver.TURN, modifier: 'left', streetName: 'Floriańska', distanceM: 40, durationS: 30, geomIndex: 0,
+        x: 0, y: 0
+      };
+      expect(prepareText(Lang.ZH, st, 30, 1.3, undefined).indexOf('Floriańska') < 0).assertTrue();
+      expect(nowText(Lang.ZH, st, undefined)).assertEqual('现在左转。');
+      expect(nowText(Lang.EN, st, undefined)).assertEqual('Now turn left onto Floriańska.');
+      expect(nowText(Lang.PL, st, undefined)).assertEqual('Teraz skręć w lewo (Floriańska).');
+      expect(actionWithStreet('左转', 'Floriańska', Lang.ZH)).assertEqual('左转');
+      expect(actionWithStreet('turn left', '', Lang.EN)).assertEqual('turn left');
     });
 
     it('localized_falls_back_en_pl_zh', 0, () => {
