@@ -15,10 +15,17 @@
  * before stopping the task, as the continuous-task guide requires), mediaSession() = MediaSessionService (AVSession
  * 'audio'). Both are constructed lazily and only touch the platform when start()/init() is called. shutdown()
  * stops the task and destroys the session.
+ * A10 wiring (ARCHITECTURE §9): NarrationPlayer's audio interrupts / headphone loss go to the TourController
+ * (rows 12/13, a services-side hook, no SpeechPort change); the controller's keepScreenOn goes to
+ * window.setWindowKeepScreenOn on the last window (row 14; API 9, doc API参考/ArkUI_方舟UI框架/ArkTS_API/窗口管理/
+ * ohos_window_窗口_/Interface_Window/arkts-apis-window-window, getLastWindow: .../Functions/arkts-apis-window-f,
+ * FAQ faqs-arkui-1366: only effective in the foreground, reset it when the scene ends); AppConfig.DEBUG_CORRUPT_PACK
+ * swaps in CorruptPackRepository (row 17 demo).
  * UIAbilityContext: doc 开发指南/Ability_Kit_程序框架服务/应用模型/应用组件/UIAbility组件/
  * 启动应用内的UIAbility组件/uiability-intra-device-interaction.
  */
 import { common } from '@kit.AbilityKit';
+import { window } from '@kit.ArkUI';
 import {
   BackgroundPort, Clock, FixSource, HapticsPort, LocationSource, LoggerPort, MediaSessionPort, NotifierPort,
   PackRepository, PermissionPort, PermissionState, SpeechPort, TourControl, VoicePort
@@ -30,7 +37,8 @@ import { DemoWalkSource } from '../services/location/DemoWalkSource';
 import { PermissionService } from '../services/location/PermissionService';
 import { RealLocationSource } from '../services/location/RealLocationSource';
 import { PackFactory } from '../services/pack/PackFactory';
-import { NarrationPlayer } from '../services/speech/NarrationPlayer';
+import { CorruptPackRepository } from '../services/debug/CorruptPackRepository';
+import { AudioEventListener, NarrationPlayer } from '../services/speech/NarrationPlayer';
 import { TtsEngines } from '../services/speech/TtsEngines';
 import { VoiceManager } from '../services/speech/VoiceManager';
 import { TourNotifier } from '../services/notify/TourNotifier';
@@ -39,6 +47,7 @@ import { ScriptedTourControl } from '../services/tour/ScriptedTourControl';
 import { DemoControls, TourController, TourControllerDeps } from '../services/tour/TourController';
 import { Lang } from '../contracts/Model';
 import { SystemClock, SystemScheduler } from './Clock';
+import { AppConfig } from './AppConfig';
 import { HilogLogger, Log } from './Log';
 import { LogEvents } from './LogEvents';
 
@@ -123,7 +132,7 @@ export class AppContainer {
     }
     AppContainer.ctx = ctx;
     try {
-      AppContainer.packImpl = PackFactory.create();
+      AppContainer.packImpl = AppContainer.makePack();
       AppContainer.buildSpeech();
       AppContainer.permImpl = new PermissionService(ctx);
       AppContainer.realLocImpl = new RealLocationSource(AppContainer.permImpl);
@@ -217,7 +226,16 @@ export class AppContainer {
   }
 
   static packKind(): string {
-    return PackFactory.kind();
+    return AppConfig.DEBUG_CORRUPT_PACK ? 'corrupt-debug' : PackFactory.kind();
+  }
+
+  /** The real pack, or the §9 row 17 fault (AppConfig.DEBUG_CORRUPT_PACK, false in git). */
+  private static makePack(): PackRepository {
+    if (AppConfig.DEBUG_CORRUPT_PACK) {
+      Log.w(LogEvents.PACK_ERR, 'file=pois.json reason=parse src=debug action=inject flag=DEBUG_CORRUPT_PACK');
+      return new CorruptPackRepository(AppContainer.loggerImpl);
+    }
+    return PackFactory.create();
   }
 
   static tourControl(): TourControl {
@@ -255,10 +273,17 @@ export class AppContainer {
       media: (): MediaSessionPort | undefined => AppContainer.mediaSession(),
       notifier: (): NotifierPort | undefined => AppContainer.notifier(),
       haptics: (): HapticsPort | undefined => AppContainer.haptics(),
-      permissions: (): PermissionPort | undefined => AppContainer.permissions()
+      permissions: (): PermissionPort | undefined => AppContainer.permissions(),
+      keepScreenOn: (on: boolean) => AppContainer.keepScreenOn(on)
     };
     const ctrl: TourController = new TourController(deps);
     AppContainer.tourNotifier().attach(ctrl, (): Lang => ctrl.options().lang);
+    // §9 rows 12/13: the speech service reports audio focus loss and headphone removal to the tour.
+    const audioEvents: AudioEventListener = {
+      onInterrupt: (hint: string) => ctrl.onAudioInterrupt(hint),
+      onRouteLost: (devices: string) => ctrl.onAudioRouteLost(devices)
+    };
+    AppContainer.narration().setAudioEventListener(audioEvents);
     return ctrl;
   }
 
@@ -281,6 +306,23 @@ export class AppContainer {
     return AppContainer.hapticsImpl;
   }
 
+  /** §9 row 14: keep the screen on while the tour runs without its continuous task. Best effort, never throws. */
+  static keepScreenOn(on: boolean): void {
+    const ctx = AppContainer.ctx;
+    if (ctx === undefined) {
+      return;
+    }
+    try {
+      window.getLastWindow(ctx).then((w: window.Window) => w.setWindowKeepScreenOn(on)).then(() => {
+        Log.i(LogEvents.SETTINGS, `keepScreenOn=${on} ok=1`);
+      }).catch((e: Object) => {
+        Log.w(LogEvents.UNCAUGHT, `where=AppContainer.keepScreenOn on=${on} ${Log.errKv(e)}`);
+      });
+    } catch (e) {
+      Log.w(LogEvents.UNCAUGHT, `where=AppContainer.keepScreenOn on=${on} ${Log.errKv(e as Object)}`);
+    }
+  }
+
   /** The LocationSource for a kind: RealLocationSource (Location Kit) or the SIMULATED DemoWalkSource. */
   static locationSource(kind: FixSource): LocationSource | undefined {
     return kind === FixSource.DEMO ? AppContainer.demoWalk() : AppContainer.realLocation();
@@ -299,7 +341,7 @@ export class AppContainer {
 
   static packRepository(): PackRepository {
     if (AppContainer.packImpl === undefined) {
-      AppContainer.packImpl = PackFactory.create();
+      AppContainer.packImpl = AppContainer.makePack();
     }
     return AppContainer.packImpl;
   }

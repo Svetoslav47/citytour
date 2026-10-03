@@ -112,6 +112,40 @@ DEVICE=sdk24 scripts/smoke.sh   # the same on another emulator or device
 git config core.hooksPath scripts/git-hooks
 ```
 
+## Error handling
+
+Every failure a user (or the jury) can hit ends in a visible state and one log line, never a crash (docs/ARCHITECTURE.md §9). The tour controller turns each one into an `AppIssue` (`code`, `severity` INFO / WARN / BLOCKING) in `EngineSnapshot.issues`, which the UI renders with `views/common/IssueBanner.ets`. Log lines go to hilog domain `0xC17A`, tag `CityTour`. To read them, run `devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --tail 300`.
+
+"Emulator" means the row was reproduced on the Pura 90 emulator (6.0.0(20) image) on 2026-10-03. "Unit test" means a case in `scripts/test.sh` (`TourController.test`, `TourEngine.test`) drives the row with fake ports. Rows 18-22 (narration and route fallbacks, offline, uncaught exceptions) belong to other tasks.
+
+| # | Condition | What the user sees | Log line (`CityTour …`) | How verified |
+|---|---|---|---|---|
+| 1 | Location permission denied | Tour detail: "CityTour needs your location…" with **Allow location** and **Try a demo walk instead**. If it happens during a tour: `PERM_DENIED` (BLOCKING). | `E PERM_DENIED perm=LOCATION where=request` (controller: `… src=real code=-2 where=controller`) | Emulator (tapped Deny → banner → demo tour started) + unit test |
+| 2 | Only approximate location granted | Tour detail banner asking for precise location. During a tour: `PERM_APPROX_ONLY` (WARN). Approximate fixes (> 40 m) never trigger a story because of the engine's accuracy gate. | `W PERM_APPROX_ONLY acc=… where=controller action=stories_need_precise` | Unit test. Not reproduced on the emulator. |
+| 3 | Location switch off | Tour detail banner with **Turn on** (`requestGlobalSwitch`). During a tour: `LOC_SWITCH_OFF` (BLOCKING), cleared by the next fix. | `W LOC_SWITCH_OFF src=real code=-4 where=controller action=offer_switch_or_demo` | Emulator (Control Center toggle during a real-GPS tour; the issue appeared and cleared after switching back on) + unit test |
+| 4 | No first fix | `LOC_NOFIX` (WARN) 30 s after start. Planning uses a fix less than 2 min old, otherwise the tour's first stop. | `W LOC_NOFIX secs=30 src=…` | Unit test |
+| 5 | Fix lost during a tour | `signal=lost`. The guide says once "I've lost the GPS signal…". Stop triggers freeze. `LOC_LOST` (WARN) | `W LOC_LOST secs=26` / `I LOC_BACK acc=7` | Emulator (location switched off during a tour, then on) + unit test |
+| 6 | Poor accuracy | `LOC_POOR` (WARN). No false arrival. | `W LOC_POOR acc=… prov=…` (at most once every 30 s) | Unit test |
+| 7 | Location service unavailable (`3301000`, `801`) | `LOC_UNAVAILABLE` (BLOCKING), which offers the Demo walk | `E LOC_UNAVAILABLE src=real code=3301000 where=controller action=offer_demo` | Unit test |
+| 8 | Far from Kraków (more than 5 km outside the pack) | `LOC_OUT_OF_AREA` (INFO). The route starts at the tour's first stop. | `I LOC_OUT_OF_AREA km=7098 src=real action=plan_from_tour_start` (on the first fix of a tour: `action=suggest_demo`) | Emulator (its fixed Beijing location) + unit test |
+| 9 | TTS engine cannot be created | Stories are shown as text. The voice label is `text-only-platform`. `TTS_INIT_FAIL` (WARN). The tour still runs. | `E TTS_INIT_FAIL engine=zh-CN/13 code=1002300005 …` then `E TTS_INIT_FAIL lang=en reason=… action=text_only where=controller` | Emulator (`DEBUG_FAIL_TTS_INIT`) + unit test |
+| 10 | English voice not installed | The zh-CN voice reads English, labelled "Fallback voice". `VOICE_UNAVAILABLE` (INFO). A failed download stays on the fallback. | `W VOICE_STATUS lang=en person=8 status=DOWNLOADABLE action=fallback_voice`, `E VOICE_DL_FAIL code=1002300008` | Emulator (its default state) + unit test. The download failure was verified in A4 (RISKS a5). |
+| 11 | TTS error while speaking | The sentence is skipped and its caption stays. After 3 errors in a row the tour switches to text only. `TTS_ERR` (WARN). | `E TTS_ERR req=… code=… streak=n` | Unit test |
+| 12 | Audio focus lost (call, other app) | The tour pauses (`AUDIO_INTERRUPT`, INFO). On RESUME the interrupted sentence replays. A pause the user made is never undone. | `I AUDIO_INTERRUPT hint=PAUSE action=pause` / `hint=RESUME action=resume` | Unit test (engine + controller). Not reproduced on the emulator: no CLI way to take audio focus. |
+| 13 | Headphones disconnected | The tour pauses (`AUDIO_ROUTE_LOST`, WARN) and never resumes on the loudspeaker. The user resumes it. | `I AUDIO_ROUTE device=SPEAKER action=pause` | Unit test. Not reproduced on the emulator: it has no headset to unplug. |
+| 14 | Continuous task refused or cancelled | `BG_FAIL` (WARN). The tour continues in the foreground with the screen kept on (`setWindowKeepScreenOn`) until it ends. | `E BG_FAIL where=controller result=false action=foreground_only`, `I SETTINGS keepScreenOn=true why=bg_fail`, `W BG_CANCEL reason=…` | Emulator (`DEBUG_FAIL_BG_START`) + unit test (cancel) |
+| 15 | AVSession fails | `AVS_FAIL` (INFO). In-app controls only. | `E AVS_FAIL where=controller result=false` | Unit test |
+| 16 | Notifications refused | `NOTIF_DENIED` (INFO). No next-stop notification. Nothing else changes. | `I NOTIF_DENIED where=controller action=no_next_notice` | Unit test. The notifier service (task A8) is not wired yet. |
+| 17 | Pack missing or corrupt | Home: "Tour data couldn't be loaded. Reinstall the app." `PACK_ERR` (BLOCKING). No tour can be planned. | `E PACK_ERR file=pois.json reason=parse src=debug` | Emulator (`DEBUG_CORRUPT_PACK`) + unit test |
+
+**Simulating failures.** `entry/src/main/ets/app/AppConfig.ets` has three debug flags. They are `false` in git; set one to `true` and rebuild (`devecocli run --device "Pura 90"`):
+
+- `DEBUG_FAIL_TTS_INIT` makes every `createEngine` reject with `1002300005` (row 9);
+- `DEBUG_CORRUPT_PACK` makes the pack report `pois.json` as unparseable (row 17);
+- `DEBUG_FAIL_BG_START` makes the continuous task get refused (row 14).
+
+Each simulated failure logs `src=debug`, so a log never presents a fake failure as a real one. Start a tour from the developer page with `$HDC -t 127.0.0.1:5555 shell aa start -a EntryAbility -b com.hackyeah.citytour --ps page dev`, then **Start demo tour**. The status line lists the active issue codes.
+
 ## Architecture
 
 _To be written as the implementation lands._

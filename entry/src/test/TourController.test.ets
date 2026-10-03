@@ -8,14 +8,19 @@
 // out of area (§9 row 8); missing services are one-line no-ops and FIX_TIMEOUT/LOC_NOFIX fire; text-only pacing
 // by TICK (no SPEAK); lock-screen pause/play; synchronous speech callbacks (no re-entrant reduce); snapshot
 // throttle; end() mid-tour.
+// A10 error matrix (ARCHITECTURE §9): location error mapping (rows 1/3/7) and clearing, approximate-only and
+// out-of-area on the first real fix (rows 2/8), voice plan issues (rows 9/10), audio interrupt / route loss from
+// the speech service (rows 12/13), background failure keeps the screen on (row 14), notifications refused
+// (row 16), pack failures (row 17).
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  DemoControls, TourController, TourControllerDeps, kmOutsideBbox, normalizeDemoSpeed,
-  predictNextUtteranceId
+  DemoControls, TourController, TourControllerDeps, enStatusOf, kmOutsideBbox, locationErrorIssue,
+  normalizeDemoSpeed, predictNextUtteranceId, voiceIssueFor
 } from '../main/ets/services/tour/TourController';
 import { Scheduler } from '../main/ets/app/Clock';
+import { CORRUPT_PACK_DETAIL, CorruptPackRepository } from '../main/ets/services/debug/CorruptPackRepository';
 import {
-  AppIssue, EngineSnapshot, IssueCode, MediaMeta, MediaPlayState, TourPhase, TourPlan
+  AppIssue, EngineSnapshot, IssueCode, IssueSeverity, MediaMeta, MediaPlayState, NextNotice, TourPhase, TourPlan
 } from '../main/ets/contracts/EngineTypes';
 import {
   BackgroundListener, BackgroundPort, Clock, Fix, FixListener, FixSource, HapticsPort, LocationErrorListener,
@@ -216,6 +221,7 @@ class FakeSpeech implements SpeechPort {
 
 class FakeVoice implements VoicePort {
   text: boolean;
+  override: VoicePlan | undefined = undefined;
 
   constructor(text: boolean) {
     this.text = text;
@@ -227,6 +233,9 @@ class FakeVoice implements VoicePort {
   }
 
   plan(textLang: Lang): VoicePlan {
+    if (this.override !== undefined) {
+      return this.override;
+    }
     const v: VoicePlan = {
       textLang: textLang, speechMode: this.text ? 'text' : 'voice', engineLocale: this.text ? '' : 'zh-CN',
       person: this.text ? 0 : 13, languageContext: this.text ? '' : 'en-US',
@@ -245,9 +254,19 @@ class FakeVoice implements VoicePort {
 
 class FakePack implements PackRepository {
   loads: number = 0;
+  fail: string = '';                   // '' | 'not_ok' | 'throw'
 
   load(): Promise<PackLoadResult> {
     this.loads++;
+    if (this.fail === 'throw') {
+      return Promise.reject(new Error('rawfile read failed'));
+    }
+    if (this.fail === 'not_ok') {
+      const bad: PackLoadResult = {
+        ok: false, issues: [{ code: IssueCode.PACK_ERR, severity: IssueSeverity.BLOCKING, detail: 'pois.json parse' }]
+      };
+      return Promise.resolve(bad);
+    }
     const m: PackManifest = {
       schemaVersion: 1, packId: 'mini', version: '0', builtAt: '2026-10-03T00:00:00Z',
       origin: { lat: 50.0617, lng: 19.9373 }, bbox: KRAKOW_BBOX, files: [],
@@ -298,6 +317,7 @@ class FakeSource implements LocationSource {
   stops: number = 0;
   emitOnStart: Fix | undefined = undefined;
   private onFix: FixListener | undefined = undefined;
+  private onError: LocationErrorListener | undefined = undefined;
 
   constructor(kind: FixSource) {
     this.kind = kind;
@@ -307,6 +327,7 @@ class FakeSource implements LocationSource {
     this.running = true;
     this.starts++;
     this.onFix = onFix;
+    this.onError = onError;
     if (this.emitOnStart !== undefined) {
       onFix(this.emitOnStart);
     }
@@ -325,6 +346,12 @@ class FakeSource implements LocationSource {
   emit(f: Fix): void {
     if (this.running && this.onFix !== undefined) {
       this.onFix(f);
+    }
+  }
+
+  fail(code: number): void {
+    if (this.onError !== undefined) {
+      this.onError(code, `test ${code}`);
     }
   }
 }
@@ -361,10 +388,12 @@ class FakeBackground implements BackgroundPort {
   starts: number = 0;
   stops: number = 0;
 
+  ok: boolean = true;
+
   start(): Promise<boolean> {
-    this.running = true;
+    this.running = this.ok;
     this.starts++;
-    return Promise.resolve(true);
+    return Promise.resolve(this.ok);
   }
 
   stop(): Promise<void> {
@@ -391,10 +420,12 @@ class FakeMedia implements MediaSessionPort {
   states: MediaPlayState[] = [];
   onCommand: MediaCommandListener | undefined = undefined;
 
+  ok: boolean = true;
+
   init(onCommand: MediaCommandListener): Promise<boolean> {
     this.onCommand = onCommand;
-    this.active = true;
-    return Promise.resolve(true);
+    this.active = this.ok;
+    return Promise.resolve(this.ok);
   }
 
   setMeta(meta: MediaMeta): void {
@@ -444,6 +475,29 @@ class FakePerms implements PermissionPort {
   }
 }
 
+class FakeNotifier implements NotifierPort {
+  allow: boolean = true;
+  published: number = 0;
+
+  requestEnable(): Promise<boolean> {
+    return Promise.resolve(this.allow);
+  }
+
+  publishNext(notice: NextNotice): Promise<void> {
+    this.published++;
+    return Promise.resolve();
+  }
+
+  cancel(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+/** Lets resolved promise callbacks run. */
+function settle(): Promise<void> {
+  return new Promise<void>((resolve) => setTimeout(resolve, 0));
+}
+
 // ---------------------------------------------------------------- harness
 
 class Harness {
@@ -458,6 +512,9 @@ class Harness {
   bg: FakeBackground = new FakeBackground();
   media: FakeMedia = new FakeMedia();
   perms: FakePerms = new FakePerms(PermissionState.UNKNOWN);
+  voice: FakeVoice;
+  notifier: FakeNotifier | undefined = undefined;
+  screen: boolean[] = [];
   withSources: boolean = true;
   withPlatform: boolean = true;
   ctrl: TourController;
@@ -468,19 +525,23 @@ class Harness {
   constructor(text: boolean, withSources: boolean, withPlatform: boolean) {
     this.sched = new FakeScheduler(this.clock);
     this.speech = new FakeSpeech(this.sched);
+    this.voice = new FakeVoice(text);
     this.withSources = withSources;
     this.withPlatform = withPlatform;
     const deps: TourControllerDeps = {
-      pack: this.pack, speech: this.speech, voice: new FakeVoice(text), log: this.log, clock: this.clock,
+      pack: this.pack, speech: this.speech, voice: this.voice, log: this.log, clock: this.clock,
       scheduler: this.sched,
       sourceFor: (kind: FixSource): LocationSource | undefined => !this.withSources ? undefined :
         (kind === FixSource.DEMO ? this.demo : this.real),
       demoControls: (): DemoControls | undefined => this.withSources ? this.demoCtl : undefined,
       background: (): BackgroundPort | undefined => this.withPlatform ? this.bg : undefined,
       media: (): MediaSessionPort | undefined => this.withPlatform ? this.media : undefined,
-      notifier: (): NotifierPort | undefined => undefined,
+      notifier: (): NotifierPort | undefined => this.notifier,
       haptics: (): HapticsPort | undefined => undefined,
-      permissions: (): PermissionPort | undefined => this.perms
+      permissions: (): PermissionPort | undefined => this.perms,
+      keepScreenOn: (on: boolean) => {
+        this.screen.push(on);
+      }
     };
     this.ctrl = new TourController(deps);
   }
@@ -539,6 +600,10 @@ class Harness {
 
   hasIssue(code: IssueCode): boolean {
     return this.ctrl.current().issues.some((i: AppIssue) => i.code === code);
+  }
+
+  issue(code: IssueCode): AppIssue | undefined {
+    return this.ctrl.current().issues.find((i: AppIssue) => i.code === code);
   }
 }
 
@@ -806,5 +871,268 @@ export default function tourControllerTest() {
       unsub();
       done();
     });
+
+    it('A10 pure: location error codes map to rows 1/3/7, voice plans to rows 9/10', 0, () => {
+      expect(locationErrorIssue(-2, FixSource.REAL).code).assertEqual(IssueCode.PERM_DENIED);
+      expect(locationErrorIssue(201, FixSource.REAL).severity).assertEqual(IssueSeverity.BLOCKING);
+      expect(locationErrorIssue(-4, FixSource.REAL).code).assertEqual(IssueCode.LOC_SWITCH_OFF);
+      expect(locationErrorIssue(3301100, FixSource.REAL).code).assertEqual(IssueCode.LOC_SWITCH_OFF);
+      const u: AppIssue = locationErrorIssue(3301000, FixSource.REAL);
+      expect(u.code).assertEqual(IssueCode.LOC_UNAVAILABLE);
+      expect(u.severity).assertEqual(IssueSeverity.BLOCKING);
+      expect(u.detail).assertEqual('real code=3301000');
+      expect(locationErrorIssue(801, FixSource.REAL).code).assertEqual(IssueCode.LOC_UNAVAILABLE);
+      expect(locationErrorIssue(-1, FixSource.REAL).severity).assertEqual(IssueSeverity.WARN);
+      const base: VoicePlan = {
+        textLang: Lang.EN, speechMode: 'text', engineLocale: '', person: 0, languageContext: '',
+        label: VoiceLabel.TEXT_ONLY_PLATFORM, reason: 'en_status=DOWNLOADABLE zh_status=UNAVAILABLE strategy=x'
+      };
+      expect(voiceIssueFor(base)?.code).assertEqual(IssueCode.TTS_INIT_FAIL);
+      const pl: VoicePlan = {
+        textLang: Lang.PL, speechMode: 'text', engineLocale: '', person: 0, languageContext: '',
+        label: VoiceLabel.TEXT_ONLY_PLATFORM, reason: 'no_voice_for_lang=pl'
+      };
+      expect(voiceIssueFor(pl) === undefined).assertTrue();              // Polish text by design, not a failure
+      const user: VoicePlan = {
+        textLang: Lang.EN, speechMode: 'text', engineLocale: '', person: 0, languageContext: '',
+        label: VoiceLabel.TEXT_ONLY_USER, reason: 'strategy=text-only'
+      };
+      expect(voiceIssueFor(user) === undefined).assertTrue();
+      const zh: VoicePlan = {
+        textLang: Lang.EN, speechMode: 'voice', engineLocale: 'zh-CN', person: 13, languageContext: 'en-US',
+        label: VoiceLabel.FALLBACK_ZH_READS_EN, reason: 'en_status=DOWNLOADABLE zh_status=INSTALLED'
+      };
+      const vi: AppIssue | undefined = voiceIssueFor(zh);
+      expect(vi?.code).assertEqual(IssueCode.VOICE_UNAVAILABLE);
+      expect(vi?.severity).assertEqual(IssueSeverity.INFO);
+      expect(enStatusOf(zh.reason)).assertEqual('DOWNLOADABLE');
+      expect(enStatusOf('none')).assertEqual('');
+    });
+
+    it('A10 rows 1/3/7: real source errors become issues with the row log line and clear on a fix or demo', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        h.perms.state = PermissionState.DENIED;
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        await h.ctrl.start();
+        expect(h.ctrl.isRunning()).assertTrue();
+        h.real.fail(-2);
+        expect(h.issue(IssueCode.PERM_DENIED)?.severity).assertEqual(IssueSeverity.BLOCKING);
+        expect(h.log.find('PERM_DENIED', 'perm=LOCATION src=real code=-2', 0) >= 0).assertTrue();
+        h.real.fail(3301100);
+        expect(h.hasIssue(IssueCode.LOC_SWITCH_OFF)).assertTrue();
+        expect(h.log.find('LOC_SWITCH_OFF', 'code=3301100', 0) >= 0).assertTrue();
+        h.real.fail(3301000);
+        expect(h.issue(IssueCode.LOC_UNAVAILABLE)?.severity).assertEqual(IssueSeverity.BLOCKING);
+        expect(h.log.find('LOC_UNAVAILABLE', 'code=3301000', 0) >= 0).assertTrue();
+        h.real.emit(h.fixAt(50.0617, 19.9373, 0, Number.NaN, FixSource.REAL));    // the switch came back on
+        expect(h.hasIssue(IssueCode.PERM_DENIED) || h.hasIssue(IssueCode.LOC_SWITCH_OFF) ||
+          h.hasIssue(IssueCode.LOC_UNAVAILABLE)).assertFalse();
+        h.real.fail(-2);
+        await h.ctrl.setSource(FixSource.DEMO);                          // [Try Demo walk]
+        expect(h.hasIssue(IssueCode.PERM_DENIED)).assertFalse();
+        expect(h.log.count('UNCAUGHT')).assertEqual(0);
+        h.ctrl.end();
+        done();
+      });
+
+    it('A10 rows 2/8: first real fix in Beijing with approximate permission => OUT_OF_AREA + APPROX_ONLY', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        await h.ctrl.plan(MINI_TOUR_ID, 0);                              // UNKNOWN: plan never asks
+        h.perms.state = PermissionState.APPROX_ONLY;
+        await h.ctrl.start();
+        h.acc = 1500;
+        h.real.emit(h.fixAt(BEIJING_LAT, BEIJING_LNG, 0, Number.NaN, FixSource.REAL));
+        h.real.emit(h.fixAt(BEIJING_LAT, BEIJING_LNG, 0, Number.NaN, FixSource.REAL));
+        await settle();
+        expect(h.hasIssue(IssueCode.LOC_OUT_OF_AREA)).assertTrue();
+        expect(h.log.count('LOC_OUT_OF_AREA')).assertEqual(1);           // once per tour
+        expect(h.log.find('LOC_OUT_OF_AREA', 'action=suggest_demo', 0) >= 0).assertTrue();
+        expect(h.issue(IssueCode.PERM_APPROX_ONLY)?.severity).assertEqual(IssueSeverity.WARN);
+        expect(h.log.count('PERM_APPROX_ONLY')).assertEqual(1);
+        expect(h.log.count('POI_ENTER')).assertEqual(0);
+        h.ctrl.end();
+        done();
+      });
+
+    it('A10 rows 9/10: a text-only platform plan => TTS_INIT_FAIL; the zh fallback => VOICE_UNAVAILABLE', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        expect(h.issue(IssueCode.VOICE_UNAVAILABLE)?.severity).assertEqual(IssueSeverity.INFO);
+        expect(h.log.find('VOICE_STATUS', 'lang=en person=8 status=unknown action=fallback_voice', 0) >= 0)
+          .assertTrue();
+        const t: VoicePlan = {
+          textLang: Lang.EN, speechMode: 'text', engineLocale: '', person: 0, languageContext: '',
+          label: VoiceLabel.TEXT_ONLY_PLATFORM, reason: 'en_status=DOWNLOADABLE zh_status=UNAVAILABLE'
+        };
+        h.voice.override = t;
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        expect(h.hasIssue(IssueCode.VOICE_UNAVAILABLE)).assertFalse();   // issues reset per plan
+        expect(h.issue(IssueCode.TTS_INIT_FAIL)?.severity).assertEqual(IssueSeverity.WARN);
+        expect(h.log.find('TTS_INIT_FAIL', 'lang=en', 0) >= 0).assertTrue();
+        expect(h.ctrl.current().speechText).assertTrue();
+        await h.ctrl.setSource(FixSource.DEMO);
+        h.placeNear(MINI_BARBICAN, 60, 0);
+        await h.ctrl.start();
+        expect(h.speech.spoken.length).assertEqual(0);                    // text only, the tour still runs
+        expect((h.ctrl.current().nowPlaying?.caption ?? '').length > 0).assertTrue();
+        h.ctrl.end();
+        done();
+      });
+
+    it('A10 rows 12/13: speech-service interrupts and headphone loss reach the engine; ignored with no tour', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        h.ctrl.onAudioInterrupt('PAUSE');                                // no tour yet
+        expect(h.log.find('AUDIO_INTERRUPT', 'action=ignored reason=no_tour', 0) >= 0).assertTrue();
+        await h.ctrl.setSource(FixSource.DEMO);
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        h.placeNear(MINI_BARBICAN, 200, 0);
+        await h.ctrl.start();
+        const n: number = h.speech.spoken.length;
+        const stops: number = h.speech.stops;
+        h.ctrl.onAudioInterrupt('PAUSE');
+        expect(h.ctrl.current().paused).assertTrue();
+        expect(h.speech.stops).assertEqual(stops + 1);
+        expect(h.hasIssue(IssueCode.AUDIO_INTERRUPT)).assertTrue();
+        expect(h.media.states[h.media.states.length - 1]).assertEqual(MediaPlayState.PAUSE);
+        expect(h.log.find('AUDIO_INTERRUPT', 'hint=PAUSE action=pause', 0) >= 0).assertTrue();
+        h.ctrl.onAudioInterrupt('RESUME');
+        expect(h.ctrl.current().paused).assertFalse();
+        expect(h.speech.spoken.length).assertEqual(n + 1);
+        expect(h.speech.spoken[n]).assertEqual(h.speech.spoken[n - 1]);  // the interrupted sentence again
+        h.ctrl.onAudioRouteLost('2');
+        expect(h.ctrl.current().paused).assertTrue();
+        expect(h.issue(IssueCode.AUDIO_ROUTE_LOST)?.severity).assertEqual(IssueSeverity.WARN);
+        expect(h.log.find('AUDIO_ROUTE', 'device=SPEAKER action=pause', 0) >= 0).assertTrue();
+        h.ctrl.onAudioInterrupt('RESUME');
+        expect(h.ctrl.current().paused).assertTrue();                     // never resumes on the loudspeaker
+        h.ctrl.resume();
+        expect(h.hasIssue(IssueCode.AUDIO_ROUTE_LOST)).assertFalse();
+        h.ctrl.end();
+        h.ctrl.onAudioRouteLost('2');
+        expect(h.log.find('AUDIO_ROUTE', 'action=ignored reason=no_tour', 0) >= 0).assertTrue();
+        expect(h.log.count('UNCAUGHT')).assertEqual(0);
+        done();
+      });
+
+    it('A10 rows 14/16: BG start refused keeps the screen on until teardown; notifications refused stay off', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        h.bg.ok = false;
+        const nt: FakeNotifier = new FakeNotifier();
+        nt.allow = false;
+        h.notifier = nt;
+        await h.ctrl.setSource(FixSource.DEMO);
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        h.placeNear(MINI_BARBICAN, 120, 0);
+        await h.ctrl.start();
+        await settle();
+        expect(h.ctrl.isRunning()).assertTrue();                         // the tour continues in the foreground
+        expect(h.hasIssue(IssueCode.BG_FAIL)).assertTrue();
+        expect(h.log.find('BG_FAIL', 'action=foreground_only', 0) >= 0).assertTrue();
+        expect(h.screen.join(',')).assertEqual('true');
+        expect(h.issue(IssueCode.NOTIF_DENIED)?.severity).assertEqual(IssueSeverity.INFO);
+        expect(h.log.count('NOTIF_DENIED')).assertEqual(1);
+        h.walkTo(MINI_BARBICAN, 1.3);
+        h.dwellUntilQuiet(120);
+        expect(h.log.find('POI_ENTER', `id=${MINI_BARBICAN}`, 0) >= 0).assertTrue();
+        expect(nt.published).assertEqual(0);                             // no next-stop notice, nothing else changes
+        h.ctrl.end();
+        expect(h.screen.join(',')).assertEqual('true,false');
+        done();
+      });
+
+    it('A10 row 14: a cancelled continuous task keeps the screen on; a granted one never touches it', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        h.notifier = new FakeNotifier();
+        await h.ctrl.setSource(FixSource.DEMO);
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        await h.ctrl.start();
+        await settle();
+        expect(h.screen.length).assertEqual(0);
+        expect(h.hasIssue(IssueCode.NOTIF_DENIED)).assertFalse();
+        (h.bg.listener as BackgroundListener).onCancelled('SYSTEM_CANCEL');
+        expect(h.screen.join(',')).assertEqual('true');
+        h.ctrl.end();
+        expect(h.screen.join(',')).assertEqual('true,false');
+        done();
+      });
+
+    it('A10 row 17: a pack that fails or throws gives an empty plan and a BLOCKING PACK_ERR, never a crash', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        h.pack.fail = 'not_ok';
+        const p: TourPlan = await h.ctrl.plan(MINI_TOUR_ID, 0);
+        expect(p.order.length).assertEqual(0);
+        expect(h.issue(IssueCode.PACK_ERR)?.severity).assertEqual(IssueSeverity.BLOCKING);
+        expect(h.log.find('PACK_ERR', 'reason=not_ok', 0) >= 0).assertTrue();
+        await h.ctrl.start();                                            // a start without a plan is ignored
+        expect(h.ctrl.isRunning()).assertFalse();
+        h.pack.fail = 'throw';
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        expect(h.log.find('PACK_ERR', 'reason=load_threw', 0) >= 0).assertTrue();
+        expect(h.hasIssue(IssueCode.PACK_ERR)).assertTrue();
+        h.pack.fail = '';
+        const ok: TourPlan = await h.ctrl.plan(MINI_TOUR_ID, 0);         // recovers once the pack loads
+        expect(ok.order.length).assertEqual(3);
+        expect(h.hasIssue(IssueCode.PACK_ERR)).assertFalse();
+        expect(h.log.count('UNCAUGHT')).assertEqual(0);
+        done();
+      });
+
+    it('A10 row 17 demo: CorruptPackRepository (AppConfig.DEBUG_CORRUPT_PACK) => BLOCKING PACK_ERR src=debug', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        const bad: CorruptPackRepository = new CorruptPackRepository(h.log);
+        const deps: TourControllerDeps = {
+          pack: bad, speech: h.speech, voice: h.voice, log: h.log, clock: h.clock, scheduler: h.sched,
+          sourceFor: (kind: FixSource): LocationSource | undefined => kind === FixSource.DEMO ? h.demo : h.real,
+          demoControls: (): DemoControls | undefined => h.demoCtl,
+          background: (): BackgroundPort | undefined => h.bg,
+          media: (): MediaSessionPort | undefined => h.media,
+          notifier: (): NotifierPort | undefined => undefined,
+          haptics: (): HapticsPort | undefined => undefined,
+          permissions: (): PermissionPort | undefined => h.perms
+        };
+        const c: TourController = new TourController(deps);
+        const p: TourPlan = await c.plan('royal-route', 0);
+        expect(p.order.length).assertEqual(0);
+        const i: AppIssue | undefined = c.current().issues.find((x: AppIssue) => x.code === IssueCode.PACK_ERR);
+        expect(i?.severity).assertEqual(IssueSeverity.BLOCKING);
+        expect(i?.detail).assertEqual(CORRUPT_PACK_DETAIL);
+        expect(h.log.find('PACK_ERR', 'file=pois.json reason=parse src=debug', 0) >= 0).assertTrue();
+        await c.start();
+        expect(c.isRunning()).assertFalse();
+        expect(bad.tours().length + bad.pois().length + bad.routes().legs.length).assertEqual(0);
+        expect(bad.narration('x', 'y', Lang.EN, NarrationLength.TEASER) === undefined).assertTrue();
+        expect(h.log.count('UNCAUGHT')).assertEqual(0);
+        c.shutdown();
+        done();
+      });
+
+    it('A10 row 15: AVSession refused => AVS_FAIL (INFO), the tour runs with in-app controls', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        h.media.ok = false;
+        await h.ctrl.setSource(FixSource.DEMO);
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        h.placeNear(MINI_BARBICAN, 120, 0);
+        await h.ctrl.start();
+        expect(h.ctrl.isRunning()).assertTrue();
+        expect(h.issue(IssueCode.AVS_FAIL)?.severity).assertEqual(IssueSeverity.INFO);
+        expect(h.log.find('AVS_FAIL', 'where=controller result=false', 0) >= 0).assertTrue();
+        expect(h.ctrl.current().platform.avsActive).assertFalse();
+        h.ctrl.pause();
+        expect(h.ctrl.current().paused).assertTrue();                    // in-app controls still work
+        h.ctrl.resume();
+        h.walkTo(MINI_BARBICAN, 1.3);
+        expect(h.log.find('POI_ENTER', `id=${MINI_BARBICAN}`, 0) >= 0).assertTrue();
+        h.ctrl.end();
+        done();
+      });
   });
 }
