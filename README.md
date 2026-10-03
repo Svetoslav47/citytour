@@ -69,6 +69,10 @@ Taken on the Pura 90 emulator (API 24 image, `devecocli ui screenshot`). The amb
 |---|---|
 | <img src="docs/img/home-pl.png" width="220" alt="Home in Polish"> | <img src="docs/img/home-zh.png" width="220" alt="Home in Chinese"> |
 
+| Tour complete (Demo walk) | Tour ended early |
+|---|---|
+| <img src="docs/img/summary-complete.png" width="220" alt="Tour complete: 11/11 stops, 2.0 km, 39 min, SIMULATED"> | <img src="docs/img/summary-ended.png" width="220" alt="Tour ended early: stops heard and still to see"> |
+
 ## Data sources and licences
 
 All data is fetched once at build time, committed under [`data/raw/`](data/raw/) and compiled into the Kraków course pack (see [Data pipeline](#data-pipeline)), which the app downloads once from the course server; after that it makes no network call for content. Full provenance (endpoints, queries, retrieval times, record counts, what each layer contains) is in [`data/raw/SOURCES.md`](data/raw/SOURCES.md); per-source records ship in the course pack as [`sources.json`](data/course/krakow/packs/krakow/sources.json), and the app shows them in **Settings › About › Sources and licences** and per place in **Place detail › Sources**.
