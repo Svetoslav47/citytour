@@ -96,17 +96,20 @@ describe('cover photo', () => {
   });
 });
 
-describe('seedDataDir (server/seed + data/course/krakow, as in the Docker image)', () => {
+describe('seedDataDir (server/seed + data/course + data/city, as in the Docker image)', () => {
   const seed = join(REPO, 'server/seed');
 
   it.skipIf(!existsSync(join(seed, 'catalog.json')))('the committed seed matches the repo files and seeds an empty disk', async () => {
     const data = mkdtempSync(join(tmpdir(), 'citytour-seed-'));
     const store = new DataStore(data);
-    const r = await seedDataDir(store, seed, RAW, silent);   // throws if any file no longer matches its sha256
+    // The Docker image layout: every course under data/course/<id>/, every city under data/city/<id>/.
+    const courses = join(REPO, 'data/course');
+    const cities = join(REPO, 'data/city');
+    const r = await seedDataDir(store, seed, courses, silent, cities);   // throws if any file no longer matches its sha256
     expect(r.blobsCopied).toBeGreaterThan(1000);
     expect(r.indexAdded).toBeGreaterThan(1000);
     // idempotent: a second boot copies nothing
-    const r2 = await seedDataDir(new DataStore(data), seed, RAW, silent);
+    const r2 = await seedDataDir(new DataStore(data), seed, courses, silent, cities);
     expect(r2).toEqual({ metaCopied: 0, blobsCopied: 0, indexAdded: 0 });
   }, 120_000);
 
