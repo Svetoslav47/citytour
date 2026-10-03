@@ -1503,7 +1503,8 @@ export class TourController implements TourControl {
     const textOnly: boolean = st !== undefined ? st.speechText : (vp === undefined || vp.speechMode === 'text');
     const p: PlatformStatus = {
       bgRunning: bgRunning, avsActive: avsActive,
-      ttsEngine: textOnly || vp === undefined ? 'none' : `${vp.engineLocale}/${vp.person}`,
+      ttsEngine: textOnly || vp === undefined ? 'none' :
+        vp.engineLocale === '' ? 'clips' : `${vp.engineLocale}/${vp.person}`,
       sourceKind: this.sourceKind, realGpsAccuracyM: this.realAccuracyM,
       demoHold: this.running && this.sourceKind === FixSource.DEMO && this.demoHolding()
     };

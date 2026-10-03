@@ -78,6 +78,9 @@ function labelText(l: VoiceLabel): string {
   if (l === VoiceLabel.TEXT_ONLY_PLATFORM) {
     return 'Text only (no voice for this language)';
   }
+  if (l === VoiceLabel.PRERENDERED) {
+    return 'Studio voice (ElevenLabs clips)';
+  }
   return 'Text only (your choice)';
 }
 
