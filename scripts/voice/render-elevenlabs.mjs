@@ -27,6 +27,10 @@
 //          --limit <n> --concurrency <n> --force --no-context --no-prune --fixture
 //          System lines (on by default, off with --fixture): --no-system | --system-only
 //          --system-groups system,arrival,nav --nav-legs all|tour --pack <packDir> --tour-id royal-route
+//          --course <courseId>: one course of scripts/pack/lib/course.mjs (default krakow). Sets the defaults of
+//          --narrations-dir (data/course/<id>/packs/<id>/narrations), --out (data/course/<id>), --tour
+//          (data/tours/<tourId>.json), --pack and --tour-id; an explicit flag still wins. Each course has its own
+//          audio/manifest.json, e.g. --course krakow-scholars writes data/course/krakow-scholars/audio/.
 // Only clips in the selected scope (languages x stories/system groups) are re-planned or pruned; manifest entries
 // outside it are kept as they are.
 // Node 22+, stdlib only (fetch, crypto, fs).
@@ -37,6 +41,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   DEFAULT_PACK_DIR, DEFAULT_TOUR_ID, GROUPS as SYSTEM_GROUPS, enumerateCases, linesFromCases, loadPack
 } from './system-lines.mjs';
+import { resolveCourse } from '../pack/lib/course.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(HERE, '..', '..');
@@ -261,8 +266,9 @@ export function parseArgs(argv) {
     persona: 'historian', tour: DEFAULT_TOUR, allPois: false, model: DEFAULT_MODEL,
     outputFormat: DEFAULT_OUTPUT_FORMAT, limit: Infinity, concurrency: 2, force: false, context: true, prune: true,
     fixture: false, help: false, system: null, systemOnly: false, systemGroups: [...SYSTEM_GROUPS], navLegs: 'all',
-    pack: DEFAULT_PACK_DIR, tourId: DEFAULT_TOUR_ID
+    pack: DEFAULT_PACK_DIR, tourId: DEFAULT_TOUR_ID, course: null
   };
+  const explicit = new Set();
   const list = (v) => String(v).split(',').map((s) => s.trim()).filter(Boolean);
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -272,7 +278,9 @@ export function parseArgs(argv) {
       }
       return argv[++i];
     };
+    explicit.add(a);
     switch (a) {
+      case '--course': o.course = val(); break;
       case '--dry-run': o.dryRun = true; break;
       case '--narrations-dir': o.narrationsDir = resolve(val()); break;
       case '--out': o.out = resolve(val()); break;
@@ -299,6 +307,14 @@ export function parseArgs(argv) {
       case '-h': case '--help': o.help = true; break;
       default: throw new Error(`unknown option ${a}`);
     }
+  }
+  if (o.course !== null) {
+    const c = resolveCourse({ course: o.course });
+    if (!explicit.has('--narrations-dir') && !o.fixture) o.narrationsDir = join(c.packDir, 'narrations');
+    if (!explicit.has('--out')) o.out = c.courseDir;
+    if (!explicit.has('--tour')) o.tour = c.tourFile;
+    if (!explicit.has('--pack')) o.pack = c.packDir;
+    if (!explicit.has('--tour-id')) o.tourId = c.tourId;
   }
   for (const l of o.lengths) {
     if (!LENGTHS.includes(l)) {

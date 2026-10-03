@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Stage 7 (task B7): reads the Historian review files scripts/pack/review/<poiId>.<lang>.md into the pack.
+// Stage 7 (task B7): reads the Historian review files scripts/pack/review/<courseId>/<poiId>.<lang>.md into the pack.
 // Node 22+ ESM, stdlib only, no network, no LLM call: the scripts and translations are written into the review
 // files by an agent (prompts/historian-v1.md, prompts/translate-v1.md) and reviewed by humans there.
 //
@@ -26,7 +26,7 @@
 //     fails stops the build, a `grounded-ai` one that fails prints a WARNING and falls back to the extract tier;
 //   - assertReviewedHaveReview() is the last guard: no tier `reviewed` without a reviewedBy from a filled file.
 //
-// CLI: node scripts/pack/70-narrate.mjs   prints what the next build will emit per stop and language (tier,
+// CLI: node scripts/pack/70-narrate.mjs [--course <courseId>]   prints what the next build will emit per stop and language (tier,
 //      review, stale translations) without writing anything; exit 1 when the review files cannot be built.
 
 import { readFileSync } from 'node:fs';
@@ -36,6 +36,7 @@ import {
 } from './review/check-drafts.mjs';
 import { validateNarration } from './80-validate.mjs';
 import { isMain } from './lib/http.mjs';
+import { courseFromArgv } from './lib/course.mjs';
 
 export const PERSONA_ID = 'historian';
 export const DRAFT_TIER = 'grounded-ai';
@@ -58,6 +59,7 @@ export function sourceIdMap(sources) {
 
 /** Reads and parses every review file: [{ file, parsed }]. Parse errors stop the build. */
 export function readReviewFiles(dir = REVIEW_DIR) {
+  // reviewFiles() returns [] for a course without a review dir (it then ships extract / name-only narrations).
   return reviewFiles(dir).map((path) => {
     const parsed = parseReviewFile(readFileSync(path, 'utf8'));
     if (parsed.errors.length) throw new Error(`${basename(path)}: ${parsed.errors.join('; ')}`);
@@ -165,7 +167,7 @@ export function assertReviewedHaveReview(narrations) {
  * The 90-emit.mjs hook. ctx = { pois, sources, sourceTexts, stopIds, ... } (see 90-emit.mjs buildPack).
  * Returns Narration[] (tier reviewed / grounded-ai) for the tour stops.
  */
-export function narrationDrafts(ctx, { dir = REVIEW_DIR, log = console } = {}) {
+export function narrationDrafts(ctx, { dir = ctx.reviewDir ?? REVIEW_DIR, log = console } = {}) {
   const plans = planReviewFiles(readReviewFiles(dir));
   const idMap = sourceIdMap(ctx.sources);
   const sourceIds = new Set(ctx.sources.map((s) => s.id));
@@ -215,7 +217,10 @@ export function statusLines(plans) {
 
 if (isMain(import.meta.url)) {
   try {
-    console.log(statusLines(planReviewFiles(readReviewFiles())).join('\n'));
+    const { course, rest } = courseFromArgv(process.argv.slice(2));
+    if (rest.length) throw new Error(`unknown argument ${rest[0]} (expected --course ID or --tour ID)`);
+    console.log(`course ${course.courseId}: ${course.reviewDir}`);
+    console.log(statusLines(planReviewFiles(readReviewFiles(course.reviewDir))).join('\n'));
   } catch (e) {
     console.error(`FAILED: ${e.message}`);
     process.exitCode = 1;

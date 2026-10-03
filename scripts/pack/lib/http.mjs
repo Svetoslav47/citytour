@@ -19,6 +19,7 @@ export const GZIP_THRESHOLD_BYTES = 1024 * 1024;
 
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 export const RAW_DIR = join(REPO_ROOT, 'data', 'raw');
+/** The default course's tour (scripts/pack/lib/course.mjs resolves the others). */
 export const TOUR_FILE = join(REPO_ROOT, 'data', 'tours', 'royal-route.json');
 
 /** Minimum spacing between two requests to the same host, in ms (first match wins). */
@@ -39,11 +40,16 @@ export function minIntervalFor(host) {
 
 /** CLI flags shared by every fetch script. Unknown flags are an error (typos must not fetch). */
 export function parseArgs(argv) {
-  const out = { offline: false, refresh: false };
-  for (const a of argv) {
+  const out = { offline: false, refresh: false, course: null, tour: null };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
     if (a === '--offline') out.offline = true;
     else if (a === '--refresh') out.refresh = true;
-    else throw new Error(`unknown argument: ${a} (expected --offline or --refresh)`);
+    else if (a === '--course' || a === '--tour') {
+      const v = argv[++i];
+      if (v === undefined || v.startsWith('--')) throw new Error(`${a} needs a value`);
+      out[a.slice(2)] = v;
+    } else throw new Error(`unknown argument: ${a} (expected --offline, --refresh, --course <id> or --tour <id>)`);
   }
   if (out.offline && out.refresh) throw new Error('--offline and --refresh are mutually exclusive');
   return out;
@@ -267,9 +273,10 @@ export function nowIso(d = new Date()) {
   return d.toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
-export function readTour() {
-  if (!existsSync(TOUR_FILE)) throw new Error(`missing ${relative(REPO_ROOT, TOUR_FILE)}`);
-  return JSON.parse(readFileSync(TOUR_FILE, 'utf8'));
+/** The curated tour JSON (default data/tours/royal-route.json; a course's tour: readTour(course.tourFile)). */
+export function readTour(file = TOUR_FILE) {
+  if (!existsSync(file)) throw new Error(`missing ${relative(REPO_ROOT, file)}`);
+  return JSON.parse(readFileSync(file, 'utf8'));
 }
 
 /** True when the module at `metaUrl` is the script node was started with (not an import from a test). */

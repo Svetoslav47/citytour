@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// B7 self-check for the Historian review files scripts/pack/review/<poiId>.<lang>.md (format:
+// B7 self-check for the Historian review files scripts/pack/review/<courseId>/<poiId>.<lang>.md (format:
 // scripts/pack/prompts/historian-v1.md §9). Node 22+ ESM, stdlib only.
 //
-// Usage: node scripts/pack/review/check-drafts.mjs [file.md ...]
-//        node scripts/pack/review/check-drafts.mjs --hash <poiId> ...   (sourceSha256 for a fresh translation)
-//   no arguments: every <poiId>.<lang>.md in this directory, plus coverage (every tour stop has an en
+// Usage: node scripts/pack/review/check-drafts.mjs [--course <courseId>] [file.md ...]
+//        node scripts/pack/review/check-drafts.mjs [--course <courseId>] --hash <poiId> ...   (sourceSha256 for a fresh translation)
+//   --course (default krakow) picks the tour, its review dir scripts/pack/review/<courseId>/ and its wiki stop texts
+//   (scripts/pack/lib/course.mjs). No file arguments: every <poiId>.<lang>.md of that course, plus coverage (every tour stop has an en
 //   file, >= 3 en files have a deep section). Prints a per-file PASS/FAIL table; exit 1 on any failure.
 //
 // Each teaser/full/deep section is checked with validator spec v1 (docs/ARCHITECTURE.md §7.4, the same
@@ -35,10 +36,13 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { courseFromArgv, resolveCourse } from '../lib/course.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const REPO = resolve(HERE, '../../..');
-export const REVIEW_DIR = HERE;
+/** Review dir of the default course (krakow = The Royal Route). */
+export const REVIEW_DIR = join(HERE, 'krakow');
+const DEFAULT_COURSE = resolveCourse();
 
 // ---------------------------------------------------------------------------------------------
 // Validator spec v1 constants (identical to scripts/pack/80-validate.mjs)
@@ -300,7 +304,7 @@ export function parseReviewFile(src) {
 // Context: sources and tour
 
 /** Map sourceId -> string[] (stop text and/or summary extract with that title + revision). */
-export function loadSources(repo = REPO) {
+export function loadSources(repo = REPO, course = DEFAULT_COURSE) {
   const map = new Map();
   const add = (id, text) => {
     if (typeof text !== 'string') return;
@@ -308,7 +312,7 @@ export function loadSources(repo = REPO) {
     map.get(id).push(text);
   };
   for (const lang of LANGS) {
-    const stops = JSON.parse(readFileSync(join(repo, `data/raw/wiki/stops-text-${lang}.json`), 'utf8'));
+    const stops = JSON.parse(readFileSync(join(repo, 'data/raw', course.rawRel(`wiki/stops-text-${lang}.json`)), 'utf8'));
     for (const p of Object.values(stops.pages)) add(`wp:${lang}:${p.title}@${p.revid}`, p.text);
     const sums = JSON.parse(readFileSync(join(repo, `data/raw/wiki/summaries-${lang}.json`), 'utf8'));
     for (const p of Object.values(sums.pages)) add(`wp:${lang}:${p.title}@${p.revision}`, p.extract);
@@ -316,9 +320,9 @@ export function loadSources(repo = REPO) {
   return map;
 }
 
-/** Map poiId -> tour stop (from data/tours/royal-route.json), in tour order. */
-export function loadStops(repo = REPO) {
-  const tour = JSON.parse(readFileSync(join(repo, 'data/tours/royal-route.json'), 'utf8'));
+/** Map poiId -> tour stop (from the course's tour file, default data/tours/royal-route.json), in tour order. */
+export function loadStops(repo = REPO, course = DEFAULT_COURSE) {
+  const tour = JSON.parse(readFileSync(join(repo, 'data/tours', basename(course.tourFile)), 'utf8'));
   return new Map(tour.stops.map((s) => [s.poiId, s]));
 }
 
@@ -497,6 +501,7 @@ export function checkCoverage(results, stops, lang = 'en') {
 }
 
 export function reviewFiles(dir = REVIEW_DIR) {
+  if (!existsSync(dir)) return [];
   return readdirSync(dir)
     .filter((f) => FILE_RE.test(f))
     .sort()
@@ -529,9 +534,11 @@ function pad(s, n) {
 }
 
 export function main(argv = process.argv.slice(2), repo = REPO) {
-  const ctx = { stops: loadStops(repo), sources: loadSources(repo) };
+  const { course, rest } = courseFromArgv(argv);
+  argv = rest;
+  const ctx = { stops: loadStops(repo, course), sources: loadSources(repo, course) };
   const all = argv.length === 0;
-  const files = all ? reviewFiles() : argv.map((a) => resolve(a));
+  const files = all ? reviewFiles(course.reviewDir) : argv.map((a) => resolve(a));
   const results = files.map((f) => checkFile(f, ctx));
   const order = [...ctx.stops.keys()];
   results.sort((a, b) => order.indexOf(a.poiId) - order.indexOf(b.poiId) || (a.file < b.file ? -1 : 1));
@@ -569,8 +576,9 @@ export function hashLines(poiIds, dir = REVIEW_DIR) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv[2] === '--hash') {
-    console.log(hashLines(process.argv.slice(3)).join('\n'));
+  const { course, rest } = courseFromArgv(process.argv.slice(2));
+  if (rest[0] === '--hash') {
+    console.log(hashLines(rest.slice(1), course.reviewDir).join('\n'));
     process.exit(0);
   }
   const { ok, output } = main();

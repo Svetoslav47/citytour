@@ -11,7 +11,10 @@
 // The pair file is written every 10 routes, so an interrupted run resumes where it stopped.
 // The lead's listed-order route data/raw/osrm/royal-route-foot.json is kept as is (task A5 uses it).
 //
-// Usage: node scripts/pack/50-fetch-osrm.mjs [--offline | --refresh]
+// Courses (scripts/pack/lib/course.mjs): default course data/raw/osrm/*; any other tour writes the same two files
+// under data/raw/tours/<tourId>/osrm/.
+//
+// Usage: node scripts/pack/50-fetch-osrm.mjs [--offline | --refresh] [--course <courseId> | --tour <tourId>]
 
 import {
   createHttp,
@@ -24,6 +27,7 @@ import {
   runMain,
   writeSnapshot,
 } from './lib/http.mjs';
+import { resolveCourse } from './lib/course.mjs';
 
 export const OSRM_BASE = 'https://routing.openstreetmap.de/routed-foot';
 export const TABLE_REL = 'osrm/stops-table-foot.json';
@@ -77,7 +81,7 @@ function assertOk(resp, what) {
 
 function guardStops(snapshot, stops, rel) {
   if (!sameStops(snapshot.meta.stops, stops)) {
-    throw new Error(`data/raw/${rel} was fetched for other stop coordinates than data/tours/royal-route.json; re-run with --refresh`);
+    throw new Error(`data/raw/${rel} was fetched for other stop coordinates than the tour file; re-run with --refresh`);
   }
 }
 
@@ -91,36 +95,36 @@ async function fetchTable(http, stops) {
   };
 }
 
-async function table(http, args, stops) {
-  if (!args.refresh && findSnapshot(TABLE_REL)) {
-    const snap = readSnapshot(TABLE_REL);
-    guardStops(snap, stops, TABLE_REL);
-    console.error(`  keep   data/raw/${TABLE_REL} (exists)`);
+async function table(http, args, stops, tableRel) {
+  if (!args.refresh && findSnapshot(tableRel)) {
+    const snap = readSnapshot(tableRel);
+    guardStops(snap, stops, tableRel);
+    console.error(`  keep   data/raw/${tableRel} (exists)`);
     return snap;
   }
-  if (args.offline) throw new MissingSnapshotError(TABLE_REL);
+  if (args.offline) throw new MissingSnapshotError(tableRel);
   const snap = await fetchTable(http, stops);
-  writeSnapshot(TABLE_REL, snap);
-  console.error(`  wrote  data/raw/${TABLE_REL}`);
+  writeSnapshot(tableRel, snap);
+  console.error(`  wrote  data/raw/${tableRel}`);
   return snap;
 }
 
-async function pairs(http, args, stops) {
+async function pairs(http, args, stops, pairsRel) {
   const todo = directedPairs(stops.length);
   let snap = null;
-  if (!args.refresh && findSnapshot(PAIRS_REL)) {
-    snap = readSnapshot(PAIRS_REL);
-    guardStops(snap, stops, PAIRS_REL);
+  if (!args.refresh && findSnapshot(pairsRel)) {
+    snap = readSnapshot(pairsRel);
+    guardStops(snap, stops, pairsRel);
   }
   const have = new Set(snap ? snap.routes.map((r) => `${r.from}>${r.to}`) : []);
   const missing = todo.filter(([i, j]) => !have.has(pairKey(stops, i, j)));
   if (!missing.length) {
-    console.error(`  keep   data/raw/${PAIRS_REL} (${snap.routes.length} routes)`);
+    console.error(`  keep   data/raw/${pairsRel} (${snap.routes.length} routes)`);
     return snap;
   }
   if (args.offline) {
-    if (!snap) throw new MissingSnapshotError(PAIRS_REL);
-    throw new Error(`offline: data/raw/${PAIRS_REL} lacks ${missing.length} of ${todo.length} stop pairs`);
+    if (!snap) throw new MissingSnapshotError(pairsRel);
+    throw new Error(`offline: data/raw/${pairsRel} lacks ${missing.length} of ${todo.length} stop pairs`);
   }
   snap ??= {
     meta: {
@@ -142,7 +146,7 @@ async function pairs(http, args, stops) {
     snap.meta.retrievedAt = nowIso();
     if (++k % 10 === 0 || k === missing.length) {
       snap.routes.sort((a, b) => a.i - b.i || a.j - b.j);
-      writeSnapshot(PAIRS_REL, snap);
+      writeSnapshot(pairsRel, snap);
       console.error(`  ...    ${snap.routes.length}/${todo.length} routes saved`);
     }
   }
@@ -163,10 +167,11 @@ export function listedOrderTotals(pairSnap) {
 }
 
 async function main(args) {
-  const stops = stopsOf(readTour());
+  const course = resolveCourse(args);
+  const stops = stopsOf(readTour(course.tourFile));
   const http = createHttp();
-  const t = await table(http, args, stops);
-  const p = await pairs(http, args, stops);
+  const t = await table(http, args, stops, course.rawRel(TABLE_REL));
+  const p = await pairs(http, args, stops, course.rawRel(PAIRS_REL));
   const snaps = t.response.sources.map((w, i) => `${stops[i].n}:${w.distance.toFixed(1)}m`).join(' ');
   const [d, s] = listedOrderTotals(p);
   console.log(`osrm table ${t.response.durations.length}x${t.response.durations[0].length}, routes ${p.routes.length}`);

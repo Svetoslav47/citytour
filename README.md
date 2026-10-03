@@ -323,6 +323,8 @@ scripts/pack/build-pack.sh           # ~1 s; prints file sizes, counts per langu
 node --test scripts/pack/*.test.mjs  # pipeline tests, incl. "the committed pack equals a fresh build"
 ```
 
+One course per tour. Without a flag every pipeline and voice script works on the course `krakow` (The Royal Route) exactly as before; `--course <courseId>` (or `--tour <tourId>`) selects another one. `data/tours/<tourId>.json` names its `courseId`; the course is built into `data/course/<courseId>/packs/<courseId>/`, its clips go to `data/course/<courseId>/audio/`, its Historian review files live in `scripts/pack/review/<courseId>/`, and its own OSRM and wiki stop-text snapshots in `data/raw/tours/<tourId>/` (shared snapshots stay in `data/raw/`). See `scripts/pack/lib/course.mjs`.
+
 Content: 4,290 Wikidata places, the Royal Route, 110 OSRM walking legs, the Old Town map (OSM), and narrations in en/pl/zh: verbatim Wikipedia extracts where an article exists, otherwise a labelled name-only template. Every narration passes the validator in `scripts/pack/80-validate.mjs` (spec v1, shared with the app via `scripts/pack/fixtures/validator-cases.json`); its report is `validation-report.json`. Sources and licences are in `sources.json` and `data/raw/SOURCES.md`.
 
 ## Pre-existing and third-party components

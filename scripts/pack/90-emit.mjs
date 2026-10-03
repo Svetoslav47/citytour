@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Stage 9: builds the offline Kraków pack and writes it to data/course/krakow/packs/krakow/
+// Stage 9: builds the offline pack of one course and writes it to data/course/<courseId>/packs/<courseId>/
+// (default course krakow = The Royal Route; --course krakow-scholars etc., see scripts/pack/lib/course.mjs)
 // (course data for the server; the app bundles no course and downloads it).
 // Runs stages 4, 6, 7 and 8 in one process (Node 22+ ESM, stdlib only). Reads ONLY committed files
 // (data/raw/**, data/tours/royal-route.json); the network is disabled for the whole run.
@@ -22,13 +23,14 @@
 // (reviewed / grounded-ai / mt drafts), each draft is tried before the extract and name-only candidates of the
 // same narration id; a failing draft falls back and is reported (and printed loudly).
 //
-// Usage: node scripts/pack/90-emit.mjs [--out DIR]     (build-pack.sh is the entry point)
+// Usage: node scripts/pack/90-emit.mjs [--course <courseId> | --tour <tourId>] [--out DIR]   (build-pack.sh is the entry point)
 
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { isMain, RAW_DIR, readSnapshot, REPO_ROOT, TOUR_FILE } from './lib/http.mjs';
+import { isMain, RAW_DIR, readSnapshot, REPO_ROOT } from './lib/http.mjs';
+import { resolveCourse, takeCourseArgs } from './lib/course.mjs';
 import { assertRecords, checkRecord, LANGS, SCHEMA_VERSION, TIER_ORDER } from './schema.mjs';
 import { PACK_ORIGIN } from './projection.mjs';
 import {
@@ -39,8 +41,9 @@ import { buildRoutes } from './65-routes.mjs';
 import { buildCandidates, PERSONA_ID } from './75-extract-narrations.mjs';
 import { buildReport, selectNarration, VALIDATOR_VERSION } from './80-validate.mjs';
 
-export const PACK_ID = 'krakow';
-export const DEFAULT_OUT = join(REPO_ROOT, 'data', 'course', PACK_ID, 'packs', PACK_ID);
+export const DEFAULT_COURSE = resolveCourse();
+export const PACK_ID = DEFAULT_COURSE.packId;
+export const DEFAULT_OUT = DEFAULT_COURSE.packDir;
 export const NARRATE_HOOK = join(REPO_ROOT, 'scripts', 'pack', '70-narrate.mjs');
 const ARCGIS_SERVICES = 'https://services-eu1.arcgis.com/svTzSt3AvH7sK6q9/ArcGIS/rest/services';
 const KRAKOW_PUBLISHER = 'City of Kraków (Gmina Miejska Kraków), Zintegrowana Platforma GIS';
@@ -107,24 +110,31 @@ function permalink(url, rev) {
   return rev ? `${url}${url.includes('?') ? '&' : '?'}oldid=${rev}` : url;
 }
 
-/** Reads every committed input. */
-export function loadInputs(rawDir = RAW_DIR) {
+/**
+ * Reads every committed input of one course (default: krakow). Shared snapshots come from data/raw; the tour file,
+ * its OSRM snapshots and its wiki stop texts are the course's own (lib/course.mjs). A non-default course appends its
+ * data/raw/tours/<tourId>/SOURCES.md to sourcesMd, so its retrieval times count for builtAt.
+ */
+export function loadInputs(rawDir = RAW_DIR, course = DEFAULT_COURSE) {
   const wiki = { summaries: {}, stopTexts: {} };
   for (const lang of LANGS) {
     wiki.summaries[lang] = readSnapshot(`wiki/summaries-${lang}.json`);
-    wiki.stopTexts[lang] = readSnapshot(`wiki/stops-text-${lang}.json`);
+    wiki.stopTexts[lang] = readSnapshot(course.rawRel(`wiki/stops-text-${lang}.json`));
   }
+  let sourcesMd = readFileSync(join(rawDir, 'SOURCES.md'), 'utf8');
+  if (course.sourcesMd) sourcesMd += `\n${readFileSync(course.sourcesMd, 'utf8')}`;
   const tileBuffers = [];
   for (let k = 1; k <= 9; k++) tileBuffers.push(readFileSync(join(rawDir, 'osm', `oldtown-tile${k}.osm.gz`)));
   return {
-    sourcesMd: readFileSync(join(rawDir, 'SOURCES.md'), 'utf8'),
-    tourRaw: JSON.parse(readFileSync(TOUR_FILE, 'utf8')),
+    course,
+    sourcesMd,
+    tourRaw: JSON.parse(readFileSync(course.tourFile, 'utf8')),
     wd: readSnapshot('wikidata/krakow-items.json'),
     unesco: readSnapshot('arcgis/unesco.geojson'),
     register: readSnapshot('arcgis/eoz-zabytki-zbiorcza-polygon.geojson'),
     wiki,
-    table: readSnapshot('osrm/stops-table-foot.json'),
-    pairs: readSnapshot('osrm/stop-pairs-foot.json'),
+    table: readSnapshot(course.rawRel('osrm/stops-table-foot.json')),
+    pairs: readSnapshot(course.rawRel('osrm/stop-pairs-foot.json')),
     osmXml: readOsmTiles(rawDir),
     osmFetchedAt: gzipMtimeIso(tileBuffers),
   };
@@ -134,6 +144,7 @@ export function loadInputs(rawDir = RAW_DIR) {
 export async function buildPack(inputs, { hookPath = NARRATE_HOOK } = {}) {
   const builtAt = builtAtFromSources(inputs.sourcesMd);
   const { wd, tourRaw, wiki } = inputs;
+  const course = inputs.course ?? DEFAULT_COURSE;
   const itemByQid = new Map(wd.items.map((i) => [i.qid, i]));
 
   // Stage 4: POIs
@@ -187,7 +198,7 @@ export async function buildPack(inputs, { hookPath = NARRATE_HOOK } = {}) {
     inputs.register.meta.retrievedAt, 'pl'));
   sources.set('osm_oldtown', sourceRef('osm_oldtown', 'OpenStreetMap map data, Kraków Old Town (OSM API, 9 tiles)',
     'https://www.openstreetmap.org/copyright', 'OpenStreetMap contributors', 'ODbL 1.0', inputs.osmFetchedAt, 'en'));
-  sources.set('osrm_foot', sourceRef('osrm_foot', 'OSRM foot routes between the Royal Route stops (FOSSGIS demo server)',
+  sources.set('osrm_foot', sourceRef('osrm_foot', `OSRM foot routes between the ${course.legacy ? 'Royal Route' : tourRaw.titles.en} stops (FOSSGIS demo server)`,
     'https://routing.openstreetmap.de/routed-foot', 'OSRM, FOSSGIS e.V.', 'ODbL 1.0 (derived from OSM)', inputs.pairs.meta.retrievedAt, 'en'));
   const sourceList = [...sources.values()].sort(byId);
   const sourceIds = new Set(sources.keys());
@@ -199,7 +210,7 @@ export async function buildPack(inputs, { hookPath = NARRATE_HOOK } = {}) {
   if (hookPath && existsSync(hookPath)) {
     const hook = await import(pathToFileURL(hookPath).href);
     if (typeof hook.narrationDrafts === 'function') {
-      drafts = (await hook.narrationDrafts({ pois, sources: sourceList, sourceTexts, stopIds, rawDir: RAW_DIR, builtAt })) ?? [];
+      drafts = (await hook.narrationDrafts({ pois, sources: sourceList, sourceTexts, stopIds, rawDir: RAW_DIR, builtAt, reviewDir: course.reviewDir })) ?? [];
     }
   }
   const draftsById = new Map();
@@ -271,7 +282,7 @@ export async function buildPack(inputs, { hookPath = NARRATE_HOOK } = {}) {
   };
   const manifest = {
     schemaVersion: SCHEMA_VERSION,
-    packId: PACK_ID,
+    packId: course.packId,
     version: `${builtAt.slice(0, 10).replace(/-/g, '.')}-${sha256(Buffer.from(packFiles.map((f) => `${f.path}:${f.sha256}`).join('\n'))).slice(0, 8)}`,
     builtAt,
     origin: { lat: PACK_ORIGIN.lat, lng: PACK_ORIGIN.lng },
@@ -327,21 +338,23 @@ function fmt(n) {
 }
 
 async function main() {
-  const argv = process.argv.slice(2);
-  let outDir = DEFAULT_OUT;
+  const { course: courseId, tour: tourId, rest: argv } = takeCourseArgs(process.argv.slice(2));
+  const course = resolveCourse({ course: courseId, tour: tourId });
+  let outDir = course.packDir;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--out') outDir = argv[++i];
-    else throw new Error(`unknown argument ${argv[i]} (expected --out DIR)`);
+    else throw new Error(`unknown argument ${argv[i]} (expected --course ID, --tour ID or --out DIR)`);
   }
   // No network in the pack build: any fetch is a bug.
   globalThis.fetch = () => {
     throw new Error('network access is disabled in the pack build');
   };
   const t0 = performance.now();
-  const { files, report, counts, merged } = await buildPack(loadInputs());
+  const { files, report, counts, merged } = await buildPack(loadInputs(RAW_DIR, course));
   writePack(outDir, files);
   const total = files.reduce((s, f) => s + f.bytes.length, 0);
   for (const f of files) console.log(`  ${f.path.padEnd(24)} ${fmt(f.bytes.length).padStart(10)}`);
+  console.log(`course ${course.courseId} (tour ${course.tourId})`);
   console.log(`pack ${relative(REPO_ROOT, outDir) || outDir}: ${files.length} files, ${fmt(total)}`);
   console.log(`counts: pois=${counts.pois} narrations en=${counts.narrations_en} pl=${counts.narrations_pl} zh=${counts.narrations_zh} legs=${counts.legs}`);
   for (const lang of LANGS) {

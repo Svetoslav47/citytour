@@ -16,6 +16,7 @@
 //
 // Usage: node scripts/pack/15-fetch-wikidata.mjs [--offline | --refresh]
 
+import { resolveCourse } from './lib/course.mjs';
 import { createHttp, ensureSnapshot, isMain, nowIso, readTour, runMain } from './lib/http.mjs';
 
 export const SPARQL_ENDPOINT = 'https://query.wikidata.org/sparql';
@@ -265,7 +266,8 @@ async function fetchAll(http, stopQids) {
 }
 
 async function main(args) {
-  const stopQids = readTour().stops.map((s) => s.wikidataId);
+  // The snapshot is shared by every course; --course/--tour only choose which tour's stops must be in it.
+  const stopQids = readTour(resolveCourse(args).tourFile).stops.map((s) => s.wikidataId);
   const http = createHttp();
   const snap = await ensureSnapshot(REL, args, () => fetchAll(http, stopQids));
   const n = (f) => snap.items.filter(f).length;

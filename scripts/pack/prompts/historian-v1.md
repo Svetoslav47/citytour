@@ -4,7 +4,7 @@ This is the exact, public instruction set used to draft the English stop scripts
 
 - **Who drafts:** a Claude Code agent (model `claude-opus-5-5`) working inside the repository. It writes the drafts itself; no API key and no network call is involved.
 - **Who decides:** a human. A draft is never marked reviewed by the agent. Only a file whose `reviewed:` line a human has filled in can become a `REVIEWED_HISTORIAN` narration in the pack (docs/ARCHITECTURE.md §7.1, §7.4).
-- **Output:** one review file per stop and language, `scripts/pack/review/<poiId>.<lang>.md`, in the format at the end of this document.
+- **Output:** one review file per stop and language, `scripts/pack/review/<courseId>/<poiId>.<lang>.md`, in the format at the end of this document.
 - **Self-check:** `node scripts/pack/review/check-drafts.mjs` applies validator spec v1 (docs/ARCHITECTURE.md §7.4) to every section of every review file. A draft that fails it is not handed to the reviewer.
 
 ## 1. Inputs (nothing else)
@@ -77,7 +77,7 @@ The persona also avoids, without a validator rule: "supposedly", "some say", "pe
 - teaser 15–60 words, full 120–420, deep ≤ 900; every sentence ≤ 45 words; under 10,000 characters in total.
 - English: after removing the stop's names, at least 95 % of the letters are ASCII, and the English stopwords (the, and, of, is, was, in, for, with, on, as, by, from, this, that, which, were, are, it) outnumber the Polish ones.
 
-## 9. Output format (`scripts/pack/review/<poiId>.<lang>.md`)
+## 9. Output format (`scripts/pack/review/<courseId>/<poiId>.<lang>.md`)
 
 ```text
 ---

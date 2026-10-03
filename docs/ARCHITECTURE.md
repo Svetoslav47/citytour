@@ -679,7 +679,7 @@ export function plan(inputs: PlanInputs, budgetS: number): TourPlan;   // picks 
 | – | `scripts/demo/make-demo-walk.mjs` | the pack's planned order + legs | `rawfile/demo/royal-route-walk.json` |
 
 **Review loop for tour stops.**
-1. `70-narrate.mjs --stops` writes `scripts/pack/review/<poiId>.<lang>.md`. Each file holds the draft, its `claims` with source quotes, and a checkbox.
+1. `70-narrate.mjs --stops` writes `scripts/pack/review/<courseId>/<poiId>.<lang>.md`. Each file holds the draft, its `claims` with source quotes, and a checkbox.
 2. A human edits the file and ticks `reviewed: <initials>`.
 3. The re-run picks up the edits and stamps `reviewedBy`.
 4. Nothing with `tier = REVIEWED_HISTORIAN` is emitted without `reviewedBy`. The pipeline fails loudly.
