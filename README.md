@@ -27,7 +27,7 @@ _Updated as each capability lands. Every entry links to the code that uses it._
 
 _Every simulated input is labelled in the app UI and listed here._
 
-- None yet.
+- **Demo walk (simulated location).** Replays a recorded walk along the Royal Route (`entry/src/main/resources/rawfile/demo/royal-route-walk.json`) through the same pipeline instead of GPS. Switch it in **Settings › Demo › Demo walk (simulated location)** (replay speed 1×/2×/4×/8×, persisted), or one tap with **Try a demo walk** on Home (8×). Every walking surface shows the amber **SIMULATED** pill; logs say `LOC_SOURCE kind=demo simulated=true`.
 
 ## Requirements (tested versions)
 

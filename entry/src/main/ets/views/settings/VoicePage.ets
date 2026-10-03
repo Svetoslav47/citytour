@@ -71,15 +71,19 @@ export struct VoicePage {
         .accessibilityGroup(true)
       }
       if (this.vm.download === DownloadState.FAILED) {
-        Text($r('app.string.voice_download_failed'))
-          .id('txtDownloadFailed')
-          .fontSize(Type.CALLOUT)
-          .lineHeight(Type.CALLOUT_LH)
-          .fontColor($r('app.color.text_primary'))
-          .backgroundColor($r('app.color.signal_warning_bg'))
-          .borderRadius(Space.S3)
-          .padding(Space.S3)
-          .margin({ left: Space.S4, right: Space.S4, bottom: Space.S3 })
+        Column() {
+          Text($r('app.string.voice_download_failed'))
+            .id('txtDownloadFailed')
+            .fontSize(Type.CALLOUT)
+            .lineHeight(Type.CALLOUT_LH)
+            .fontColor($r('app.color.text_primary'))
+            .backgroundColor($r('app.color.signal_warning_bg'))
+            .borderRadius(Space.S3)
+            .padding(Space.S3)
+            .width('100%')
+        }
+        .width('100%')
+        .padding({ left: Space.S4, right: Space.S4, bottom: Space.S3 })
       }
       if (this.vm.canDownload()) {
         Column() {
