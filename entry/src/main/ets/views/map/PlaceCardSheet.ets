@@ -1,8 +1,7 @@
 /*
  * Place card (B13, DESIGN §3.7): the sheet content shown when a place dot is tapped on the full map. Kind,
- * name, distance from you (only when the tour knows where you are), a 2-line teaser, the provenance label, and
- * Details -> Place detail. Text comes from PlaceViewModel (validated pack narration, fallback chain of B3), so a
- * name-only place shows its plain description and the "Basic info" label rather than an empty card.
+ * name, distance from you (only when the tour knows where you are), a 2-line teaser and
+ * Details -> Place detail. Text comes from PlaceViewModel (validated pack narration, fallback chain of B3).
  */
 import { Lang } from '../../contracts/Model';
 import { AppContainer } from '../../app/AppContainer';
@@ -11,7 +10,6 @@ import { distanceRes } from '../../viewmodel/Format';
 import { PlaceViewModel } from '../../viewmodel/PlaceViewModel';
 import { kindLabel } from '../../pages/PlaceDetailPage';
 import { Size, Space, Type } from '../common/Tokens';
-import { TierLabel } from '../place/TierLabel';
 
 const MAP_PLACE: string = 'MAP_PLACE';
 
@@ -91,14 +89,6 @@ export struct PlaceCardSheet {
             .maxLines(2)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
-
-        TierLabel({
-          tier: this.vm.tier,
-          sources: this.vm.sources.length,
-          fromWikipedia: this.vm.fromWikipedia,
-          machineTranslated: this.vm.machineTranslated,
-          shownInEnglish: this.vm.shownInEnglish
-        })
 
         Button($r('app.string.place_card_details'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.EMPHASIZED })
           .id('btnPlaceDetails')
