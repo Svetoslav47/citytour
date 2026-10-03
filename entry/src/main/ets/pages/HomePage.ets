@@ -197,7 +197,6 @@ export struct HomePage {
       } else {
         CoverPhoto({
           path: this.vm.cover.path,
-          credit: this.vm.cover.credit,
           alt: $r('app.string.cover_alt_title', this.vm.title),
           ratio: 16 / 10,
           photoId: 'coverHome'

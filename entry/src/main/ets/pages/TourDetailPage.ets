@@ -1,13 +1,12 @@
 /*
  * Tour detail (DESIGN §3.3): hero cover photo with the title (or, for a course without a cover, the route preview
- * as before), stats, the route map in its own "Route" section when the hero is a photo, guide row (with the honest
- * voice label), the stop
- * list from the pack, "About these stories" and the sticky "Start tour" (id btnStartTour). Location is checked
+ * as before), stats, the route map in its own "Route" section when the hero is a photo, guide row (name and
+ * language), the stop list from the pack and the sticky "Start tour" (id btnStartTour). Location is checked
  * here, in context (Flow D): a denied/approximate/switched-off state shows a banner that always offers the
  * Demo walk, so the flow never dead-ends.
  */
 import { AppViewModel } from '../viewmodel/AppViewModel';
-import { distanceRes, durationRes, langNameRes, voiceLabelRes } from '../viewmodel/Format';
+import { distanceRes, durationRes, langNameRes } from '../viewmodel/Format';
 import { LocBanner, TourPlanViewModel } from '../viewmodel/TourPlanViewModel';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { IssueBanner } from '../views/common/IssueBanner';
@@ -137,8 +136,6 @@ export struct TourDetailPage {
           Span($r('app.string.tour_your_guide'))
           Span(' · ')
           Span(langNameRes(this.vm.textLang))
-          Span(' · ')
-          Span(voiceLabelRes(this.vm.voiceLabel))
         }
         .fontSize(Type.FOOTNOTE)
         .lineHeight(Type.FOOTNOTE_LH)
@@ -202,23 +199,6 @@ export struct TourDetailPage {
 
       this.sectionHeader($r('app.string.tour_stops_header'))
       StopList({ rows: this.vm.stops, tappable: true, onTapStop: (poiId: string) => this.app.openPlace(poiId) })
-
-      this.sectionHeader($r('app.string.tour_about_stories'))
-      Text(this.vm.sourcesCount === 0 ? $r('app.string.tour_about_none') :
-        this.vm.allReviewed ? $r('app.string.tour_about_reviewed', this.vm.sourcesCount) :
-          this.vm.aiDrafted ? $r('app.string.tour_about_ai', this.vm.sourcesCount) :
-            $r('app.string.tour_about_extract', this.vm.sourcesCount))
-        .fontSize(Type.CALLOUT)
-        .lineHeight(Type.CALLOUT_LH)
-        .fontColor($r('app.color.text_secondary'))
-        .padding({ left: Space.S1, right: Space.S1 })
-      Text($r('app.string.place_see_sources'))
-        .id('btnSeeSources')
-        .fontSize(Type.CALLOUT)
-        .fontWeight(FontWeight.Medium)
-        .fontColor($r('app.color.accent'))
-        .padding({ left: Space.S1, top: Space.S2, bottom: Space.S2 })
-        .onClick(() => this.app.openAbout())
 
       Column().height((this.vm.locBanner === LocBanner.NONE ? 104 : 240) + this.sa.bottom)
     }
@@ -288,7 +268,6 @@ export struct TourDetailPage {
               if (this.photoHero()) {
                 CoverPhoto({
                   path: this.vm.cover.path,
-                  credit: this.vm.cover.credit,
                   alt: $r('app.string.cover_alt_title', this.vm.title),
                   title: this.vm.title,
                   boxHeight: 280 + this.sa.top,

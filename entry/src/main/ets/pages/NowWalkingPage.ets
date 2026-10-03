@@ -2,9 +2,9 @@
  * Now Walking (B5, DESIGN §3.6 + §3.6.2): the glanceable mirror of the audio. Map slot on top (the schematic
  * route preview until the Canvas map of B6), a fixed panel below: banner, where next / how far / which way
  * (Look cue), what am I hearing, pause / replay / skip. Honest labels: the amber SIMULATED pill whenever the
- * source is the Demo walk (tap -> Demo controls, "Demo assist"), the "Studio voice" chip while A13 clips play, and the "Fallback voice" chip whenever English
- * is read by the zh-CN voice. Back (chevron down) returns Home and the tour keeps running.
- * Ids: btnMinimise, btnWalkMenu, badgeSimulated, chipFallbackVoice, btnReplay, btnPlayPause, btnSkip,
+ * source is the Demo walk (tap -> Demo controls, "Demo assist"). The voice type is not labelled on screen (it is
+ * named in Settings -> About). Back (chevron down) returns Home and the tour keeps running.
+ * Ids: btnMinimise, btnWalkMenu, badgeSimulated, btnReplay, btnPlayPause, btnSkip,
  * btnStops, btnNextStopText, btnBackHome, btnJumpNext, segSpeedN.
  * B11: when the tour ends (FINISHED or ABORTED) the page hands over to the Tour summary (SummaryPage).
  * B12: the ⋯ menu toggles the "How it works" HUD (views/walk/HowItWorksHud, id hudHowItWorks) over the map.
@@ -290,39 +290,6 @@ export struct NowWalkingPage {
             this.vm.showDemoSheet = true;
           }
         })
-        if (this.vm.isFallbackVoice() || this.vm.isStudioVoice()) {
-          Row({ space: 4 }) {
-            SymbolGlyph($r('sys.symbol.speaker_wave_2'))
-              .fontSize(14)
-              .fontColor([$r('app.color.text_secondary')])
-            Text(this.vm.isStudioVoice() ? $r('app.string.voice_studio') : $r('app.string.voice_fallback_badge'))
-              .fontSize(Type.CAPTION)
-              .fontWeight(FontWeight.Medium)
-              .fontColor($r('app.color.text_secondary'))
-          }
-          .id(this.vm.isStudioVoice() ? 'chipStudioVoice' : 'chipFallbackVoice')
-          .height(28)
-          .padding({ left: 10, right: 10 })
-          .borderRadius(14)
-          .backgroundColor($r('app.color.bg_scrim'))
-          .backgroundBlurStyle(BlurStyle.COMPONENT_THICK)
-          .accessibilityText(this.vm.isStudioVoice() ? $r('app.string.walk_voice_studio_a11y') :
-            $r('app.string.walk_voice_info_a11y'))
-          .onClick(() => {
-            this.vm.showVoiceInfo = !this.vm.showVoiceInfo;
-          })
-        }
-      }
-      if (this.vm.showVoiceInfo && (this.vm.isFallbackVoice() || this.vm.isStudioVoice())) {
-        Text(this.vm.isStudioVoice() ? $r('app.string.voice_studio_tooltip') : $r('app.string.voice_fallback_tooltip'))
-          .fontSize(Type.FOOTNOTE)
-          .lineHeight(Type.FOOTNOTE_LH)
-          .fontColor($r('app.color.text_primary'))
-          .padding(Space.S3)
-          .borderRadius(Radius.MD)
-          .backgroundColor($r('app.color.bg_surface'))
-          .shadow(ShadowStyle.OUTER_DEFAULT_XS)
-          .constraintSize({ maxWidth: 300 })
       }
       if (this.hud.visible) {
         HowItWorksHud({ rows: hudRowsFor(this.vm.snap, this.vm.stopName, this.vm.demoSpeed) })

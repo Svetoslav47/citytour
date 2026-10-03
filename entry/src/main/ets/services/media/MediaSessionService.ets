@@ -48,14 +48,9 @@ export function engineEventForCommand(cmd: MediaCommand): EngineEventType {
   }
 }
 
-/** "CityTour · Historian" + " · Fallback voice" (zh voice reads English) or " · Studio voice" (A13 clips) + " · DEMO". */
+/** "CityTour · Historian" (+ " · DEMO" for the simulated Demo walk). The voice type is not shown to the listener. */
 export function artistLine(meta: MediaMeta): string {
   let a = meta.artist !== undefined && meta.artist.length > 0 ? meta.artist : AVS_ARTIST_BASE;
-  if (meta.voiceLabel === VoiceLabel.FALLBACK_ZH_READS_EN) {
-    a += ' · Fallback voice';
-  } else if (meta.voiceLabel === VoiceLabel.PRERENDERED) {
-    a += ' · Studio voice';
-  }
   if (meta.demo) {
     a += ' · DEMO';
   }

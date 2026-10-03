@@ -18,7 +18,6 @@ const COVER_TIMEOUT_MS: number = 20000;
 export class CoverModel {
   @Trace courseId: string = '';
   @Trace path: string = '';
-  @Trace credit: string = '';
   @Trace loading: boolean = false;
   private seq: number = 0;
 
@@ -32,14 +31,12 @@ export class CoverModel {
     if (courseId === '') {
       this.courseId = '';
       this.path = '';
-      this.credit = '';
       this.loading = false;
       return;
     }
     if (courseId !== this.courseId) {
       this.courseId = courseId;
       this.path = '';
-      this.credit = '';
     }
     this.loading = this.path === '';
     let c = new CoverChoice();
@@ -53,7 +50,6 @@ export class CoverModel {
       return;   // a newer lookup (other course or language) won
     }
     this.path = c.path;
-    this.credit = c.credit;
     this.loading = false;
     Log.i(LogEvents.COURSE, `event=cover id=${courseId} source=${c.source}${c.path === '' ? ' fallback=map' : ''}`);
   }

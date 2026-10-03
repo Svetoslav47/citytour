@@ -9,7 +9,6 @@ import {
 } from '../contracts/EngineTypes';
 import { Lang, LookDir } from '../contracts/Model';
 import { FixSource } from '../contracts/Ports';
-import { VoiceLabel } from '../contracts/Settings';
 import { AppConfig } from '../app/AppConfig';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
@@ -56,7 +55,6 @@ export class NowWalkingViewModel {
   @Trace sceneBounds: number[] = [];
   @Trace showDemoSheet: boolean = false;
   @Trace showStopsSheet: boolean = false;
-  @Trace showVoiceInfo: boolean = false;
   @Trace demoSpeed: number = AppConfig.DEMO_DEFAULT_SPEED;
   @Trace lang: Lang = Lang.EN;      // story language (X2: changes mid-tour from the ⋯ menu)
   private lastDistanceMs: number = 0;
@@ -128,15 +126,6 @@ export class NowWalkingViewModel {
 
   isDemo(): boolean {
     return this.snap !== undefined && this.snap.source === FixSource.DEMO;
-  }
-
-  isFallbackVoice(): boolean {
-    return this.snap !== undefined && this.snap.voiceLabel === VoiceLabel.FALLBACK_ZH_READS_EN;
-  }
-
-  /** A13: a pre-rendered studio clip is (or, between sentences, the stories are) what the listener hears. */
-  isStudioVoice(): boolean {
-    return this.snap !== undefined && this.snap.voiceLabel === VoiceLabel.PRERENDERED;
   }
 
   weakGps(): boolean {

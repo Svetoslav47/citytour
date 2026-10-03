@@ -3,7 +3,6 @@
  * the app language) and localised names from the pack (fallback order textLang -> en -> pl, ARCHITECTURE §8).
  */
 import { Lang, LocalizedText } from '../contracts/Model';
-import { VoiceLabel } from '../contracts/Settings';
 
 /** Route-level distance: "180 m" (rounded to 10 m / 20 m) or "2.5 km". */
 export function distanceRes(m: number): Resource {
@@ -73,20 +72,6 @@ export function storyMinutes(sentences: string[], lang: Lang): number {
   }
   const min = lang === Lang.ZH ? chars / 250 : words / 150;
   return min <= 0 ? 0 : Math.max(1, Math.round(min));
-}
-
-/** Short label for what the listener hears (VoicePlan.label), e.g. "Fallback voice". */
-export function voiceLabelRes(label: VoiceLabel): Resource {
-  if (label === VoiceLabel.NATIVE) {
-    return $r('app.string.voice_native');
-  }
-  if (label === VoiceLabel.FALLBACK_ZH_READS_EN) {
-    return $r('app.string.voice_fallback_badge');
-  }
-  if (label === VoiceLabel.PRERENDERED) {
-    return $r('app.string.voice_studio');
-  }
-  return $r('app.string.voice_text_only');
 }
 
 /** Language name as shown in the guide row ("English", "中文", "Polski"). */

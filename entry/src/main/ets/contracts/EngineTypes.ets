@@ -196,7 +196,7 @@ export enum HapticKind { ARRIVE = 'arrive', APPROACH = 'approach', OFF_ROUTE = '
 
 export enum MediaPlayState { PLAY = 'play', PAUSE = 'pause', STOP = 'stop' }
 
-/** AVSession metadata. The executor appends " · Fallback voice" / " · DEMO" to the artist line. */
+/** AVSession metadata. The executor appends " · DEMO" to the artist line. */
 export interface MediaMeta {
   title: string;
   artist: string;

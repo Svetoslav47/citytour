@@ -1,6 +1,6 @@
 /*
  * Courses screen (docs/SERVER.md §6), opened from Home ("Browse walks" on first run, "More courses" later). The app
- * ships no built-in course: the catalog loads on open. One card per course: a 16:9 cover photo banner with its credit
+ * ships no built-in course: the catalog loads on open. One card per course: a 16:9 cover photo banner (credits in About)
  * (from the catalog before download, from the pack after), title in the UI language, city, stops ·
  * km · minutes, languages, and the action for its state: Download · size / progress % + Cancel / Downloaded ✓ /
  * Update / Try again / Delete, plus "Use" for a downloaded course that is not active ("In use" on the active one).
@@ -186,7 +186,6 @@ export struct CoursesPage {
       if (it.hasCover) {
         CoverPhoto({
           path: it.coverPath,
-          credit: it.coverCredit,
           alt: $r('app.string.cover_alt_title', it.title),
           ratio: 16 / 9,
           textPadding: Space.S4,
