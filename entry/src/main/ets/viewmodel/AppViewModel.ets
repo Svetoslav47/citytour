@@ -27,7 +27,6 @@ export class Routes {
   static readonly SETTINGS_STORY_LANG: string = 'SettingsStoryLanguage';
   static readonly SETTINGS_APP_LANG: string = 'SettingsAppLanguage';
   static readonly SETTINGS_VOICE: string = 'SettingsVoice';
-  static readonly SETTINGS_INFO: string = 'SettingsInfo';             // param 'ai' | 'sources' (B8 replaces it)
 }
 
 export enum PackState { LOADING = 'loading', READY = 'ready', ERROR = 'error' }

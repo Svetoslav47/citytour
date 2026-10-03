@@ -247,12 +247,12 @@ export struct SettingsPage {
     SectionHeader({ label: $r('app.string.settings_about') })
     SettingsCard() {
       NavRow({
-        title: $r('app.string.settings_how_made'), rowId: 'rowHowMade', onTap: () => this.open(Routes.SETTINGS_INFO, 'ai')
+        title: $r('app.string.settings_how_made'), rowId: 'rowHowMade', onTap: () => this.app.openAbout()
       })
       RowDivider()
       NavRow({
         title: $r('app.string.settings_sources'), rowId: 'rowSources',
-        onTap: () => this.open(Routes.SETTINGS_INFO, 'sources')
+        onTap: () => this.app.openAbout()
       })
       RowDivider()
       NavRow({

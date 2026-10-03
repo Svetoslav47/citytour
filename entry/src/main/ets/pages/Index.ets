@@ -17,7 +17,6 @@ import { SettingsPage } from './SettingsPage';
 import { TourDetailPage } from './TourDetailPage';
 import { SettingsViewModel } from '../viewmodel/SettingsViewModel';
 import { AppLanguagePage } from '../views/settings/AppLanguagePage';
-import { SettingsInfoPage } from '../views/settings/SettingsInfoPage';
 import { StoryLanguagePage } from '../views/settings/StoryLanguagePage';
 import { VoicePage } from '../views/settings/VoicePage';
 
@@ -61,8 +60,6 @@ struct Index {
       AppLanguagePage()
     } else if (name === Routes.SETTINGS_VOICE) {
       VoicePage()
-    } else if (name === Routes.SETTINGS_INFO) {
-      SettingsInfoPage({ topic: param as string })
     }
   }
 
