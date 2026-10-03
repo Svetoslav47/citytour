@@ -106,6 +106,15 @@ export class RemoteClient {
     return this.verifier.configured();
   }
 
+  /** GET /healthz within 3 s: true when the server answers 200. */
+  async health(): Promise<boolean> {
+    if (!this.enabled()) {
+      return false;
+    }
+    const h = await this.call('GET', '/healthz', '', http.HttpDataType.STRING, 3000, {});
+    return h.status === 200;
+  }
+
   // ---------- signed JSON ----------
 
   async catalog(): Promise<CatalogResult> {

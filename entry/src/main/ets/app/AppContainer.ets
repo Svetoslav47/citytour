@@ -23,6 +23,11 @@
  * ohos_window_窗口_/Interface_Window/arkts-apis-window-window, getLastWindow: .../Functions/arkts-apis-window-f,
  * FAQ faqs-arkui-1366: only effective in the foreground, reset it when the scene ends); AppConfig.DEBUG_CORRUPT_PACK
  * swaps in CorruptPackRepository (row 17 demo).
+ * Optional server (docs/SERVER.md): remoteClient() = RemoteClient (Network Kit http, Ed25519-verified envelopes),
+ * courses() = CourseRepository (bundled + downloaded courses; the PackRepository every caller gets is the
+ * ActivePackRepository forwarding to the active course), and speech() = RemoteVoice, a SpeechPort decorator over
+ * NarrationPlayer that adds the runtime studio voice. With RemoteConfig.BASE_URL '' none of it touches the network
+ * and the app behaves exactly as before (bundled course, bundled clips, built-in voice).
  * UIAbilityContext: doc 开发指南/Ability_Kit_程序框架服务/应用模型/应用组件/UIAbility组件/
  * 启动应用内的UIAbility组件/uiability-intra-device-interaction.
  */
@@ -51,6 +56,17 @@ import { Haptics } from '../services/haptics/Haptics';
 import { ScriptedTourControl } from '../services/tour/ScriptedTourControl';
 import { DemoControls, TourController, TourControllerDeps } from '../services/tour/TourController';
 import { Lang } from '../contracts/Model';
+import { ClipEntry } from '../core/speech/ClipSelection';
+import { ActivePackRepository } from '../services/pack/ActivePackRepository';
+import { PACK_ID } from '../services/pack/RawfilePackRepository';
+import { ActiveCourse, CourseRepository } from '../services/remote/CourseRepository';
+import { CourseStore } from '../services/remote/CourseStore';
+import { courseClipsOffThread } from '../services/remote/ClipManifestTask';
+import { FileStore } from '../services/remote/FileStore';
+import { RemoteClient } from '../services/remote/RemoteClient';
+import { Ed25519Verifier } from '../services/remote/SignatureVerifier';
+import { RemoteVoice } from '../services/speech/RemoteVoice';
+import { RemoteConfig } from './RemoteConfig';
 import { SystemClock, SystemScheduler } from './Clock';
 import { AppConfig } from './AppConfig';
 import { HilogLogger, Log } from './Log';
@@ -129,6 +145,9 @@ export class AppContainer {
   private static demoCtlImpl: DemoWalkControls | undefined = undefined;
   private static notifierImpl: TourNotifier | undefined = undefined;
   private static hapticsImpl: Haptics | undefined = undefined;
+  private static remoteImpl: RemoteClient | undefined = undefined;
+  private static coursesImpl: CourseRepository | undefined = undefined;
+  private static remoteVoiceImpl: RemoteVoice | undefined = undefined;
 
   /** Idempotent. Builds services; starts nothing. */
   static init(ctx: common.UIAbilityContext): void {
@@ -140,6 +159,8 @@ export class AppContainer {
       AppContainer.packImpl = AppContainer.makePack();
       AppContainer.buildSpeech();
       AppContainer.narration().loadClipManifest();   // A13: early, so Settings/onboarding know Polish is spoken
+      AppContainer.startCourses();                   // SERVER.md §6: restore the active course (local, no network)
+      AppContainer.remoteVoice().probe();            // one GET /healthz (skipped when BASE_URL is '')
       AppContainer.permImpl = new PermissionService(ctx);
       AppContainer.realLocImpl = new RealLocationSource(AppContainer.permImpl);
       AppContainer.demoImpl = new DemoWalkSource(ctx);
@@ -212,6 +233,9 @@ export class AppContainer {
     AppContainer.demoCtlImpl = undefined;
     AppContainer.notifierImpl = undefined;
     AppContainer.hapticsImpl = undefined;
+    AppContainer.remoteImpl = undefined;
+    AppContainer.coursesImpl = undefined;
+    AppContainer.remoteVoiceImpl = undefined;
     AppContainer.ctx = undefined;
   }
 
@@ -241,7 +265,7 @@ export class AppContainer {
       Log.w(LogEvents.PACK_ERR, 'file=pois.json reason=parse src=debug action=inject flag=DEBUG_CORRUPT_PACK');
       return new CorruptPackRepository(AppContainer.loggerImpl);
     }
-    return PackFactory.create();
+    return new ActivePackRepository(PackFactory.create(), PACK_ID);
   }
 
   static tourControl(): TourControl {
@@ -268,7 +292,7 @@ export class AppContainer {
   private static buildTour(): TourController {
     const deps: TourControllerDeps = {
       pack: AppContainer.packRepository(),
-      speech: AppContainer.narration(),
+      speech: AppContainer.speech(),
       voice: AppContainer.voiceManager(),
       log: AppContainer.loggerImpl,
       clock: AppContainer.clockImpl,
@@ -361,9 +385,81 @@ export class AppContainer {
     return AppContainer.voiceManager();
   }
 
-  /** The SpeechPort (one utterance in flight, prefetch n+1). Call init() once before the first speak(). */
+  /**
+   * The SpeechPort (one utterance in flight, prefetch n+1): RemoteVoice over NarrationPlayer (SERVER.md §2).
+   * Call init() once before the first speak().
+   */
   static speech(): SpeechPort {
-    return AppContainer.narration();
+    return AppContainer.remoteVoice();
+  }
+
+  /** The runtime studio voice decorator (Settings toggle, HUD Server row). */
+  static remoteVoice(): RemoteVoice {
+    if (AppContainer.remoteVoiceImpl === undefined) {
+      AppContainer.remoteVoiceImpl = new RemoteVoice(AppContainer.narration(), AppContainer.remoteClient(),
+        () => AppContainer.filesDir(), () => AppContainer.courses().activeId());
+    }
+    return AppContainer.remoteVoiceImpl;
+  }
+
+  /** The app's filesDir ('' before init()). */
+  static filesDir(): string {
+    const c = AppContainer.ctx;
+    return c === undefined ? '' : c.filesDir;
+  }
+
+  static remoteClient(): RemoteClient {
+    if (AppContainer.remoteImpl === undefined) {
+      AppContainer.remoteImpl = new RemoteClient(RemoteConfig.BASE_URL,
+        new Ed25519Verifier(RemoteConfig.SIGNING_PUBLIC_KEY_SPKI_B64), () => AppContainer.filesDir());
+    }
+    return AppContainer.remoteImpl;
+  }
+
+  /** Bundled + downloaded courses (SERVER.md §6). */
+  static courses(): CourseRepository {
+    if (AppContainer.coursesImpl === undefined) {
+      const pack = AppContainer.packRepository();
+      // DEBUG_CORRUPT_PACK replaces the pack with a fake: courses then manage a private wrapper the app never shows.
+      const active: ActivePackRepository = pack instanceof ActivePackRepository ? pack as ActivePackRepository :
+        new ActivePackRepository(pack, PACK_ID);
+      AppContainer.coursesImpl = new CourseRepository(AppContainer.remoteClient(),
+        new CourseStore(() => AppContainer.filesDir()), active, PACK_ID);
+    }
+    return AppContainer.coursesImpl;
+  }
+
+  /** Restores the active course and keeps the speech side in step with it (clips, tour pack facts). */
+  private static startCourses(): void {
+    const repo = AppContainer.courses();
+    repo.addListener((c: ActiveCourse) => AppContainer.onActiveCourse(c));
+    repo.start();
+  }
+
+  private static onActiveCourse(c: ActiveCourse): void {
+    try {
+      if (AppContainer.tourImpl !== undefined && !AppContainer.tourImpl.isRunning()) {
+        AppContainer.tourImpl.onPackSwitched();
+      }
+      if (c.bundled || c.audioManifestPath === '' || c.root === '') {
+        AppContainer.narration().setCourseClips([]);
+        return;
+      }
+      FileStore.readText(`${c.root}/${c.audioManifestPath}`).then((text: string | undefined) => {
+        if (text === undefined) {
+          Log.w(LogEvents.NARR_AUDIO, `event=course_clips_missing course=${c.id}`);
+          AppContainer.narration().setCourseClips([]);
+          return;
+        }
+        return courseClipsOffThread(text, c.root).then((entries: ClipEntry[]) => {
+          AppContainer.narration().setCourseClips(entries);
+        });
+      }).catch((e: Object) => {
+        Log.e(LogEvents.NARR_AUDIO, `event=course_clips_fail course=${c.id} ${Log.errKv(e)}`);
+      });
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=AppContainer.onActiveCourse ${Log.errKv(e as Object)}`);
+    }
   }
 
   /** Concrete VoiceManager for Settings/Onboarding/DevPanel extras (strategy(), lastCaps(), fallback context). */
@@ -409,7 +505,9 @@ export class AppContainer {
   static backgroundRunner(): BackgroundRunner {
     if (AppContainer.bgImpl === undefined) {
       AppContainer.bgImpl = new BackgroundRunner(() => AppContainer.context(), () => {
-        if (AppContainer.speechImpl !== undefined) {
+        if (AppContainer.remoteVoiceImpl !== undefined) {
+          AppContainer.remoteVoiceImpl.stopNow();
+        } else if (AppContainer.speechImpl !== undefined) {
           AppContainer.speechImpl.stopNow();
         }
       });
