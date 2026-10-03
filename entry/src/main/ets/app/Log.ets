@@ -2,7 +2,9 @@
  * The only logging entry point of CityTour (docs/ARCHITECTURE.md §10, PLAN §0.3 rule 5).
  * Wraps hilog from @kit.PerformanceAnalysisKit (doc: API参考/调测调优/Performance_Analysis_Kit_性能分析服务/
  * ArkTS_API/ohos_hilog_HiLog日志打印_/js-apis-hilog; info/warn/error since API 7, domain 0x0..0xFFFF).
- * Domain 0xC17A, tag CityTour, format "%{public}s %{public}s" -> "<EVENT> k=v k=v".
+ * Domain 0xC17A, tag CityTour, format "CityTour %{public}s %{public}s" -> "CityTour <EVENT> k=v k=v".
+ * The literal "CityTour" marker is in the message on purpose: `devecocli log --keyword CityTour` runs
+ * `hilog -e CityTour`, which matches message content only, not the tag (checked on the Pura 90 emulator).
  * Never log free-text user data; round real coordinates to 4 decimals.
  */
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -10,7 +12,7 @@ import { LoggerPort } from '../contracts/Ports';
 
 export const LOG_DOMAIN: number = 0xC17A;
 export const LOG_TAG: string = 'CityTour';
-const LOG_FORMAT: string = '%{public}s %{public}s';
+const LOG_FORMAT: string = 'CityTour %{public}s %{public}s';
 
 export class Log {
   static d(event: string, kv: string = ''): void {
