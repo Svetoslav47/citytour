@@ -23,6 +23,7 @@ import notifyTextTest from './NotifyText.test';
 import onboardingTest from './Onboarding.test';
 import clipSelectionTest from './ClipSelection.test';
 import settingsTest from './Settings.test';
+import systemLinesTest from './SystemLines.test';
 import hudRowsTest from './HudRows.test';
 import langSwitchTest from './LangSwitch.test';
 
@@ -49,6 +50,7 @@ export default function testsuite() {
   onboardingTest();
   clipSelectionTest();
   settingsTest();
+  systemLinesTest();
   hudRowsTest();
   langSwitchTest();
 }

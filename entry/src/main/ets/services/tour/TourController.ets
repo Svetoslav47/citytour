@@ -343,6 +343,13 @@ export class TourController implements TourControl {
   private deferredInfo: string[] = [];         // NARR_SOURCE kv lines raised inside reduce(), logged after its effects
   private bgUp: boolean = false;
   private artist: string = 'CityTour · Historian';
+  /**
+   * The voice heard last (studio clip / native / fallback TTS), updated on UTTERANCE_STARTED only, so the chip, the
+   * HUD and the AVSession artist name what is actually speaking and do not flicker between sentences or while the
+   * next one is synthesized. undefined until the first sentence of a tour is heard (the tour plan label is used).
+   */
+  private heardLabel: VoiceLabel | undefined = undefined;
+  private lastMeta: MediaMeta | undefined = undefined;
   private avsUp: boolean = false;
   private screenKept: boolean = false;         // §9 row 14: keepScreenOn(true) is in force
   private notifDenied: boolean = false;        // §9 row 16: no next-stop notices this tour
@@ -437,11 +444,8 @@ export class TourController implements TourControl {
       s = this.idleSnapshot();
     }
     s.platform = this.platformStatus(st);
-    if (st !== undefined && !st.speechText) {
-      const live: VoiceLabel | undefined = this.liveLabel();
-      if (live !== undefined) {
-        s.voiceLabel = live;             // A13: "Studio voice" while a clip plays, "Fallback voice" while TTS does
-      }
+    if (st !== undefined && !st.speechText && this.heardLabel !== undefined) {
+      s.voiceLabel = this.heardLabel;    // A13: "Studio voice" after a clip started, "Fallback voice" after TTS did
     }
     if (st === undefined) {
       s.source = this.sourceKind;
@@ -529,8 +533,29 @@ export class TourController implements TourControl {
     if (gen !== this.generation || !this.running) {
       return;                            // a late callback from a torn-down tour (or another speech user)
     }
+    if (type === EngineEventType.UTTERANCE_STARTED) {
+      this.noteHeard(id);
+    }
     const ev: EngineEvent = { type: type, nowMs: this.deps.clock.nowMs(), utteranceId: id, code: code };
     this.dispatch(ev);
+  }
+
+  /**
+   * A13 label honesty: at UTT_START, take the label of the sentence now audible. A change is logged (NARR_AUDIO
+   * event=voice_label) and re-sent to the AVSession artist line; text sentences (no audio) keep the last label.
+   */
+  private noteHeard(id: string): void {
+    const l: VoiceLabel | undefined = this.liveLabel();
+    if (l === undefined || l === this.heardLabel) {
+      return;
+    }
+    const from: string = this.heardLabel === undefined ? 'plan' : this.heardLabel;
+    this.heardLabel = l;
+    this.deps.log.info(LogEvents.NARR_AUDIO, `event=voice_label from=${from} to=${l} id=${id}`);
+    const m: MediaMeta | undefined = this.lastMeta;
+    if (m !== undefined) {
+      this.sendMeta(m);
+    }
   }
 
   onBackgroundCancelled(reason: string): void {
@@ -890,6 +915,7 @@ export class TourController implements TourControl {
       voice: vp, adaptiveLength: this.opts.adaptiveLength, spokenDirections: this.opts.spokenDirections,
       briefOnly: this.opts.briefOnly, source: this.sourceKind, legs: this.packLegs()
     };
+    this.heardLabel = undefined;           // a new tour starts from its plan label
     this.state = TourEngine.init(input, this.opts.config !== undefined ? this.opts.config : new TourConfig());
     this.dispatchType(EngineEventType.START_PLANNING);
     if (p.order.length === 0) {
@@ -971,6 +997,11 @@ export class TourController implements TourControl {
       this.voicePlan = vp;
       this.narrLogged.clear();
       const personaId: string = tour.personaId;
+      if (st.speechText) {
+        this.heardLabel = undefined;       // from text to voice: no voice heard yet in this mode, use the plan label
+      }
+      // Otherwise the heard label stays until the first new-language sentence starts (noteHeard at UTT_START):
+      // the sentence in flight finishes in the old voice, and the chip / AVSession artist say so.
       const fxs: Effect[] = TourEngine.switchLang(st, lang,
         (poiId: string, len: NarrationLength) => this.narrationFor(poiId, personaId, lang, len), vp,
         this.deps.clock.nowMs());
@@ -1042,6 +1073,8 @@ export class TourController implements TourControl {
     this.generation++;
     const gen: number = this.generation;
     this.running = true;
+    this.heardLabel = undefined;
+    this.lastMeta = undefined;
     this.noopLogged.clear();
     this.timeoutSent = false;
     this.noFixLogged = false;
@@ -1467,16 +1500,33 @@ export class TourController implements TourControl {
     if (fx.meta === undefined) {
       return;
     }
+    this.lastMeta = fx.meta;
     if (media === undefined) {
       this.noop('meta', LogEvents.AVS_META, `title="${fx.meta.title}" noop=no_service`);
       return;
     }
-    // Artist = "CityTour · <persona>" (the service appends " · Fallback voice" / " · DEMO"); the engine puts the
-    // tour title there, which the card already shows as the album.
-    const m: MediaMeta = {
-      title: fx.meta.title, artist: this.artist, voiceLabel: fx.meta.voiceLabel, demo: fx.meta.demo
-    };
-    media.setMeta(m);                    // a session that is not active yet buffers it (A6)
+    this.sendMeta(fx.meta);
+  }
+
+  /**
+   * Artist = "CityTour · <persona>" (the service appends " · Fallback voice" / " · Studio voice" / " · DEMO"); the
+   * engine puts the tour title there, which the card already shows as the album. The voice part is the label heard
+   * last (heardLabel), not the tour plan: a welcome line read by native TTS must not say "Studio voice".
+   */
+  private sendMeta(meta: MediaMeta): void {
+    const media: MediaSessionPort | undefined = this.safeGet(this.deps.media, 'media');
+    if (media === undefined) {
+      return;
+    }
+    const st: TourState | undefined = this.state;
+    const textNow: boolean = st !== undefined && st.speechText;
+    const label: VoiceLabel = !textNow && this.heardLabel !== undefined ? this.heardLabel : meta.voiceLabel;
+    const m: MediaMeta = { title: meta.title, artist: this.artist, voiceLabel: label, demo: meta.demo };
+    try {
+      media.setMeta(m);                  // a session that is not active yet buffers it (A6)
+    } catch (e) {
+      this.deps.log.error(LogEvents.AVS_FAIL, `where=controller.setMeta ${errText(e as Object)}`);
+    }
   }
 
   private mediaState(s: MediaPlayState | undefined): void {
@@ -1571,7 +1621,7 @@ export class TourController implements TourControl {
     return s;
   }
 
-  /** The label of what is audible now: a clip, native or fallback TTS. Text sentences keep the tour label. */
+  /** The label of what is audible now: a clip, native or fallback TTS. Text sentences give undefined. */
   private liveLabel(): VoiceLabel | undefined {
     try {
       const f = this.deps.liveVoiceLabel;

@@ -86,8 +86,9 @@ The app never calls ElevenLabs and ships no key. Narration voice generated with 
 
 How the voice is chosen (`core/speech/ClipSelection.ets`, `storyVoicePlan`):
 
-- **Studio voice.** When the manifest has clips for the story language, the tour runs in voice mode labelled **Studio voice** (Now Walking chip, Tour detail, Settings voice row, onboarding, lock-screen artist line `· Studio voice`). The label follows what is audible: while the on-device voice reads a line, Now Walking shows that voice's label (e.g. **Fallback voice**).
-- **Polish is spoken.** Polish stories play from the clips. Lines without a clip (directions, arrival lines, deep stories) stay on-screen text: Core Speech Kit has no Polish voice, and no Chinese or English voice is mixed in. A Polish story only partly covered by clips is read as text from start to end (`NARR_AUDIO event=story_incomplete action=text_whole_story`).
+- **Studio voice.** When the manifest has clips for the story language, the tour runs in voice mode labelled **Studio voice** (Now Walking chip, Tour detail, Settings voice row, onboarding, lock-screen artist line `· Studio voice`). The label follows what is audible: it changes when a sentence starts (`UTT_START`, logged as `NARR_AUDIO event=voice_label`) to the voice of that sentence and stays until another voice starts, so the Now Walking chip, the How it works HUD and the lock-screen artist line say **Fallback voice** while the on-device voice reads a line and **Studio voice** while a clip plays.
+- **System lines and directions (phase 3).** `scripts/voice/system-lines.mjs` lists every fixed sentence the engine can say for the tour besides the stories: welcome (real tour title, simulated-walk line), finish, GPS lost, "You've left the route.", "New plan: ...", arrival + look lines for every direction, and the A9 turn-by-turn cues of every pack leg ("In 10/20/30 metres, ...", "Now ..., then ..."). Rendered into the same manifest (`audio/<lang>/_<group>/`), they play by hash like story sentences, also in Polish. `entry/src/test/SystemLines.test.ets` checks every generated sentence (2271 cases) against the real ArkTS functions, text and SHA-256. Lines with a live number (approach "In about 80 metres", "Next stop: X, about 300 metres from here", bearing guidance) stay native TTS / text.
+- **Polish is spoken.** Polish stories (and, once rendered, the system lines and directions) play from the clips. Lines without a clip (live-distance lines, deep stories) stay on-screen text: Core Speech Kit has no Polish voice, and no Chinese or English voice is mixed in. A Polish story only partly covered by clips is read as text from start to end (`NARR_AUDIO event=story_incomplete action=text_whole_story`).
 - **English and Chinese** fall back per sentence to native TTS.
 - The user's "Text only" choice and "Listen in English, read in Polish" get no clips.
 - Pause, resume (from the sentence start), skip, replay, lock-screen (AVSession) controls, audio interrupts and the background continuous task use the same sentence queue for clips and TTS.
@@ -99,7 +100,10 @@ node scripts/voice/render-elevenlabs.mjs --dry-run       # clips, characters and
 export ELEVENLABS_API_KEY=...  ELEVENLABS_VOICE_ID=...    # in your own shell only, never in a file in this repo
 node scripts/voice/render-elevenlabs.mjs --limit 3       # smoke test: 3 clips
 node scripts/voice/render-elevenlabs.mjs                 # the rest; reruns skip unchanged sentences
+node scripts/voice/render-elevenlabs.mjs --dry-run --system-only   # only the system/arrival/nav lines
 ```
+
+System lines are included by default (`--no-system` skips them, `--system-only` renders only them, `--system-groups system,arrival,nav`, `--nav-legs all|tour`). A run re-plans and prunes only the clips in its scope (languages x stories/system groups). After a template change in `core/content/Phrases.ets`, run `node scripts/voice/system-lines.mjs --write-golden` and re-render; `scripts/test.sh` fails while the golden is stale or the Node port differs from the ArkTS output.
 
 Model `eleven_multilingual_v2`, mono `mp3_44100_64` by default (`--output-format mp3_22050_32` halves the size). Input is the pack's `narrations/<lang>.json`; `--narrations-dir`, `--langs`, `--lengths`, `--fixture` and `--help` change that. The pre-commit hook rejects ElevenLabs key values.
 

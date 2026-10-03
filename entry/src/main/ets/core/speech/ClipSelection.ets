@@ -10,7 +10,7 @@
  *   tts / text   otherwise, as the VoicePlan says (the native TTS path, or text-only).
  * Matching on the hash of the exact sentence (not on poi/sentence index) is deliberate: a stop item is the arrival
  * lines plus the story sentences (TourEngine.enqueue), so indexes shift; a sentence whose text changed after
- * rendering simply has no match and falls back to TTS; dynamic lines (directions, welcome, GPS lost) never match.
+ * rendering simply has no match and falls back to TTS; lines with live numbers (approach, "about N metres") never match.
  * The user's explicit "text only" choice (VoiceLabel.TEXT_ONLY_USER) is respected: no clip then either.
  * A text-only plan for lack of a platform voice (Polish) does use a clip: that is the point of pre-rendering.
  * The user's cross-language choice ("listen in English, read in Polish") is respected too: no clip, one voice.
@@ -22,6 +22,11 @@
  *   plan (engine/person) still voices the dynamic lines and any sentence without a clip.
  *   storyClipCoverage() + ClipIndex.exclude(): where the fallback is text (Polish), a story whose sentences are
  *   only partly covered plays entirely as text, never half spoken / half silent. en/zh fall back per sentence.
+ *
+ * Phase 3 (system lines): the manifest may also hold clips of the engine's fixed lines (welcome, finish, GPS lost,
+ * arrival lines, A9 turn-by-turn cues; scripts/voice/system-lines.mjs), with poiId '' and length system|arrival|nav.
+ * selectAudio() plays them by hash like any sentence (also in Polish, whose fallback is text). They do not count for
+ * hasLang(): the "Studio voice" story plan needs story clips, not just a few direction cues.
  */
 import { VoiceLabel } from '../../contracts/Settings';
 import { VoicePlan } from '../../contracts/Ports';
@@ -141,6 +146,11 @@ export function parseClipManifest(json: string): ClipManifestParse {
   return out;
 }
 
+/** A clip of a fixed engine line (no stop): system-lines.mjs writes poiId '' and length system|arrival|nav. */
+export function isSystemClip(e: ClipEntry): boolean {
+  return e.poiId === '';
+}
+
 export class ClipLookup {
   entry?: ClipEntry;
   reason: string = ClipReason.NO_CLIP;
@@ -152,9 +162,13 @@ export class ClipIndex {
   private failed: Set<string> = new Set<string>();
   private excluded: Set<string> = new Set<string>();
   private count: number = 0;
+  private systemCount: number = 0;
 
   constructor(entries: ClipEntry[]) {
     for (const e of entries) {
+      if (isSystemClip(e)) {
+        this.systemCount++;
+      }
       const list = this.byHash.get(e.textSha256);
       if (list === undefined) {
         this.byHash.set(e.textSha256, [e]);
@@ -169,11 +183,16 @@ export class ClipIndex {
     return this.count;
   }
 
-  /** True when at least one clip exists for this language (and persona, when given). */
+  /** Clips of fixed system / arrival / nav lines (phase 3). */
+  systemSize(): number {
+    return this.systemCount;
+  }
+
+  /** True when at least one story clip exists for this language (and persona, when given). System lines do not count. */
   hasLang(lang: string, personaId?: string): boolean {
     let found = false;
     this.byHash.forEach((list: ClipEntry[]) => {
-      if (!found && list.some((e: ClipEntry) => e.lang === lang &&
+      if (!found && list.some((e: ClipEntry) => e.lang === lang && !isSystemClip(e) &&
         (personaId === undefined || personaId === '' || e.personaId === personaId))) {
         found = true;
       }

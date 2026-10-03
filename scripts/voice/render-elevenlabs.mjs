@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// Pre-renders the Historian stop stories with ElevenLabs, one mp3 clip per sentence (task A13, docs/PLAN.md).
+// Pre-renders the Historian stop stories with ElevenLabs, one mp3 clip per sentence (task A13, docs/PLAN.md), and
+// (phase 3) every finite non-story line the engine speaks: welcome/finish/GPS lost/off-route/replan, arrival lines
+// and the A9 turn-by-turn cues of the pack legs (scripts/voice/system-lines.mjs), so the guide speaks in one voice.
 //
 // Why build time: no API key in the app, no network at runtime, deterministic demo. The app plays a clip only when
 // rawfile/audio/manifest.json has an entry whose textSha256 equals SHA-256(UTF-8 of the exact sentence the app
@@ -10,6 +12,8 @@
 //         --fixture uses scripts/voice/fixtures/narrations (the developer stub pack sentences).
 // Output: entry/src/main/resources/rawfile/audio/<lang>/<poiId>/<length>_<n>.mp3 and audio/manifest.json.
 //         (<length>_ prefix: teaser/full/deep of one stop each have their own sentence 0.)
+//         System lines: audio/<lang>/_<group>/<sha256 prefix>.mp3, manifest length=<group> (system|arrival|nav),
+//         poiId '' (the app matches on the text hash only; ClipIndex.hasLang ignores them for the story label).
 //
 // Secrets: ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID come from the environment only. The key is sent in the
 // xi-api-key request header and is never printed, logged or written anywhere.
@@ -21,11 +25,18 @@
 // Options: --narrations-dir <dir> --out <rawfileDir> --langs en,pl,zh --lengths teaser,full,deep
 //          --persona historian --tour <tour.json> | --all-pois --model <id> --output-format <fmt>
 //          --limit <n> --concurrency <n> --force --no-context --no-prune --fixture
+//          System lines (on by default, off with --fixture): --no-system | --system-only
+//          --system-groups system,arrival,nav --nav-legs all|tour --pack <packDir> --tour-id royal-route
+// Only clips in the selected scope (languages x stories/system groups) are re-planned or pruned; manifest entries
+// outside it are kept as they are.
 // Node 22+, stdlib only (fetch, crypto, fs).
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import {
+  DEFAULT_PACK_DIR, DEFAULT_TOUR_ID, GROUPS as SYSTEM_GROUPS, enumerateCases, linesFromCases, loadPack
+} from './system-lines.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(HERE, '..', '..');
@@ -87,8 +98,31 @@ export function clipRelPath(lang, poiId, length, n) {
   return `${AUDIO_SUBDIR}/${safe(lang)}/${safe(poiId)}/${safe(length)}_${n}.mp3`;
 }
 
+/** True for a manifest length that is a system-line group (system | arrival | nav), not a story length. */
+export function isSystemGroup(length) {
+  return SYSTEM_GROUPS.includes(length);
+}
+
 export function clipKey(c) {
+  if (isSystemGroup(c.length)) {
+    return `${c.lang}|${c.personaId}|${c.length}|${c.textSha256}`;   // system lines are keyed by their text
+  }
   return `${c.lang}|${c.personaId}|${c.poiId}|${c.length}|${c.n}`;
+}
+
+/** Clip path of a system line: audio/<lang>/_<group>/<first 16 hex of the text hash>.mp3. */
+export function systemClipRelPath(lang, group, sha) {
+  const safe = (x) => String(x).replace(/[^A-Za-z0-9_.-]/g, '_');
+  return `${AUDIO_SUBDIR}/${safe(lang)}/_${safe(group)}/${sha.slice(0, 16)}.mp3`;
+}
+
+/** Render clips for the system-line render list (system-lines.mjs linesFromCases output). */
+export function systemClips(lines, persona) {
+  return lines.map((l) => ({
+    lang: l.lang, poiId: '', personaId: persona, length: l.group, n: 0, text: l.text,
+    ttsText: toElevenLabsText(l.text), previousText: '', nextText: '', textSha256: l.textSha256,
+    chars: toElevenLabsText(l.text).length, file: systemClipRelPath(l.lang, l.group, l.textSha256)
+  }));
 }
 
 /**
@@ -142,7 +176,9 @@ export function summarize(clips, kbps) {
     const s = by[c.lang] || (by[c.lang] = { lang: c.lang, clips: 0, chars: 0, pois: new Set(), estSeconds: 0 });
     s.clips++;
     s.chars += c.chars;
-    s.pois.add(c.poiId);
+    if (c.poiId) {
+      s.pois.add(c.poiId);
+    }
     s.estSeconds += stripPauseMarkup(c.text).length / (CHARS_PER_SECOND[c.lang] || 14);
   }
   const rows = Object.values(by).map((s) => ({
@@ -153,17 +189,30 @@ export function summarize(clips, kbps) {
     clips: t.clips + r.clips, chars: t.chars + r.chars, credits: t.credits + r.credits,
     estMinutes: t.estMinutes + r.estMinutes, estMB: t.estMB + r.estMB
   }), { clips: 0, chars: 0, credits: 0, estMinutes: 0, estMB: 0 });
-  return { rows, total };
+  const groups = {};
+  for (const c of clips) {
+    const kind = isSystemGroup(c.length) ? c.length : 'stories';
+    const k = `${c.lang}|${kind}`;
+    const g = groups[k] || (groups[k] = { lang: c.lang, kind, clips: 0, chars: 0 });
+    g.clips++;
+    g.chars += c.chars;
+  }
+  return { rows, total, groups: Object.values(groups) };
 }
 
 /**
  * Splits clips into reused (manifest entry with the same key, text hash, voice, model and format, file present)
  * and toRender. fileExists(relPath) is injected for tests.
  */
-export function planRender(clips, manifest, cfg, fileExists, force = false) {
+export function planRender(clips, manifest, cfg, fileExists, force = false, inScope = () => true) {
   const old = new Map();
+  const outOfScope = [];
   for (const e of (manifest && Array.isArray(manifest.clips)) ? manifest.clips : []) {
-    old.set(clipKey(e), e);
+    if (inScope(e)) {
+      old.set(clipKey(e), e);
+    } else {
+      outOfScope.push(e);                 // another language / kind than this run: kept untouched
+    }
   }
   const reuse = [];
   const toRender = [];
@@ -179,7 +228,7 @@ export function planRender(clips, manifest, cfg, fileExists, force = false) {
   }
   const keep = new Set(clips.map((c) => c.file));
   const stale = [...old.values()].map((e) => e.file).filter((f) => typeof f === 'string' && !keep.has(f));
-  return { reuse, toRender, stale };
+  return { reuse, toRender, stale, keep: outOfScope };
 }
 
 /** Manifest entry (no secrets: the voice id is a public identifier, the key is never stored). */
@@ -211,7 +260,8 @@ export function parseArgs(argv) {
     dryRun: false, narrationsDir: null, out: DEFAULT_OUT, langs: [...LANGS], lengths: [...LENGTHS],
     persona: 'historian', tour: DEFAULT_TOUR, allPois: false, model: DEFAULT_MODEL,
     outputFormat: DEFAULT_OUTPUT_FORMAT, limit: Infinity, concurrency: 2, force: false, context: true, prune: true,
-    fixture: false, help: false
+    fixture: false, help: false, system: null, systemOnly: false, systemGroups: [...SYSTEM_GROUPS], navLegs: 'all',
+    pack: DEFAULT_PACK_DIR, tourId: DEFAULT_TOUR_ID
   };
   const list = (v) => String(v).split(',').map((s) => s.trim()).filter(Boolean);
   for (let i = 0; i < argv.length; i++) {
@@ -239,6 +289,13 @@ export function parseArgs(argv) {
       case '--no-context': o.context = false; break;
       case '--no-prune': o.prune = false; break;
       case '--fixture': o.fixture = true; break;
+      case '--system': o.system = true; break;
+      case '--no-system': o.system = false; break;
+      case '--system-only': o.systemOnly = true; o.system = true; break;
+      case '--system-groups': o.systemGroups = list(val()); break;
+      case '--nav-legs': o.navLegs = val(); break;
+      case '--pack': o.pack = resolve(val()); break;
+      case '--tour-id': o.tourId = val(); break;
       case '-h': case '--help': o.help = true; break;
       default: throw new Error(`unknown option ${a}`);
     }
@@ -247,6 +304,14 @@ export function parseArgs(argv) {
     if (!LENGTHS.includes(l)) {
       throw new Error(`unknown length ${l} (use ${LENGTHS.join(',')})`);
     }
+  }
+  for (const g of o.systemGroups) {
+    if (!SYSTEM_GROUPS.includes(g)) {
+      throw new Error(`unknown system group ${g} (use ${SYSTEM_GROUPS.join(',')})`);
+    }
+  }
+  if (o.navLegs !== 'all' && o.navLegs !== 'tour') {
+    throw new Error('--nav-legs must be all or tour');
   }
   if (!Number.isFinite(o.limit) && o.limit !== Infinity) {
     throw new Error('--limit must be a number');
@@ -363,6 +428,12 @@ function printSummary(sum, cfg, title) {
   const t = sum.total;
   console.log(`  all  ${''.padStart(5)} ${String(t.clips).padStart(6)} ${String(t.chars).padStart(7)} ` +
     `${String(t.credits).padStart(8)} ${t.estMinutes.toFixed(1).padStart(8)} ${t.estMB.toFixed(2).padStart(7)}`);
+  if (sum.groups.some((g) => g.kind !== 'stories')) {
+    console.log('  by kind:  lang  kind      clips   credits');
+    for (const g of sum.groups) {
+      console.log(`            ${g.lang.padEnd(4)}  ${g.kind.padEnd(8)} ${String(g.clips).padStart(6)} ${String(g.chars).padStart(9)}`);
+    }
+  }
   console.log(`  model=${cfg.model} format=${cfg.outputFormat} (1 credit per character for ${DEFAULT_MODEL};` +
     ` est.MB at ${cfg.kbps} kbps, budget ${SIZE_BUDGET_MB} MB)`);
 }
@@ -395,8 +466,25 @@ export async function main(argv) {
   }
   // The stub fixture uses poi_stub_* ids, so the tour filter does not apply to it.
   const poiIds = (o.allPois || usingFixture) ? null : tourPoiIds(o.tour);
-  const narr = loadNarrations(dir, o.langs);
-  const clips = collectClips(narr, { langs: o.langs, lengths: o.lengths, persona: o.persona, poiIds });
+  const withStories = !o.systemOnly;
+  const narr = withStories ? loadNarrations(dir, o.langs) : {};
+  const clips = withStories ? collectClips(narr, { langs: o.langs, lengths: o.lengths, persona: o.persona, poiIds }) : [];
+  // Phase 3: the fixed system lines, arrival lines and nav cues of the pack tour (default on, off for the fixture).
+  const withSystem = o.system === null ? !usingFixture : o.system;
+  let systemCount = 0;
+  if (withSystem) {
+    if (!existsSync(join(o.pack, 'tours.json'))) {
+      console.warn(`render-elevenlabs: no pack at ${relative(ROOT, o.pack)}: system lines skipped`);
+    } else {
+      const pack = loadPack(o.pack, o.tourId);
+      const lines = linesFromCases(enumerateCases(pack, { langs: o.langs, groups: o.systemGroups, navLegs: o.navLegs }));
+      const sys = systemClips(lines, o.persona);
+      systemCount = sys.length;
+      clips.push(...sys);
+    }
+  }
+  const inScope = (e) => o.langs.includes(e.lang) && (isSystemGroup(e.length) ?
+    withSystem && o.systemGroups.includes(e.length) : withStories && o.lengths.includes(e.length));
   if (clips.length === 0) {
     console.error(`render-elevenlabs: no sentences matched (dir=${relative(ROOT, dir)} persona=${o.persona} ` +
       `lengths=${o.lengths.join(',')} tourFilter=${poiIds ? poiIds.size + ' pois' : 'off'})`);
@@ -413,16 +501,24 @@ export async function main(argv) {
   const sum = summarize(clips, fmt.kbps);
   console.log(`render-elevenlabs: input ${relative(ROOT, dir)}${usingFixture ? ' (FIXTURE, not the real pack)' : ''}` +
     ` langs=${o.langs.join(',')} lengths=${o.lengths.join(',')} persona=${o.persona}` +
-    ` tourFilter=${poiIds ? `${poiIds.size} stops` : 'off'}`);
+    ` tourFilter=${poiIds ? `${poiIds.size} stops` : 'off'}` +
+    ` system=${withSystem ? `${o.systemGroups.join(',')} navLegs=${o.navLegs} lines=${systemCount}` : 'off'}` +
+    `${withStories ? '' : ' stories=off'}`);
 
   if (o.dryRun) {
     const dryCfg = { ...cfg, voiceId: voiceIdEnv || (oldManifest && oldManifest.voiceId) || '' };
-    const p = planRender(clips, oldManifest, dryCfg, exists, o.force);
+    const p = planRender(clips, oldManifest, dryCfg, exists, o.force, inScope);
     printSummary(sum, cfg, 'DRY RUN (no API call):');
     const pendingChars = p.toRender.reduce((n, c) => n + c.chars, 0);
+    const pendingBy = {};
+    for (const c of p.toRender) {
+      pendingBy[c.lang] = (pendingBy[c.lang] || 0) + c.chars;
+    }
     console.log(`  existing manifest: ${oldManifest ? oldManifest.clips.length : 0} clips;` +
-      ` would reuse ${p.reuse.length}, render ${p.toRender.length} (${pendingChars} credits), prune ${p.stale.length}` +
+      ` would reuse ${p.reuse.length}, render ${p.toRender.length} (${pendingChars} credits), prune ${p.stale.length},` +
+      ` keep ${p.keep.length} out of scope` +
       `${voiceIdEnv ? '' : ' (ELEVENLABS_VOICE_ID unset: reuse assumes the manifest voice)'}`);
+    console.log(`  credits to spend per language: ${Object.entries(pendingBy).map(([l, n]) => `${l}=${n}`).join(' ') || 'none'}`);
     return 0;
   }
 
@@ -432,13 +528,13 @@ export async function main(argv) {
       '(never in a file in this repo). Use --dry-run to count characters without a key.');
     return 2;
   }
-  const plan = planRender(clips, oldManifest, cfg, exists, o.force);
+  const plan = planRender(clips, oldManifest, cfg, exists, o.force, inScope);
   const todo = plan.toRender.slice(0, Number.isFinite(o.limit) ? Math.max(0, o.limit) : undefined);
   printSummary(sum, cfg, 'Render plan:');
   console.log(`  reuse ${plan.reuse.length}, render ${todo.length} of ${plan.toRender.length} pending` +
     ` (${todo.reduce((n, c) => n + c.chars, 0)} credits), stale ${plan.stale.length}`);
 
-  const entries = new Map(plan.reuse.map((e) => [clipKey(e), e]));
+  const entries = new Map(plan.keep.concat(plan.reuse).map((e) => [clipKey(e), e]));
   // Clips not rendered in this run (--limit) keep their old entry only if it is still valid (planRender reused it).
   const save = () => writeFileAtomic(manifestPath, JSON.stringify(buildManifest([...entries.values()], cfg), null, 2) + '\n');
   let done = 0;
