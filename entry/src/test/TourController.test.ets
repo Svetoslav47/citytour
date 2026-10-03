@@ -306,8 +306,22 @@ class FakePack implements PackRepository {
     return d;
   }
 
+  translate: boolean = false;          // X2: serve pl/zh copies of the en fixture ("[zh] ..."), same counts
+
   narration(poiId: string, personaId: string, lang: Lang, len: NarrationLength): Narration | undefined {
-    return miniNarrations().find((n: Narration) => n.poiId === poiId && n.length === len && n.lang === lang);
+    const n: Narration | undefined =
+      miniNarrations().find((x: Narration) => x.poiId === poiId && x.length === len && x.lang === lang);
+    if (n !== undefined || !this.translate) {
+      return n;
+    }
+    const en: Narration | undefined =
+      miniNarrations().find((x: Narration) => x.poiId === poiId && x.length === len && x.lang === Lang.EN);
+    if (en === undefined) {
+      return undefined;
+    }
+    en.lang = lang;
+    en.sentences = en.sentences.map((x: string) => `[${lang}] ${x}`);
+    return en;
   }
 
   source(id: string): SourceRef | undefined {
@@ -1206,6 +1220,59 @@ export default function tourControllerTest() {
         h.ctrl.resume();
         h.walkTo(MINI_BARBICAN, 1.3);
         expect(h.log.find('POI_ENTER', `id=${MINI_BARBICAN}`, 0) >= 0).assertTrue();
+        h.ctrl.end();
+        done();
+      });
+
+    it('X2: setStoryLang mid-story re-runs the voice plan, continues in 中文 at the next sentence, prefetch follows', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        h.pack.translate = true;
+        h.clips = miniClips();                                   // English studio clips only
+        h.ctrl.setStoryLang(Lang.EN);                            // no tour yet: saved for the next plan
+        expect(h.log.find('LANG_SWITCH', 'where=next_plan', 0) >= 0).assertTrue();
+        await h.ctrl.setSource(FixSource.DEMO);
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.PRERENDERED);
+        h.placeNear(MINI_BARBICAN, 60, 0);
+        await h.ctrl.start();
+        h.walkTo(MINI_BARBICAN, 1.3);
+        h.dwellUntilQuiet(120);
+        h.speech.sentenceMs = 1000000;                           // sentences end only when the test says so
+        h.walkTo(MINI_ST_MARYS, 1.3);
+        const listener: SpeechListener = h.speech.listener as SpeechListener;
+        for (let i = 0; i < 20; i++) {
+          const u: Utterance | undefined = h.speech.inFlight;
+          if (u !== undefined && u.text === 'Fixture teaser sentence one.') {
+            break;
+          }
+          if (u !== undefined) {
+            h.speech.inFlight = undefined;
+            listener.onUtteranceDone(u.id);
+          } else {
+            h.second(0, Number.NaN);
+          }
+        }
+        expect((h.speech.inFlight as Utterance).text).assertEqual('Fixture teaser sentence one.');
+        const metas: number = h.media.metas.length;
+        h.ctrl.setStoryLang(Lang.ZH);
+        expect(h.log.find('NARR_AUDIO', 'event=story_voice lang=zh clips=no', 0) >= 0).assertTrue();
+        expect(h.log.find('LANG_SWITCH', 'from=en to=zh', 0) >= 0).assertTrue();
+        expect(h.ctrl.options().lang).assertEqual(Lang.ZH);
+        expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.FALLBACK_ZH_READS_EN);   // honest: no zh clips
+        expect(h.media.metas.length > metas).assertTrue();                                  // lock screen relabelled
+        const pre: string = h.speech.prefetched[h.speech.prefetched.length - 1];
+        expect(pre.indexOf('.zh#') > 0).assertTrue();
+        const cur: Utterance = h.speech.inFlight as Utterance;
+        h.speech.inFlight = undefined;
+        listener.onUtteranceDone(cur.id);
+        expect(h.speech.spoken[h.speech.spoken.length - 1]).assertEqual('[zh] Fixture teaser sentence two.');
+        expect(h.speech.spokenIds[h.speech.spokenIds.length - 1]).assertEqual(pre);        // the prefetch is used
+        expect(h.ctrl.current().nowPlaying?.caption).assertEqual('[zh] Fixture teaser sentence two.');
+        const n: number = h.log.count('LANG_SWITCH');
+        h.ctrl.setStoryLang(Lang.ZH);                                                       // same language + voice
+        expect(h.log.find('LANG_SWITCH', 'reason=same_lang_and_voice', 0) >= 0).assertTrue();
+        expect(h.log.count('LANG_SWITCH')).assertEqual(n + 1);
         h.ctrl.end();
         done();
       });
