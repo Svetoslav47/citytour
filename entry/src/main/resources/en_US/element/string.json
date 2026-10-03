@@ -1073,6 +1073,42 @@
       "value": "Step %1$d of %2$d"
     },
     {
+      "name": "onb_visual_a11y",
+      "value": "The Royal Route on a map of Kraków, from the Barbican to Wawel Hill"
+    },
+    {
+      "name": "onb_lang_group",
+      "value": "Narration language"
+    },
+    {
+      "name": "onb_spoken_laura",
+      "value": "Spoken · Laura voice"
+    },
+    {
+      "name": "onb_spoken_fallback",
+      "value": "Spoken · Fallback voice"
+    },
+    {
+      "name": "onb_spoken_zh",
+      "value": "Spoken · 聆小珊"
+    },
+    {
+      "name": "onb_checking_voice",
+      "value": "Checking the voices on this phone…"
+    },
+    {
+      "name": "onb_installed",
+      "value": "Installed"
+    },
+    {
+      "name": "onb_downloading",
+      "value": "Downloading"
+    },
+    {
+      "name": "onb_fallback_note",
+      "value": "The Chinese voice reads English until the English voice is installed."
+    },
+    {
       "name": "summary_complete",
       "value": "Tour complete"
     },
