@@ -16,7 +16,10 @@ import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { dialAngle, RoundedDistance, roundWalkDistance, shouldUpdateDistance } from '../core/map/WalkDisplay';
 import { PlaqueState } from '../views/common/Plaque';
+import { MapData } from '../contracts/Model';
 import { PreviewPoint } from '../views/common/RoutePreview';
+import { MapOverlay } from '../views/map/MapRenderer';
+import { MapCache, overlayBounds, walkOverlay } from './MapViewModel';
 import { StopRow } from '../views/common/StopList';
 import { AppViewModel } from './AppViewModel';
 import { localName } from './Format';
@@ -45,6 +48,9 @@ export class NowWalkingViewModel {
   @Trace user: PreviewPoint | undefined = undefined;
   @Trace stopRows: StopRow[] = [];
   @Trace nowPlayingTitle: string = '';
+  @Trace map: MapData | undefined = undefined;
+  @Trace scene: MapOverlay = new MapOverlay();
+  @Trace sceneBounds: number[] = [];
   @Trace showDemoSheet: boolean = false;
   @Trace showStopsSheet: boolean = false;
   @Trace showVoiceInfo: boolean = false;
@@ -52,6 +58,7 @@ export class NowWalkingViewModel {
   private lang: Lang = Lang.EN;
   private lastDistanceMs: number = 0;
   private plannedKey: string = '';
+  private boundsKey: string = '';
   private unsubscribe: (() => void) | undefined = undefined;
 
   attach(lang: Lang): void {
@@ -268,6 +275,14 @@ export class NowWalkingViewModel {
       (s.user.x !== 0 || s.user.y !== 0) ? new PreviewPoint(s.user.x, s.user.y, 0) : undefined;
 
     this.nowPlayingTitle = s.nowPlaying !== undefined ? poiName(pack, s.nowPlaying.poiId, this.lang) : '';
+    if (this.map === undefined) {
+      this.map = MapCache.detailMap();
+    }
+    this.scene = walkOverlay(s, this.lang);
+    if (key !== this.boundsKey) {
+      this.boundsKey = key;
+      this.sceneBounds = overlayBounds(this.scene) ?? [];
+    }
 
     if (this.showStopsSheet) {
       this.stopRows = this.buildStopRows(s);

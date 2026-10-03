@@ -13,7 +13,7 @@ import { LogEvents } from '../app/LogEvents';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { NowWalkingViewModel, WalkState } from '../viewmodel/NowWalkingViewModel';
 import { IssueBanner, topIssue } from '../views/common/IssueBanner';
-import { RoutePreview } from '../views/common/RoutePreview';
+import { MapCanvas } from '../views/map/MapCanvas';
 import { SimulatedBadge } from '../views/common/SimulatedBadge';
 import { StopList } from '../views/common/StopList';
 import { Radius, Size, Space, Type } from '../views/common/Tokens';
@@ -199,23 +199,34 @@ export struct NowWalkingPage {
 
       Blank()
 
-      FloatingIconButton({
-        symbol: $r('sys.symbol.dot_grid_1x2'),
-        label: $r('app.string.walk_menu'),
-        buttonId: 'btnWalkMenu',
-        onTap: () => {}
-      })
-        .bindMenu([
-          {
-            value: $r('app.string.walk_menu_stops'),
-            action: () => this.vm.openStops()
-          },
-          {
-            value: $r('app.string.cta_end_tour'),
-            enabled: !this.finished(),
-            action: () => this.confirmEnd()
-          }
-        ])
+      Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.NORMAL }) {
+        SymbolGlyph($r('sys.symbol.dot_grid_1x2'))
+          .fontSize(20)
+          .fontColor([$r('app.color.text_primary')])
+      }
+      .id('btnWalkMenu')
+      .width(Size.ICON_BUTTON)
+      .height(Size.ICON_BUTTON)
+      .margin(4)
+      .backgroundColor($r('app.color.bg_scrim'))
+      .backgroundBlurStyle(BlurStyle.COMPONENT_THICK)
+      .shadow(ShadowStyle.OUTER_DEFAULT_XS)
+      .accessibilityText($r('app.string.walk_menu'))
+      .bindMenu([
+        {
+          value: $r('app.string.walk_menu_stops'),
+          action: () => this.vm.openStops()
+        },
+        {
+          value: $r('app.string.walk_menu_full_map'),
+          action: () => this.app.openFullMap('walk')
+        },
+        {
+          value: $r('app.string.cta_end_tour'),
+          enabled: !this.finished(),
+          action: () => this.confirmEnd()
+        }
+      ])
     }
     .width('100%')
     .padding({ left: Space.S2, right: Space.S2, top: Space.S2 })
@@ -269,6 +280,7 @@ export struct NowWalkingPage {
     .alignItems(HorizontalAlign.End)
     .width('100%')
     .padding({ right: Space.S3, top: 64 })
+    .hitTestBehavior(HitTestMode.Transparent)   // the header buttons underneath stay tappable
   }
 
   @Builder
@@ -417,14 +429,16 @@ export struct NowWalkingPage {
     NavDestination() {
       Stack({ alignContent: Alignment.TopStart }) {
         Column() {
-          RoutePreview({
-            points: this.vm.routePoints,
-            states: this.vm.routeStates,
-            user: this.vm.user,
-            userSimulated: this.vm.isDemo(),
+          MapCanvas({
+            map: this.vm.map,
+            scene: this.vm.scene,
+            bounds: this.vm.sceneBounds,
+            follow: this.vm.scene.user !== undefined,
+            followScale: 1.4,
             boxHeight: this.vm.state() === WalkState.READING ? MAP_H_READING : MAP_H,
             topInset: 96,
-            bottomInset: 24
+            bottomInset: 24,
+            mapId: 'mapWalk'
           })
             .accessibilityText($r('app.string.walk_map_a11y', this.vm.stopName))
           this.panel()

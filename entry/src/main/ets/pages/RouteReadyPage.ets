@@ -13,7 +13,7 @@ import { OrderRow, TourPlanViewModel } from '../viewmodel/TourPlanViewModel';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { IssueBanner } from '../views/common/IssueBanner';
 import { Plaque, PlaqueState } from '../views/common/Plaque';
-import { RoutePreview } from '../views/common/RoutePreview';
+import { MapCanvas } from '../views/map/MapCanvas';
 import { SimulatedBadge } from '../views/common/SimulatedBadge';
 import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
 
@@ -323,10 +323,13 @@ export struct RouteReadyPage {
       Stack({ alignContent: Alignment.TopStart }) {
         Scroll() {
           Column() {
-            RoutePreview({
-              points: this.vm.orderPreview.length > 0 ? this.vm.orderPreview : this.vm.preview,
+            MapCanvas({
+              map: this.vm.map,
+              scene: this.vm.orderScene.stops.length > 0 ? this.vm.orderScene : this.vm.scene,
+              bounds: this.vm.orderScene.stops.length > 0 ? this.vm.orderBounds : this.vm.sceneBounds,
               boxHeight: 300,
-              topInset: 56
+              topInset: 56,
+              mapId: 'mapRouteReady'
             })
             this.panel()
           }
