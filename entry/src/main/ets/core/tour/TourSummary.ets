@@ -4,6 +4,8 @@
  *     the walker stood at stops (phase AT_STOP), because EngineSnapshot carries no duration.
  *   - buildSummary: the final snapshot + the timer -> stops heard, stops still to see (with the distance from the
  *     last position), walked metres and the total time.
+ * Walked: the route length (pack legs) from the first stop to the last stop heard, not EngineSnapshot.walkedM, which
+ * also sums the GPS jitter while standing at stops (7.3 km for the 2 km Royal Route demo walk on the emulator).
  * Total time: real GPS = elapsed wall-clock time from start to end. Demo walk (SIMULATED, replayed at up to x8) =
  * "walking-pace time": walked metres at the engine's 1.3 m/s pace plus the real time spent at stops listening, so it
  * reads like the real walk (the screen says "Simulated walk: distances and times come from a recorded route").
@@ -124,15 +126,46 @@ export function isHeard(status: StopStatus): boolean {
   return status === StopStatus.VISITED || status === StopStatus.TEASER_ONLY;
 }
 
-/** Summary of the tour that `s` (its final snapshot) ended. `pos` returns a POI's [x, y] or undefined. */
-export function buildSummary(s: EngineSnapshot, t: TourTimer,
-  pos: (poiId: string) => number[] | undefined): TourSummaryData {
+/**
+ * Route metres from the first stop to the last stop heard, leg by leg in walking order: the pack leg length
+ * (`legM`, <= 0 = unknown), else the straight line between the two POIs, else the leg is left out.
+ */
+export function routeWalkedM(stops: StopProgress[], legM: (from: string, to: string) => number,
+  pos: (poiId: string) => number[] | undefined): number {
+  let last = -1;
+  stops.forEach((p: StopProgress, i: number) => {
+    if (isHeard(p.status)) {
+      last = i;
+    }
+  });
+  let sum = 0;
+  for (let i = 1; i <= last; i++) {
+    const a = stops[i - 1].poiId;
+    const b = stops[i].poiId;
+    let d = legM(a, b);
+    if (!Number.isFinite(d) || d <= 0) {
+      const pa = pos(a);
+      const pb = pos(b);
+      d = pa !== undefined && pb !== undefined && pa.length >= 2 && pb.length >= 2 ?
+        Math.hypot(pb[0] - pa[0], pb[1] - pa[1]) : 0;
+    }
+    sum += Number.isFinite(d) && d > 0 ? d : 0;
+  }
+  return sum;
+}
+
+/**
+ * Summary of the tour that `s` (its final snapshot) ended. `pos` returns a POI's [x, y] or undefined; `legM` the pack
+ * route length between two stops (<= 0 = unknown).
+ */
+export function buildSummary(s: EngineSnapshot, t: TourTimer, pos: (poiId: string) => number[] | undefined,
+  legM: (from: string, to: string) => number): TourSummaryData {
   const d = new TourSummaryData();
   d.tourId = s.tourId;
   d.complete = s.phase === TourPhase.FINISHED;
   d.demo = s.source === FixSource.DEMO;
   d.totalStops = s.stops.length;
-  d.walkedM = Number.isFinite(s.walkedM) && s.walkedM > 0 ? s.walkedM : 0;
+  d.walkedM = routeWalkedM(s.stops, legM, pos);
   d.durationS = summaryDurationS(t, d.walkedM, d.demo);
   d.endedMs = t.endMs;
   d.plannedOrder = s.plannedOrder.slice();

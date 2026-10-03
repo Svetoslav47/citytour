@@ -20,7 +20,7 @@ import { StopRow } from '../views/common/StopList';
 import { MapOverlay } from '../views/map/MapRenderer';
 import { localName } from './Format';
 import { MapCache, overlayBounds, walkOverlay } from './MapViewModel';
-import { findTour, poiName, safePoi } from './PackView';
+import { findTour, legMetres, poiName, safePoi, safeRoutes } from './PackView';
 
 /** A "Still to see" row: plaque, name and the distance from where the walk ended (NaN = unknown). */
 export class StillRow {
@@ -79,15 +79,17 @@ export class SummaryViewModel {
 
   private static finish(s: EngineSnapshot): void {
     const pack = AppContainer.packRepository();
+    const routes = safeRoutes(pack);
     const d = buildSummary(s, SummaryViewModel.timer, (id: string): number[] | undefined => {
       const p = safePoi(pack, id);
       return p === undefined ? undefined : [p.x, p.y];
-    });
+    }, (a: string, b: string): number => legMetres(routes, a, b));
     SummaryViewModel.last = d;
     SummaryViewModel.lastSnap = s;
     Log.i(LogEvents.TOUR_SUMMARY, `tour=${d.tourId} complete=${d.complete ? 1 : 0} heard=${d.heardCount()}/` +
-      `${d.totalStops} walkedM=${Math.round(d.walkedM)} durationS=${Number.isFinite(d.durationS) ?
-        Math.round(d.durationS) : 'nan'} time=${d.demo ? 'walking_pace' : 'elapsed'} src=${d.demo ? 'demo' : 'real'}`);
+      `${d.totalStops} walkedM=${Math.round(d.walkedM)} engineWalkedM=${Math.round(s.walkedM)} ` +
+      `durationS=${Number.isFinite(d.durationS) ? Math.round(d.durationS) : 'nan'} ` +
+      `time=${d.demo ? 'walking_pace' : 'elapsed'} src=${d.demo ? 'demo' : 'real'}`);
   }
 
   // ---------- screen state ----------

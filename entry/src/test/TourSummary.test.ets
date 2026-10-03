@@ -3,7 +3,7 @@
 // see with the distance from the last position, complete vs ended early.
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  buildSummary, isHeard, summaryDurationS, SUMMARY_WALK_MPS, TourSummaryData, TourTimer
+  buildSummary, isHeard, routeWalkedM, summaryDurationS, SUMMARY_WALK_MPS, TourSummaryData, TourTimer
 } from '../main/ets/core/tour/TourSummary';
 import {
   EngineSnapshot, PlatformStatus, SignalQuality, StopProgress, StopStatus, TourPhase
@@ -43,6 +43,11 @@ function positions(id: string): number[] | undefined {
     return [100, 300];
   }
   return undefined;
+}
+
+/** Pack leg a->b is 500 m, b->c unknown (falls back to the straight line); everything else unknown. */
+function legs(from: string, to: string): number {
+  return from === 'a' && to === 'b' ? 500 : 0;
 }
 
 function near(a: number, b: number): boolean {
@@ -119,14 +124,14 @@ export default function tourSummaryTest() {
         stop('c', 2, StopStatus.VISITED)];
       t.feed(snap(TourPhase.WALKING, stops, FixSource.REAL), 0);
       t.feed(snap(TourPhase.FINISHED, stops, FixSource.REAL), 60000);
-      const d: TourSummaryData = buildSummary(snap(TourPhase.FINISHED, stops, FixSource.REAL), t, positions);
+      const d: TourSummaryData = buildSummary(snap(TourPhase.FINISHED, stops, FixSource.REAL), t, positions, legs);
       expect(d.complete).assertTrue();
       expect(d.demo).assertFalse();
       expect(d.heardCount()).assertEqual(3);
       expect(d.totalStops).assertEqual(3);
       expect(d.stillToSee.length).assertEqual(0);
       expect(d.heard[1].order).assertEqual(2);
-      expect(d.walkedM).assertEqual(2600);
+      expect(d.walkedM).assertEqual(500);           // route legs, not the engine's jittery 2600
       expect(d.durationS).assertEqual(60);
       expect(d.shown).assertFalse();
     });
@@ -136,7 +141,7 @@ export default function tourSummaryTest() {
         stop('c', 2, StopStatus.PENDING)];
       t.feed(snap(TourPhase.WALKING, stops, FixSource.DEMO), 0);
       t.feed(snap(TourPhase.ABORTED, stops, FixSource.DEMO), 1000);
-      const d = buildSummary(snap(TourPhase.ABORTED, stops, FixSource.DEMO), t, positions);
+      const d = buildSummary(snap(TourPhase.ABORTED, stops, FixSource.DEMO), t, positions, legs);
       expect(d.complete).assertFalse();
       expect(d.demo).assertTrue();
       expect(d.heardCount()).assertEqual(1);
@@ -146,15 +151,27 @@ export default function tourSummaryTest() {
       expect(d.stillToSee[1].order).assertEqual(3);
       expect(near(d.stillToSee[1].distanceM, 300)).assertTrue();      // user (100, 0) -> c (100, 300)
     });
+    it('walked_is_route_length_to_the_last_stop_heard', 0, () => {
+      // a -> b pack leg 500 m; b has no position, so b -> c counts 0; c -> d unheard is not walked.
+      const heardAC = [stop('a', 0, StopStatus.VISITED), stop('b', 1, StopStatus.SKIPPED),
+        stop('c', 2, StopStatus.VISITED), stop('d', 3, StopStatus.PENDING)];
+      expect(routeWalkedM(heardAC, legs, positions)).assertEqual(500);
+      // Straight-line fallback when the pack has no leg: a (0,0) -> c (100,300).
+      const ac = [stop('a', 0, StopStatus.VISITED), stop('c', 1, StopStatus.TEASER_ONLY)];
+      expect(near(routeWalkedM(ac, legs, positions), Math.hypot(100, 300))).assertTrue();
+      // Only the first stop heard: nothing walked between stops yet.
+      expect(routeWalkedM([stop('a', 0, StopStatus.VISITED), stop('b', 1, StopStatus.PENDING)], legs, positions))
+        .assertEqual(0);
+    });
     it('no_position_means_no_distance_and_bad_walked_is_zero', 0, () => {
       const t = new TourTimer();
       const stops = [stop('c', 0, StopStatus.PENDING)];
       const s = snap(TourPhase.ABORTED, stops, FixSource.REAL);
       s.user = undefined;
       s.walkedM = Number.NaN;
-      const d = buildSummary(s, t, positions);
+      const d = buildSummary(s, t, positions, legs);
       expect(Number.isNaN(d.stillToSee[0].distanceM)).assertTrue();
-      expect(d.walkedM).assertEqual(0);
+      expect(d.walkedM).assertEqual(0);             // nothing heard, nothing walked
       expect(d.heardCount()).assertEqual(0);
       expect(Number.isNaN(d.durationS)).assertTrue();   // never saw the start
     });
