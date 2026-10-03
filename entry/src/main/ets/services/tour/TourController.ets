@@ -471,7 +471,7 @@ export class TourController implements TourControl {
 
   // ================================================================ extras
 
-  /** Applied at the next plan(). */
+  /** Applied at the next plan(); spokenDirections also to the running tour (A9). */
   setOptions(o: TourOptions): void {
     this.opts = o;
     this.syncDirections(o.spokenDirections);   // A9: the Spoken directions toggle also applies to a running tour
