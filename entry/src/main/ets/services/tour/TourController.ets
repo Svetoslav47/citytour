@@ -259,9 +259,11 @@ export class TourController implements TourControl {
   private latestFix: Fix | undefined = undefined;
   private latestFixAtMs: number = Number.NaN;
   private realAccuracyM: number = Number.NaN;
+  private originWaiter: (() => void) | undefined = undefined;
   private ctrlIssues: AppIssue[] = [];
   private noopLogged: Set<string> = new Set<string>();
   private narrLogged: Set<string> = new Set<string>();
+  private deferredInfo: string[] = [];         // NARR_SOURCE kv lines raised inside reduce(), logged after its effects
   private bgUp: boolean = false;
   private avsUp: boolean = false;
 
@@ -416,6 +418,8 @@ export class TourController implements TourControl {
     try {
       if (this.running) {
         this.teardown('shutdown');
+      } else {
+        this.stopSources();              // a plan-time origin source may still run
       }
       this.deps.scheduler.cancel(this.publishTimer);
       this.publishTimer = -1;
@@ -501,7 +505,7 @@ export class TourController implements TourControl {
     } catch (e) {
       this.deps.log.error(LogEvents.TTS_INIT_FAIL, `where=TourController.plan ${errText(e as Object)}`);
     }
-    await this.waitForOrigin();
+    await this.primeOrigin();
     const vp: VoicePlan = this.resolveVoice();
     const origin: LatLng = this.planningOrigin();
     const p: TourPlan = this.solve(tour, tour.stops.map((s: TourStop) => s.poiId), origin, budgetMin > 0 ? budgetMin * 60 : 0);
@@ -573,14 +577,51 @@ export class TourController implements TourControl {
     }
   }
 
-  /** If a source is already running but has not delivered a fix yet, give it ORIGIN_WAIT_MS. */
-  private waitForOrigin(): Promise<void> {
-    const src: LocationSource | undefined = this.shadowSource !== undefined ? this.shadowSource : this.activeSource;
-    if (this.latestFix !== undefined || src === undefined || !src.isRunning()) {
-      return Promise.resolve();
+  /**
+   * Gets a planning origin if one can be had without asking the user: a fresh fix, else the real source started
+   * now (only when location permission is already GRANTED; it then keeps running as the §5 shadow), waiting up to
+   * ORIGIN_WAIT_MS for its first fix. On the emulator this is the fixed Beijing point => LOC_OUT_OF_AREA.
+   */
+  private async primeOrigin(): Promise<void> {
+    if (this.latestFix !== undefined && this.deps.clock.nowMs() - this.latestFixAtMs <= ORIGIN_MAX_AGE_MS) {
+      return;
     }
-    return new Promise<void>((resolve) => {
-      this.deps.scheduler.after(ORIGIN_WAIT_MS, () => resolve());
+    const running: boolean = (this.shadowSource !== undefined && this.shadowSource.isRunning()) ||
+      (this.activeSource !== undefined && this.activeSource.isRunning());
+    if (!running) {
+      const real: LocationSource | undefined = this.safeGet<LocationSource>(
+        () => this.deps.sourceFor(FixSource.REAL), 'source');
+      const perms: PermissionPort | undefined = this.safeGet(this.deps.permissions, 'permissions');
+      if (real === undefined || perms === undefined) {
+        return;
+      }
+      let ps: PermissionState = PermissionState.UNKNOWN;
+      try {
+        ps = await perms.locationState();
+      } catch (e) {
+        this.deps.log.warn(LogEvents.LOC_ERR, `where=plan_origin_permission ${errText(e as Object)}`);
+        return;
+      }
+      if (ps !== PermissionState.GRANTED || real.isRunning()) {
+        return;
+      }
+      this.shadowSource = real;
+      this.deps.log.info(LogEvents.LOC_SOURCE, 'kind=real role=origin');
+      this.startSource(real, FixSource.REAL, this.generation, false);
+    }
+    if (this.latestFix !== undefined) {
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      const id: number = this.deps.scheduler.after(ORIGIN_WAIT_MS, () => {
+        this.originWaiter = undefined;
+        resolve();
+      });
+      this.originWaiter = () => {
+        this.deps.scheduler.cancel(id);
+        this.originWaiter = undefined;
+        resolve();
+      };
     });
   }
 
@@ -670,7 +711,7 @@ export class TourController implements TourControl {
     const key: string = `${poiId}:${len}`;
     if (n !== undefined && !this.narrLogged.has(key)) {
       this.narrLogged.add(key);
-      this.deps.log.info(LogEvents.NARR_SOURCE, `poi=${poiId} len=${len} lang=${n.lang} tier=${n.tier} ` +
+      this.deferredInfo.push(`poi=${poiId} len=${len} lang=${n.lang} tier=${n.tier} ` +
         `sources=${n.sources.length} sentences=${n.sentences.length}`);
     }
     return n;
@@ -898,6 +939,9 @@ export class TourController implements TourControl {
     }
     this.latestFix = fix;
     this.latestFixAtMs = now;
+    if (this.originWaiter !== undefined) {
+      this.originWaiter();
+    }
     if (!active || this.state === undefined) {
       this.schedulePublish();
       return;
@@ -976,6 +1020,7 @@ export class TourController implements TourControl {
         for (const fx of r.effects) {
           this.execute(fx);
         }
+        this.flushDeferred();
       }
     } finally {
       this.dispatching = false;
@@ -1033,6 +1078,17 @@ export class TourController implements TourControl {
       }
     } catch (e) {
       this.deps.log.error(LogEvents.UNCAUGHT, `where=TourController.execute fx=${fx.type} ${errText(e as Object)}`);
+    }
+  }
+
+  private flushDeferred(): void {
+    if (this.deferredInfo.length === 0) {
+      return;
+    }
+    const lines: string[] = this.deferredInfo;
+    this.deferredInfo = [];
+    for (const kv of lines) {
+      this.deps.log.info(LogEvents.NARR_SOURCE, kv);
     }
   }
 

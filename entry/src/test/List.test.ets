@@ -17,6 +17,7 @@ import replayTest from './Replay.test';
 import packParserTest from './PackParser.test';
 import narrationValidatorTest from './NarrationValidator.test';
 import mapCameraTest from './MapCamera.test';
+import tourControllerTest from './TourController.test';
 
 export default function testsuite() {
   harnessTest();
@@ -35,4 +36,5 @@ export default function testsuite() {
   packParserTest();
   narrationValidatorTest();
   mapCameraTest();
+  tourControllerTest();
 }
