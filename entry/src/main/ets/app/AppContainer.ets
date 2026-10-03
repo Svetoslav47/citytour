@@ -11,6 +11,8 @@
  * (vibrator preset with isSupportEffectSync check, timed fallback). shutdown() cancels the notification.
  * A4 wiring: voice() = VoiceManager (listVoices/downloadVoice + pure VoicePolicy), speech() = NarrationPlayer
  * (TTS playType 0 -> PcmPlayer AudioRenderer). Both share one TtsEngines, so each engine exists once per app.
+ * A13 wiring: NarrationPlayer also gets a ClipPlayer (AVPlayer over rawfile/audio clips, ElevenLabs pre-rendered
+ * at build time); with no rawfile/audio/manifest.json every sentence uses the TTS path as before.
  * A6 wiring: background() = BackgroundRunner (one continuous task ['location','audioPlayback']; it stops speech
  * before stopping the task, as the continuous-task guide requires), mediaSession() = MediaSessionService (AVSession
  * 'audio'). Both are constructed lazily and only touch the platform when start()/init() is called. shutdown()
@@ -31,6 +33,7 @@ import {
   PackRepository, PermissionPort, PermissionState, SpeechPort, TourControl, VoicePort
 } from '../contracts/Ports';
 import { PcmPlayer } from '../services/audio/PcmPlayer';
+import { ClipPlayer } from '../services/audio/ClipPlayer';
 import { BackgroundRunner } from '../services/background/BackgroundRunner';
 import { MediaSessionService } from '../services/media/MediaSessionService';
 import { DemoWalkSource } from '../services/location/DemoWalkSource';
@@ -375,7 +378,9 @@ export class AppContainer {
     const engines = new TtsEngines();
     const vm = new VoiceManager(engines);
     AppContainer.voiceImpl = vm;
-    AppContainer.speechImpl = new NarrationPlayer(vm, engines, new PcmPlayer());
+    // A13: ClipPlayer plays pre-rendered sentence clips (rawfile/audio, AVPlayer) when the manifest matches.
+    AppContainer.speechImpl = new NarrationPlayer(vm, engines, new PcmPlayer(), AppConfig.USE_SYSTEM_PLAYBACK,
+      new ClipPlayer(() => AppContainer.context()));
   }
 
   static permissions(): PermissionPort {

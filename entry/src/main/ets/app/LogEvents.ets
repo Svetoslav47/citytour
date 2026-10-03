@@ -58,6 +58,7 @@ export class LogEvents {
   static readonly TTS_ERR: string = 'TTS_ERR';
   static readonly UTT_START: string = 'UTT_START';
   static readonly UTT_DONE: string = 'UTT_DONE';
+  static readonly NARR_AUDIO: string = 'NARR_AUDIO';     // A13: src=prerendered|tts|text reason=... per sentence
   static readonly AUDIO_INTERRUPT: string = 'AUDIO_INTERRUPT';
   static readonly AUDIO_ROUTE: string = 'AUDIO_ROUTE';
   // Platform
