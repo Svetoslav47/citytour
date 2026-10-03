@@ -9,7 +9,8 @@
  *   - origin->stop walking = haversine x detourFactor, at WALK_SPEED_MPS;
  *   - a stop within SNAP_RADIUS_M of the user becomes the origin (it is visited first, walk cost 0);
  *   - a pending Tour.fixedStartPoiId is always visited first (it takes precedence over snapping);
- *   - a pending Tour.fixedEndPoiId is always visited last.
+ *   - a pending Tour.fixedEndPoiId is visited last on a full tour; under a time budget (X1, "I have N minutes") the
+ *     end is free, so a short walk picks the best cluster instead of spending the budget walking to the far end.
  * "savedM" = walking metres of the remaining stops in the tour's listed order minus those of the planned order
  * (same stop set, same origin). It can be negative in principle, because the solver minimises time, not metres.
  */
@@ -180,7 +181,7 @@ export function plan(inputs: PlanInputs, budgetS: number): TourPlan {
     }
     cost.push(row);
   }
-  const fe = inputs.endIdx >= 0 ? nodes.indexOf(inputs.endIdx) : -1;
+  const fe = !useBudget && inputs.endIdx >= 0 ? nodes.indexOf(inputs.endIdx) : -1;   // budget: free end (X1)
   const headCost = head >= 0 ? inputs.originS[head] + inputs.dwellS[head] : 0;
 
   let path: PathPlan;
