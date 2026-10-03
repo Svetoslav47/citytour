@@ -1,9 +1,12 @@
 /*
  * Composition root (docs/ARCHITECTURE.md §1.2 lifecycle, §12.1). EntryAbility calls init() in onCreate and
  * shutdown() in onDestroy. init() builds services but starts nothing. ViewModels read the getters only.
- * T0 wiring: tourControl() = ScriptedTourControl (SIMULATED) until A7.
  * A5 wiring: permissions() = PermissionService (location permission + switch), realLocation() = RealLocationSource
  * (Location Kit), demoWalk() = DemoWalkSource (SIMULATED track replay). Built in init(), started by their users.
+ * A7 wiring: tourControl() = TourController (engine + Planner + speech + platform ports). Ports whose task is not
+ * merged yet (location sources A5, BackgroundRunner/MediaSessionService A6, notifier/haptics A8) are provided as
+ * `undefined`, which the controller treats as a logged no-op. ScriptedTourControl stays for UI previews
+ * (scriptedTourControl()).
  * A4 wiring: voice() = VoiceManager (listVoices/downloadVoice + pure VoicePolicy), speech() = NarrationPlayer
  * (TTS playType 0 -> PcmPlayer AudioRenderer). Both share one TtsEngines, so each engine exists once per app.
  * A6 wiring: background() = BackgroundRunner (one continuous task ['location','audioPlayback']; it stops speech
@@ -15,8 +18,8 @@
  */
 import { common } from '@kit.AbilityKit';
 import {
-  BackgroundPort, Clock, LoggerPort, MediaSessionPort, PackRepository, PermissionPort, PermissionState, SpeechPort,
-  TourControl, VoicePort
+  BackgroundPort, Clock, FixSource, HapticsPort, LocationSource, LoggerPort, MediaSessionPort, NotifierPort,
+  PackRepository, PermissionPort, PermissionState, SpeechPort, TourControl, VoicePort
 } from '../contracts/Ports';
 import { PcmPlayer } from '../services/audio/PcmPlayer';
 import { BackgroundRunner } from '../services/background/BackgroundRunner';
@@ -29,7 +32,8 @@ import { NarrationPlayer } from '../services/speech/NarrationPlayer';
 import { TtsEngines } from '../services/speech/TtsEngines';
 import { VoiceManager } from '../services/speech/VoiceManager';
 import { ScriptedTourControl } from '../services/tour/ScriptedTourControl';
-import { SystemClock } from './Clock';
+import { DemoControls, TourController, TourControllerDeps } from '../services/tour/TourController';
+import { SystemClock, SystemScheduler } from './Clock';
 import { HilogLogger, Log } from './Log';
 import { LogEvents } from './LogEvents';
 
@@ -61,7 +65,8 @@ export class AppContainer {
   private static clockImpl: Clock = new SystemClock();
   private static loggerImpl: LoggerPort = new HilogLogger();
   private static packImpl: PackRepository | undefined = undefined;
-  private static tourImpl: ScriptedTourControl | undefined = undefined;
+  private static tourImpl: TourController | undefined = undefined;
+  private static scriptedImpl: ScriptedTourControl | undefined = undefined;
   private static voiceImpl: VoiceManager | undefined = undefined;
   private static speechImpl: NarrationPlayer | undefined = undefined;
   private static permImpl: PermissionPort | undefined = undefined;
@@ -78,11 +83,11 @@ export class AppContainer {
     AppContainer.ctx = ctx;
     try {
       AppContainer.packImpl = PackFactory.create();
-      AppContainer.tourImpl = new ScriptedTourControl();
       AppContainer.buildSpeech();
       AppContainer.permImpl = new PermissionService(ctx);
       AppContainer.realLocImpl = new RealLocationSource(AppContainer.permImpl);
       AppContainer.demoImpl = new DemoWalkSource(ctx);
+      AppContainer.tourImpl = AppContainer.buildTour();
     } catch (e) {
       Log.e(LogEvents.UNCAUGHT, `where=AppContainer.init ${Log.errKv(e as Object)}`);
     }
@@ -106,7 +111,10 @@ export class AppContainer {
     }
     try {
       if (AppContainer.tourImpl !== undefined) {
-        AppContainer.tourImpl.dispose();
+        AppContainer.tourImpl.shutdown();
+      }
+      if (AppContainer.scriptedImpl !== undefined) {
+        AppContainer.scriptedImpl.dispose();
       }
       if (AppContainer.speechImpl !== undefined) {
         AppContainer.speechImpl.dispose();
@@ -121,6 +129,7 @@ export class AppContainer {
       Log.e(LogEvents.UNCAUGHT, `where=AppContainer.shutdown ${Log.errKv(e as Object)}`);
     }
     AppContainer.tourImpl = undefined;
+    AppContainer.scriptedImpl = undefined;
     AppContainer.packImpl = undefined;
     AppContainer.voiceImpl = undefined;
     AppContainer.speechImpl = undefined;
@@ -153,10 +162,48 @@ export class AppContainer {
   }
 
   static tourControl(): TourControl {
+    return AppContainer.tourController();
+  }
+
+  /** Concrete TourController for DevPanel extras (options, isRunning). */
+  static tourController(): TourController {
     if (AppContainer.tourImpl === undefined) {
-      AppContainer.tourImpl = new ScriptedTourControl();
+      AppContainer.tourImpl = AppContainer.buildTour();
     }
     return AppContainer.tourImpl;
+  }
+
+  /** SIMULATED canned snapshots for UI previews and page development (T0). Not used by the app flow. */
+  static scriptedTourControl(): TourControl {
+    if (AppContainer.scriptedImpl === undefined) {
+      AppContainer.scriptedImpl = new ScriptedTourControl();
+    }
+    return AppContainer.scriptedImpl;
+  }
+
+  /** Constructs only: the controller touches no platform API before plan()/start(). */
+  private static buildTour(): TourController {
+    const deps: TourControllerDeps = {
+      pack: AppContainer.packRepository(),
+      speech: AppContainer.narration(),
+      voice: AppContainer.voiceManager(),
+      log: AppContainer.loggerImpl,
+      clock: AppContainer.clockImpl,
+      scheduler: new SystemScheduler(),
+      sourceFor: (kind: FixSource): LocationSource | undefined => AppContainer.locationSource(kind),
+      demoControls: (): DemoControls | undefined => undefined,          // A5: DemoWalkSource adapter
+      background: (): BackgroundPort | undefined => undefined,          // A6: BackgroundRunner
+      media: (): MediaSessionPort | undefined => undefined,             // A6: MediaSessionService
+      notifier: (): NotifierPort | undefined => undefined,              // A8
+      haptics: (): HapticsPort | undefined => undefined,                // A8
+      permissions: (): PermissionPort | undefined => AppContainer.permissions()
+    };
+    return new TourController(deps);
+  }
+
+  /** A5 provides RealLocationSource / DemoWalkSource; until then no source exists (the controller logs it). */
+  static locationSource(kind: FixSource): LocationSource | undefined {
+    return undefined;
   }
 
   static packRepository(): PackRepository {
