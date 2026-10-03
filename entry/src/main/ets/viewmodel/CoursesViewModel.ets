@@ -16,6 +16,7 @@ import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { CourseRow, CourseState, courseTitle, mergeCourses, progressPct, sizeLabel } from '../core/remote/CourseRules';
+import { CoverChoice, rowHasCover } from '../core/remote/CoverRules';
 import { CatalogSource, CatalogState, OpResult } from '../services/remote/CourseRepository';
 import { CancelToken, InstallProgress } from '../services/remote/CourseStore';
 import { AppViewModel } from './AppViewModel';
@@ -95,6 +96,12 @@ export class CourseItem {
   @Trace pct: number = 0;
   @Trace cancelling: boolean = false;
   @Trace failed: boolean = false;
+  /** A cover banner is expected (the catalog names a cover, or the installed course has one). */
+  @Trace hasCover: boolean = false;
+  /** The cover JPEG ('' = placeholder while it loads, or for good when it cannot be fetched). */
+  @Trace coverPath: string = '';
+  @Trace coverCredit: string = '';
+  coverBlob: string = '';
 }
 
 export enum CatalogNote { NONE = 'none', LOADING = 'loading', DISABLED = 'disabled', OFFLINE_CACHED = 'offlineCached',
@@ -130,6 +137,9 @@ export class CoursesViewModel {
   private progress: Map<string, number> = new Map<string, number>();
   private failed: Set<string> = new Set<string>();
   private cancels: Map<string, CancelToken> = new Map<string, CancelToken>();
+  /** Cover lookups by course id (kept across rebuilds, so a row never loses its photo). */
+  private covers: Map<string, CoverChoice> = new Map<string, CoverChoice>();
+  private coverBusy: Set<string> = new Set<string>();
 
   /** Page shown: local rows at once, then the catalog from the server. */
   async open(lang: Lang): Promise<void> {
@@ -198,11 +208,48 @@ export class CoursesViewModel {
         it.cancelling = c !== undefined && c.cancelled;
         it.pct = p !== undefined ? p : 0;
         it.failed = this.failed.has(it.id);
+        const cover = this.covers.get(it.id);
+        it.coverPath = cover !== undefined ? cover.path : '';
+        it.coverCredit = cover !== undefined ? cover.credit : '';
+        it.coverBlob = r.summary.coverBlob;
+        // An installed course may carry its cover in its pack: look before deciding there is no banner.
+        it.hasCover = rowHasCover(it.coverBlob, it.coverPath) || (r.canSelect && cover === undefined);
         out.push(it);
       }
       this.items = out;
+      this.loadCovers();
     } catch (e) {
       Log.e(LogEvents.UNCAUGHT, `where=CoursesViewModel.rebuild ${Log.errKv(e as Object)}`);
+    }
+  }
+
+  /**
+   * Looks up the cover of every row that has none yet (installed pack cover, or the catalog cover fetched from
+   * /v1/blobs and verified, CourseRepository.coverFor). Runs in the background; a row without any cover drops its
+   * banner, a row whose download failed keeps the placeholder and is tried again on the next open.
+   */
+  private loadCovers(): void {
+    for (const it of this.items) {
+      const known = this.covers.get(it.id);
+      if (!it.hasCover || (known !== undefined && known.path !== '') || this.coverBusy.has(it.id)) {
+        continue;
+      }
+      const id = it.id;
+      this.coverBusy.add(id);
+      AppContainer.courses().coverFor(id, this.enabled).then((c: CoverChoice) => {
+        this.covers.set(id, c);
+        const row = this.item(id);
+        if (row !== undefined) {
+          row.coverPath = c.path;
+          row.coverCredit = c.credit;
+          // No photo: keep the placeholder only while the catalog names a cover (it may download next time).
+          row.hasCover = rowHasCover(row.coverBlob, c.path);
+        }
+      }).catch((e: Object) => {
+        Log.e(LogEvents.UNCAUGHT, `where=CoursesViewModel.loadCovers ${Log.errKv(e)}`);
+      }).finally(() => {
+        this.coverBusy.delete(id);
+      });
     }
   }
 
