@@ -1226,6 +1226,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 - The Claude Code agent drafts from the source texts in data/raw only (no outside facts); each draft lists claims with exact source quotes; provenance kind=llm, model=claude-opus-5-5, promptId=historian-v1. No API key needed or committed.
 - Style: DESIGN §5.1 and §5.3; teaser 15-60 words, full 120-420, deep <= 900; sentences <= 45 words; no "on your left/right" (directions are computed at runtime); view hints (look up/down + feature) go into data/tours/royal-route.json for review.
 - Human review: B reads all 11 EN files, edits, sets `reviewed: <initials> <date>`; A spot-checks 2. Unreviewed files cannot be emitted as tier reviewed (pipeline fails loudly).
+- **Decision (Sat 2026-10-03): no human review this weekend.** All 11 stories ship as tier `grounded-ai`, labelled "AI-drafted from Wikipedia and city records" (pl/zh also "Machine-translated"). The review path stays in the pipeline for later.
 - zh/pl translated from the reviewed EN (generatedBy mt, translatedFrom en), validated, labelled "machine-translated" in the UI; ask a Polish speaker at the venue to skim pl if possible.
 
 **Definition of Done.**

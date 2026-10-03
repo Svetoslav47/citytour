@@ -1,5 +1,7 @@
 # Historian review files (task B7)
 
+> **HackYeah build:** these drafts were not human-reviewed; they ship as `grounded-ai` ("AI-drafted"). The steps below are for a later review.
+
 One file per tour stop and language: `<poiId>.en.md` (drafted by an AI agent with `prompts/historian-v1.md`), `<poiId>.pl.md` and `<poiId>.zh.md` (machine translations of the English by an AI agent with `prompts/translate-v1.md`). The pack build reads them with `scripts/pack/70-narrate.mjs`.
 
 ## Review an English file
