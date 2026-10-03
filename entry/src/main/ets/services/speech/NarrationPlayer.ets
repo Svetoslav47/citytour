@@ -22,14 +22,28 @@
  *     AudioEventListener (AppContainer -> TourController), so the engine pauses the tour, shows the issue and
  *     replays the interrupted sentence on RESUME. This is a services-side hook: the SpeechPort contract is
  *     unchanged. Without a listener the player still pauses/resumes itself as before.
+ *
+ * A13 pre-rendered clips: before the voice path above, each utterance asks the pure ClipSelection.selectAudio():
+ * when rawfile/audio/manifest.json has a clip whose textSha256 equals sha256(utf8(u.text)) for the same language
+ * and persona, the sentence plays from that clip through ClipPlayer (AVPlayer, same sentence queue: prefetch n+1,
+ * pause, resume-from-start, preempt, stop; one done/error per utterance). Otherwise the TTS/text path runs as
+ * before. A clip that fails to open/prepare/play (e.g. deleted from the HAP) is marked failed and that sentence
+ * falls back to TTS (or text) on the spot. One NARR_AUDIO line per utterance: src=prerendered|tts|text reason=...
+ * No manifest in the HAP (the default until the ElevenLabs render runs) = exactly the previous behaviour.
  */
 import { Lang } from '../../contracts/Model';
 import { SpeechCapabilities, SpeechListener, SpeechPort, Utterance, VoicePlan } from '../../contracts/Ports';
 import { estimateReadingMs, pcmDurationMs, SPEECH_MODE_TEXT } from '../../core/speech/VoicePolicy';
+import {
+  AUDIO_SRC_PRERENDERED, AUDIO_SRC_TEXT, AUDIO_SRC_TTS, AudioDecision, CLIP_MANIFEST_RAWFILE, ClipEntry, ClipIndex,
+  ClipQuery, parseClipManifest, selectAudio, shortSha
+} from '../../core/speech/ClipSelection';
+import { VoiceLabel } from '../../contracts/Settings';
 import { AppConfig } from '../../app/AppConfig';
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
 import { PcmPlayer, PcmPlayerListener } from '../audio/PcmPlayer';
+import { ClipPlayer, ClipPlayerListener } from '../audio/ClipPlayer';
 import { TtsEngines, TtsErr, TtsRequestHandler } from './TtsEngines';
 import { VoiceManager } from './VoiceManager';
 
@@ -88,6 +102,11 @@ class Job {
   textTimer: number = -1;
   textRemainingMs: number = 0;
   textStartedAt: number = 0;
+  clip: ClipEntry | undefined = undefined;   // A13: set = this sentence plays from a pre-rendered clip
+  audioReason: string = '';
+  sha: string = '';
+  audioLogged: boolean = false;
+  pendingFallback: boolean = false;          // the clip failed while paused: resume() starts the TTS/text path
 
   constructor(u: Utterance, plan: VoicePlan, segId: string) {
     this.u = u;
@@ -95,8 +114,20 @@ class Job {
     this.segId = segId;
   }
 
+  isClip(): boolean {
+    return this.clip !== undefined;
+  }
+
   isText(): boolean {
-    return this.plan.speechMode === SPEECH_MODE_TEXT;
+    return this.clip === undefined && this.plan.speechMode === SPEECH_MODE_TEXT;
+  }
+
+  src(): string {
+    return this.clip !== undefined ? AUDIO_SRC_PRERENDERED : this.isText() ? AUDIO_SRC_TEXT : AUDIO_SRC_TTS;
+  }
+
+  label(): VoiceLabel {
+    return this.clip !== undefined ? VoiceLabel.PRERENDERED : this.plan.label;
   }
 }
 
@@ -104,6 +135,9 @@ export class NarrationPlayer implements SpeechPort {
   private voice: VoiceManager;
   private engines: TtsEngines;
   private pcm: PcmPlayer;
+  private clips: ClipPlayer | undefined;
+  private clipIndex: ClipIndex | undefined = undefined;
+  private clipLoad: Promise<void> | undefined = undefined;
   private systemPlayback: boolean;
   private listener: SpeechListener | undefined = undefined;
   private audioListener: AudioEventListener | undefined = undefined;
@@ -114,11 +148,21 @@ export class NarrationPlayer implements SpeechPort {
   private tuning: VoiceTuning = { speed: 1, pitch: 1, volume: 1 };
 
   constructor(voice: VoiceManager, engines: TtsEngines, pcm: PcmPlayer,
-    systemPlayback: boolean = AppConfig.USE_SYSTEM_PLAYBACK) {
+    systemPlayback: boolean = AppConfig.USE_SYSTEM_PLAYBACK, clips?: ClipPlayer) {
     this.voice = voice;
     this.engines = engines;
     this.pcm = pcm;
+    this.clips = clips;
     this.systemPlayback = systemPlayback;
+    if (clips !== undefined) {
+      const cl: ClipPlayerListener = {
+        onClipStart: (id: string) => this.onClipStart(id),
+        onClipDone: (id: string) => this.onClipDone(id),
+        onClipError: (id: string, code: number, where: string) => this.onClipError(id, code, where),
+        onInterrupt: (hint: number, force: number) => this.onInterrupt(hint, force)
+      };
+      clips.setListener(cl);
+    }
     const pl: PcmPlayerListener = {
       onSegmentStart: (id: string) => this.onSegmentStart(id),
       onSegmentDone: (id: string, bytes: number) => this.onSegmentDone(id, bytes),
@@ -137,6 +181,7 @@ export class NarrationPlayer implements SpeechPort {
    */
   init(): Promise<SpeechCapabilities> {
     const t0 = Date.now();
+    this.loadClipManifest();
     return this.voice.capabilities().then((caps: SpeechCapabilities): Promise<SpeechCapabilities> => {
       const p = this.voice.plan(Lang.EN);
       Log.i(LogEvents.TTS_INIT, `event=speech_init mode=${this.systemPlayback ? 'system_playType1' : 'pcm_playType0'}` +
@@ -172,6 +217,38 @@ export class NarrationPlayer implements SpeechPort {
     this.listener = l;
   }
 
+  /** A13: reads rawfile/audio/manifest.json once. Absent or malformed = no clips (native TTS as before). */
+  loadClipManifest(): Promise<void> {
+    if (this.clipLoad !== undefined) {
+      return this.clipLoad;
+    }
+    const clips = this.clips;
+    if (clips === undefined) {
+      this.clipLoad = Promise.resolve();
+      return this.clipLoad;
+    }
+    const t0 = Date.now();
+    this.clipLoad = clips.readRawText(CLIP_MANIFEST_RAWFILE).then((text: string) => {
+      if (text === '') {
+        Log.i(LogEvents.NARR_AUDIO, `event=manifest clips=0 reason=no_manifest path=${CLIP_MANIFEST_RAWFILE}`);
+        return;
+      }
+      const m = parseClipManifest(text);
+      this.clipIndex = new ClipIndex(m.entries);
+      Log.i(LogEvents.NARR_AUDIO, `event=manifest clips=${m.entries.length} dropped=${m.dropped}` +
+        ` error=${m.error === '' ? 'none' : m.error} model=${m.model || 'none'} voice=${m.voiceId || 'none'}` +
+        ` ms=${Date.now() - t0}`);
+    }).catch((e: Object) => {
+      Log.e(LogEvents.NARR_AUDIO, `event=manifest_fail ${Log.errKv(e)}`);
+    });
+    return this.clipLoad;
+  }
+
+  /** Number of usable clips in the manifest (0 = none loaded). */
+  clipCount(): number {
+    return this.clipIndex !== undefined ? this.clipIndex.size() : 0;
+  }
+
   setTuning(t: VoiceTuning): void {
     this.tuning = t;
   }
@@ -202,10 +279,12 @@ export class NarrationPlayer implements SpeechPort {
       }
       const job = this.newJob(u);
       this.prefetched = job;
-      if (!job.isText()) {
+      if (job.isClip()) {
+        this.loadClip(job);
+      } else if (!job.isText()) {
         this.startSynth(job);
       }
-      Log.d(LogEvents.STORY_QUEUE, `event=prefetch id=${u.id} label=${job.plan.label}`);
+      Log.d(LogEvents.STORY_QUEUE, `event=prefetch id=${u.id} label=${job.label()} src=${job.src()}`);
     } catch (e) {
       Log.e(LogEvents.UNCAUGHT, `where=NarrationPlayer.prefetch id=${u.id} ${Log.errKv(e as Object)}`);
     }
@@ -227,6 +306,9 @@ export class NarrationPlayer implements SpeechPort {
         this.engines.stopAll();
       }
       this.pcm.clear();
+      if (this.clips !== undefined) {
+        this.clips.clear();
+      }
       this.paused = false;
     } catch (e) {
       Log.e(LogEvents.UNCAUGHT, `where=NarrationPlayer.stopNow ${Log.errKv(e as Object)}`);
@@ -250,6 +332,8 @@ export class NarrationPlayer implements SpeechPort {
           j.textTimer = -1;
           j.textRemainingMs = Math.max(0, j.textRemainingMs - (Date.now() - j.textStartedAt));
         }
+      } else if (j.isClip()) {
+        this.clips?.pause(j.segId);
       } else if (this.systemPlayback) {
         this.engines.forget(j.reqId);
         this.engines.stop(j.plan.engineLocale, j.plan.person);
@@ -274,8 +358,15 @@ export class NarrationPlayer implements SpeechPort {
         return;
       }
       Log.i(LogEvents.STORY_QUEUE, `event=resume id=${j.u.id}`);
-      if (j.isText()) {
+      if (j.pendingFallback) {
+        this.startFallback(j);
+      } else if (j.isText()) {
         this.armTextTimer(j, j.textRemainingMs);
+      } else if (j.isClip()) {
+        this.clips?.resume(j.segId);
+        if (j.started) {
+          this.armWatchdog(j);
+        }
       } else if (this.systemPlayback) {
         j.synthStarted = false;
         j.synthDone = false;
@@ -302,7 +393,18 @@ export class NarrationPlayer implements SpeechPort {
   }
 
   currentPlan(): VoicePlan | undefined {
-    return this.current !== undefined ? this.current.plan : undefined;
+    const j = this.current;
+    if (j === undefined) {
+      return undefined;
+    }
+    if (!j.isClip()) {
+      return j.plan;
+    }
+    const p: VoicePlan = {
+      textLang: j.plan.textLang, speechMode: 'voice', engineLocale: '', person: 0, languageContext: '',
+      label: VoiceLabel.PRERENDERED, reason: j.audioReason
+    };
+    return p;
   }
 
   dispose(): void {
@@ -315,7 +417,52 @@ export class NarrationPlayer implements SpeechPort {
 
   private newJob(u: Utterance): Job {
     this.segSeq++;
-    return new Job(u, this.voice.plan(u.lang), `${u.id}~${this.segSeq}`);
+    const job = new Job(u, this.voice.plan(u.lang), `${u.id}~${this.segSeq}`);
+    if (this.clips !== undefined) {
+      const q: ClipQuery = {
+        text: u.text, lang: u.lang, personaId: u.personaId, planSpeechMode: job.plan.speechMode,
+        planLabel: job.plan.label
+      };
+      let d: AudioDecision;
+      try {
+        d = selectAudio(this.clipIndex, q);
+      } catch (e) {
+        Log.e(LogEvents.UNCAUGHT, `where=selectAudio id=${u.id} ${Log.errKv(e as Object)}`);
+        d = new AudioDecision();
+        d.reason = 'select_threw';
+      }
+      job.clip = d.clip;
+      job.audioReason = d.reason;
+      job.sha = d.sha;
+    } else {
+      job.audioReason = 'no_clip_player';
+    }
+    return job;
+  }
+
+  /** One NARR_AUDIO line per utterance, when it starts (prefetch does not count). */
+  private logAudio(job: Job): void {
+    if (job.audioLogged) {
+      return;
+    }
+    job.audioLogged = true;
+    const clip = job.clip !== undefined ? ` clip=${job.clip.file}` : '';
+    const plan = job.clip === undefined ? ` plan=${job.plan.label}` : '';
+    Log.i(LogEvents.NARR_AUDIO, `src=${job.src()} reason=${job.audioReason} id=${job.u.id} lang=${job.u.lang}` +
+      ` persona=${job.u.personaId} sha=${shortSha(job.sha) || 'none'}${clip}${plan}`);
+  }
+
+  private loadClip(job: Job): void {
+    if (job.clip !== undefined && this.clips !== undefined) {
+      this.clips.load(job.segId, job.clip.file);
+    }
+  }
+
+  private startClip(job: Job): void {
+    if (job.clip === undefined || this.clips === undefined) {
+      return;
+    }
+    this.clips.play(job.segId, job.clip.file);
   }
 
   private speakInternal(u: Utterance): void {
@@ -327,7 +474,7 @@ export class NarrationPlayer implements SpeechPort {
       Log.i(LogEvents.UTT_DONE, `id=${this.current.u.id} result=preempted by=${u.id}`);
       const old = this.current;
       this.current = undefined;
-      const engineBusy = !old.isText() && !old.synthDone;
+      const engineBusy = !old.isText() && !old.isClip() && !old.synthDone;
       this.discard(old, 'preempt');
       if (engineBusy) {
         // engine.stop() also kills a queued prefetch on that engine: rebuild it below if needed.
@@ -352,8 +499,13 @@ export class NarrationPlayer implements SpeechPort {
     }
     this.current = job;
     job.t0 = Date.now();
+    this.logAudio(job);
     if (job.isText()) {
       this.startText(job);
+      return;
+    }
+    if (job.isClip()) {
+      this.startClip(job);
       return;
     }
     if (!job.synthStarted) {
@@ -368,11 +520,14 @@ export class NarrationPlayer implements SpeechPort {
   }
 
   private startText(job: Job): void {
+    const wasStarted = job.started;
     job.started = true;
     const ms = estimateReadingMs(job.u.text);
     Log.i(LogEvents.UTT_START, `id=${job.u.id} item=${job.u.itemId} lang=${job.u.lang} mode=text label=${job.plan.label}` +
       ` readMs=${ms}`);
-    this.emitStart(job.u.id);
+    if (!wasStarted) {
+      this.emitStart(job.u.id);
+    }
     job.textRemainingMs = ms;
     if (!this.paused) {
       this.armTextTimer(job, ms);
@@ -559,9 +714,12 @@ export class NarrationPlayer implements SpeechPort {
     if (!this.systemPlayback) {
       this.pcm.drop(job.segId);
     }
+    if (this.clips !== undefined) {
+      this.clips.drop(job.segId);
+    }
     if (code === 0) {
       Log.i(LogEvents.UTT_DONE, `id=${job.u.id} item=${job.u.itemId} result=ok ms=${Date.now() - job.t0}` +
-        ` label=${job.plan.label}${bytes > 0 ? ` audioMs=${pcmDurationMs(bytes)}` : ''}`);
+        ` label=${job.label()} src=${job.src()}${bytes > 0 ? ` audioMs=${pcmDurationMs(bytes)}` : ''}`);
       if (!job.started) {
         this.emitStart(job.u.id);
       }
@@ -583,13 +741,23 @@ export class NarrationPlayer implements SpeechPort {
     }
     this.engines.forget(job.reqId);
     this.pcm.drop(job.segId);
+    if (this.clips !== undefined) {
+      this.clips.drop(job.segId);
+    }
     Log.d(LogEvents.STORY_QUEUE, `event=discard id=${job.u.id} why=${why}`);
   }
 
   /** Playback must end within the audio length + margin; otherwise finish it anyway (never hang the tour). */
   private armWatchdog(job: Job): void {
     this.clearWatchdog(job);
-    const audioMs = this.systemPlayback ? estimateReadingMs(job.u.text) * 2 : pcmDurationMs(this.pcm.bytesOf(job.segId));
+    let audioMs: number;
+    if (job.isClip()) {
+      const known = this.clips !== undefined ? this.clips.durationMs(job.segId) : 0;
+      const manifestMs = job.clip !== undefined ? job.clip.durationMs : 0;
+      audioMs = known > 0 ? known : manifestMs > 0 ? manifestMs : estimateReadingMs(job.u.text) * 2;
+    } else {
+      audioMs = this.systemPlayback ? estimateReadingMs(job.u.text) * 2 : pcmDurationMs(this.pcm.bytesOf(job.segId));
+    }
     const ms = audioMs + WATCHDOG_MARGIN_MS;
     job.watchdog = setTimeout(() => {
       job.watchdog = -1;
@@ -611,6 +779,82 @@ export class NarrationPlayer implements SpeechPort {
     if (job.synthTimer >= 0) {
       clearTimeout(job.synthTimer);
       job.synthTimer = -1;
+    }
+  }
+
+  // ---------- A13 clip callbacks ----------
+
+  private onClipStart(segId: string): void {
+    const j = this.current;
+    if (j === undefined || j.segId !== segId || !j.isClip()) {
+      return;
+    }
+    if (!j.started) {
+      j.started = true;
+      Log.i(LogEvents.UTT_START, `id=${j.u.id} item=${j.u.itemId} lang=${j.u.lang} mode=clip` +
+        ` clip=${j.clip !== undefined ? j.clip.file : ''} label=${j.label()} latencyMs=${Date.now() - j.t0}`);
+      this.emitStart(j.u.id);
+    }
+    if (!this.paused) {
+      this.armWatchdog(j);
+    }
+  }
+
+  private onClipDone(segId: string): void {
+    const j = this.current;
+    if (j === undefined || j.segId !== segId || !j.isClip()) {
+      return;
+    }
+    this.complete(j, 0);
+  }
+
+  /** The clip could not be opened/prepared/played: mark it failed, then speak this sentence the normal way. */
+  private onClipError(segId: string, code: number, where: string): void {
+    let job: Job | undefined = undefined;
+    if (this.current !== undefined && this.current.segId === segId) {
+      job = this.current;
+    } else if (this.prefetched !== undefined && this.prefetched.segId === segId) {
+      job = this.prefetched;
+    }
+    if (job === undefined || job.clip === undefined || job.finished) {
+      return;
+    }
+    const file = job.clip.file;
+    if (this.clipIndex !== undefined) {
+      this.clipIndex.markFailed(file);
+    }
+    this.clearWatchdog(job);
+    job.clip = undefined;
+    job.audioReason = `clip_error code=${code} where=${where} clip=${file}`;
+    this.segSeq++;
+    job.segId = `${job.u.id}~${this.segSeq}`;
+    job.reqId = '';
+    job.synthStarted = false;
+    job.synthDone = false;
+    Log.w(LogEvents.NARR_FALLBACK, `id=${job.u.id} from=${VoiceLabel.PRERENDERED} to=${job.plan.label}` +
+      ` reason=clip_error code=${code}`);
+    if (this.current === job) {
+      job.audioLogged = false;
+      if (this.paused) {
+        job.pendingFallback = true;
+      } else {
+        this.startFallback(job);
+      }
+    } else if (!job.isText() && !this.systemPlayback) {
+      this.startSynth(job);   // prefetched: synthesize now, speak() picks it up
+    }
+  }
+
+  private startFallback(job: Job): void {
+    job.pendingFallback = false;
+    this.logAudio(job);
+    if (job.isText()) {
+      this.startText(job);
+    } else {
+      this.startSynth(job);
+      if (!this.systemPlayback) {
+        this.pcm.play(job.segId);
+      }
     }
   }
 

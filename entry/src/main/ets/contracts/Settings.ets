@@ -20,7 +20,9 @@ export enum VoiceLabel {
   NATIVE = 'native',
   FALLBACK_ZH_READS_EN = 'fallback-zh',
   TEXT_ONLY_PLATFORM = 'text-only-platform',
-  TEXT_ONLY_USER = 'text-only-user'
+  TEXT_ONLY_USER = 'text-only-user',
+  /** A13: a pre-rendered studio clip (ElevenLabs, build time) plays this sentence. UI: "Studio voice (pre-recorded)". */
+  PRERENDERED = 'prerendered'
 }
 
 /** App UI language (Settings -> Language). SYSTEM maps to setAppPreferredLanguage('default'). */

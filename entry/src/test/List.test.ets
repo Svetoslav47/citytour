@@ -21,6 +21,7 @@ import tourControllerTest from './TourController.test';
 import walkDisplayTest from './WalkDisplay.test';
 import notifyTextTest from './NotifyText.test';
 import onboardingTest from './Onboarding.test';
+import clipSelectionTest from './ClipSelection.test';
 
 export default function testsuite() {
   harnessTest();
@@ -43,4 +44,5 @@ export default function testsuite() {
   walkDisplayTest();
   notifyTextTest();
   onboardingTest();
+  clipSelectionTest();
 }
