@@ -28,6 +28,7 @@ Order matters on a fresh fetch: `30-fetch-wiki` reads the Wikidata snapshot, and
 | `arcgis/index.json` | 10 | layer list + the count-only duplicate service | 2026-10-03 | 8 layers + 1 | 3 KB | – |
 | `wikidata/krakow-items.json.gz` | 15 | Wikidata Query Service (SPARQL) | 2026-10-03T13:44:06Z | 4,365 items | 200 KB (2.1 MB raw) | CC0 1.0 |
 | `osm/oldtown-tile{1..9}.osm.gz` | 20 | OSM API 0.6 `map`, 3×3 tiles | 2026-10-03T12:06:48Z–12:07:10Z (gzip header times) | 110,296 nodes, 11,001 ways, 1,058 relations (summed over tiles; edges overlap) | 3.1 MB | ODbL 1.0 |
+| `osm/kazimierz-tile{1..5}.osm.gz` | 20 | OSM API 0.6 `map`, 5 tiles south and east of the Old Town grid (course `krakow-kazimierz`) | 2026-10-03 21:28:58–21:29:04 UTC, gzip header times (not written in ISO form here on purpose: the `krakow` pack's `builtAt` is the newest ISO time in this file; see `tours/kazimierz/SOURCES.md`) | 44,113 nodes, 5,670 ways, 615 relations (summed over tiles) | 1.6 MB | ODbL 1.0 |
 | `wiki/summaries-en.json` | 30 | en.wikipedia.org REST page summary | 2026-10-03T14:01:44Z | 229 pages | 140 KB | CC BY-SA 4.0 |
 | `wiki/summaries-pl.json` | 30 | pl.wikipedia.org REST page summary | 2026-10-03T14:09:56Z | 310 pages | 183 KB | CC BY-SA 4.0 |
 | `wiki/summaries-zh.json` | 30 | zh.wikipedia.org REST page summary (zh-hans) | 2026-10-03T14:10:53Z | 82 pages | 51 KB | CC BY-SA 4.0 |
@@ -94,6 +95,16 @@ Prefix every service path with `https://services-eu1.arcgis.com/svTzSt3AvH7sK6q9
 | 7 | 19.929,50.0625,19.935,50.0675 | 9,241 | 1,098 | 62 | 269 KB |
 | 8 | 19.935,50.0625,19.941,50.0675 | 13,275 | 1,201 | 102 | 377 KB |
 | 9 | 19.941,50.0625,19.947,50.0675 | 14,429 | 1,572 | 180 | 436 KB |
+
+**Kazimierz extension** (course `krakow-kazimierz`, docs/research/new-tours.md §4.1): five more tiles on the same grid, fetched by a Claude Code agent with `node scripts/pack/20-fetch-osm-tiles.mjs` on 2026-10-03 between 21:28:58 and 21:29:04 UTC (written into the gzip headers, like the lead's tiles; the newest edit inside is 2026-10-03 20:46 UTC). Retrieval times and the other per-tour snapshots: [`tours/kazimierz/SOURCES.md`](tours/kazimierz/SOURCES.md). The Kazimierz map (`MAP_AREAS.kazimierz` in `60-mapdata.mjs`) is Old Town tiles 1–3 plus these five: lon 19.929–19.953, lat 50.0475–50.0575.
+
+| Tile | bbox (minLon,minLat,maxLon,maxLat) | Nodes | Ways | Relations | Size |
+|---|---|---|---|---|---|
+| kazimierz-tile1 | 19.929,50.0475,19.935,50.0525 | 6,603 | 854 | 188 | 330 KB |
+| kazimierz-tile2 | 19.935,50.0475,19.941,50.0525 | 9,431 | 1,015 | 99 | 264 KB |
+| kazimierz-tile3 | 19.941,50.0475,19.947,50.0525 | 12,173 | 1,686 | 77 | 341 KB |
+| kazimierz-tile4 | 19.947,50.0475,19.953,50.0525 | 9,444 | 1,170 | 127 | 348 KB |
+| kazimierz-tile5 | 19.947,50.0525,19.953,50.0575 | 6,462 | 945 | 124 | 302 KB |
 
 Tiles overlap at their edges (ways crossing a border appear in both), so deduplicate by element id when merging.
 

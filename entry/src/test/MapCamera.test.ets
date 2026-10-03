@@ -2,7 +2,7 @@
 // North-up camera of ARCHITECTURE §3.2: world <-> screen, fit, pan, zoom about a point, culling, hit test.
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  boundsOf, Camera, clampScale, fitBounds, hitTest, intersects, pan, S_MAX, S_MIN, screenToWorld, viewport,
+  boundsOf, Camera, clampScale, fitBounds, hitTest, intersects, mapOpenBounds, pan, S_MAX, S_MIN, screenToWorld, viewport,
   worldToScreen, zoomAt
 } from '../main/ets/core/map/Camera';
 
@@ -26,6 +26,15 @@ export default function mapCameraTest() {
       const s = worldToScreen(cam, 12.5, -40, 390, 320);
       const w = screenToWorld(cam, s.x, s.y, 390, 320);
       expect(near(w.x, 12.5) && near(w.y, -40)).assertTrue();
+    });
+    it('map_open_bounds_follow_the_course_map', 0, () => {
+      const fallback: number[] = [-541.7, -987.4, 744.7, 671.2];
+      const kazimierz: number[] = [-541.7, -1540.3, 1173.4, -434.6];
+      expect(mapOpenBounds(kazimierz, fallback).join(',')).assertEqual(kazimierz.join(','));
+      expect(mapOpenBounds(undefined, fallback).join(',')).assertEqual(fallback.join(','));
+      expect(mapOpenBounds([1, 2, 3], fallback).join(',')).assertEqual(fallback.join(','));
+      expect(mapOpenBounds([10, 0, 5, 20], fallback).join(',')).assertEqual(fallback.join(','));     // empty box
+      expect(mapOpenBounds([0, 0, Number.NaN, 5], fallback).join(',')).assertEqual(fallback.join(','));
     });
     it('scale_is_clamped', 0, () => {
       expect(clampScale(100)).assertEqual(S_MAX);

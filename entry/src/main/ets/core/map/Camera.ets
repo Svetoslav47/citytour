@@ -70,6 +70,22 @@ export function fitBounds(bounds: number[], w: number, h: number, pad: number, t
   return new Camera(cx, cy, s);
 }
 
+/**
+ * The world box a map opens on when nothing else is framed (explore mode): the pack map's own `bounds` when they
+ * form a valid box (each course's map-detail.json covers its own area, e.g. Kazimierz), else `fallback`.
+ */
+export function mapOpenBounds(mapBounds: number[] | undefined, fallback: number[]): number[] {
+  if (mapBounds === undefined || mapBounds.length !== 4) {
+    return fallback;
+  }
+  for (const v of mapBounds) {
+    if (!Number.isFinite(v)) {
+      return fallback;
+    }
+  }
+  return mapBounds[2] > mapBounds[0] && mapBounds[3] > mapBounds[1] ? mapBounds : fallback;
+}
+
 /** Bounding box [minX, minY, maxX, maxY] of flat [x0, y0, x1, y1, ...] arrays; undefined if empty. */
 export function boundsOf(flat: number[][]): number[] | undefined {
   let minX = Number.POSITIVE_INFINITY;

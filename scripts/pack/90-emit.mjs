@@ -12,7 +12,7 @@
 //   personas.json          Persona[] (the Historian)
 //   sources.json           SourceRef[] sorted by id
 //   routes.json            RouteData (65-routes.mjs)
-//   map-detail.json        MapData level "detail" (60-mapdata.mjs)
+//   map-detail.json        MapData level "detail" (60-mapdata.mjs) of the tour's `mapArea` (MAP_AREAS; default oldtown)
 //   narrations/{en,pl,zh}.json  Narration[] of that language, sorted by id, validated (80-validate.mjs)
 //   validation-report.json build report of the validator (counts per tier/lang, failures, summary); shipped
 //                          next to the pack for transparency but not listed in manifest.files
@@ -28,6 +28,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { gunzipSync } from 'node:zlib';
 import { pathToFileURL } from 'node:url';
 import { isMain, RAW_DIR, readSnapshot, REPO_ROOT } from './lib/http.mjs';
 import { resolveCourse, takeCourseArgs } from './lib/course.mjs';
@@ -36,7 +37,7 @@ import { PACK_ORIGIN } from './projection.mjs';
 import {
   inceptionYear, mergePois, orderedText, registerIndex, SOURCE_ID_REGISTER, SOURCE_ID_UNESCO, unescoCore, wdSourceId, wpSourceId,
 } from './40-merge-pois.mjs';
-import { buildMapDetail, parseOsm, readOsmTiles } from './60-mapdata.mjs';
+import { buildMapDetail, MAP_AREAS, parseOsm } from './60-mapdata.mjs';
 import { buildRoutes } from './65-routes.mjs';
 import { buildCandidates, PERSONA_ID } from './75-extract-narrations.mjs';
 import { buildReport, selectNarration, VALIDATOR_VERSION } from './80-validate.mjs';
@@ -123,19 +124,23 @@ export function loadInputs(rawDir = RAW_DIR, course = DEFAULT_COURSE) {
   }
   let sourcesMd = readFileSync(join(rawDir, 'SOURCES.md'), 'utf8');
   if (course.sourcesMd) sourcesMd += `\n${readFileSync(course.sourcesMd, 'utf8')}`;
-  const tileBuffers = [];
-  for (let k = 1; k <= 9; k++) tileBuffers.push(readFileSync(join(rawDir, 'osm', `oldtown-tile${k}.osm.gz`)));
+  const tourRaw = JSON.parse(readFileSync(course.tourFile, 'utf8'));
+  // The map area of the course (tour key `mapArea`, review-only; default the Old Town of the Royal Route).
+  const mapArea = tourRaw.mapArea ?? 'oldtown';
+  if (!MAP_AREAS[mapArea]) throw new Error(`${course.tourFile}: unknown mapArea ${mapArea} (known: ${Object.keys(MAP_AREAS).join(', ')})`);
+  const tileBuffers = MAP_AREAS[mapArea].map((rel) => readFileSync(join(rawDir, rel)));
   return {
     course,
     sourcesMd,
-    tourRaw: JSON.parse(readFileSync(course.tourFile, 'utf8')),
+    tourRaw,
+    mapArea,
     wd: readSnapshot('wikidata/krakow-items.json'),
     unesco: readSnapshot('arcgis/unesco.geojson'),
     register: readSnapshot('arcgis/eoz-zabytki-zbiorcza-polygon.geojson'),
     wiki,
     table: readSnapshot(course.rawRel('osrm/stops-table-foot.json')),
     pairs: readSnapshot(course.rawRel('osrm/stop-pairs-foot.json')),
-    osmXml: readOsmTiles(rawDir),
+    osmXml: tileBuffers.map((b) => gunzipSync(b).toString('utf8')),
     osmFetchedAt: gzipMtimeIso(tileBuffers),
   };
 }
@@ -196,7 +201,10 @@ export async function buildPack(inputs, { hookPath = NARRATE_HOOK } = {}) {
   sources.set(SOURCE_ID_REGISTER, sourceRef(SOURCE_ID_REGISTER, 'Gminna ewidencja zabytków, warstwa zbiorcza (EOZ_Zabytki)',
     `${ARCGIS_SERVICES}/EOZ_Zabytki___Warstwa_zbiorcza___AKTUALNA/FeatureServer/1`, KRAKOW_PUBLISHER, KRAKOW_LICENSE,
     inputs.register.meta.retrievedAt, 'pl'));
-  sources.set('osm_oldtown', sourceRef('osm_oldtown', 'OpenStreetMap map data, Kraków Old Town (OSM API, 9 tiles)',
+  const mapArea = inputs.mapArea ?? 'oldtown';
+  const osmSourceId = `osm_${mapArea}`;
+  sources.set(osmSourceId, sourceRef(osmSourceId, mapArea === 'oldtown' ? 'OpenStreetMap map data, Kraków Old Town (OSM API, 9 tiles)'
+    : `OpenStreetMap map data, Kraków ${mapArea[0].toUpperCase()}${mapArea.slice(1)} (OSM API, ${MAP_AREAS[mapArea].length} tiles)`,
     'https://www.openstreetmap.org/copyright', 'OpenStreetMap contributors', 'ODbL 1.0', inputs.osmFetchedAt, 'en'));
   sources.set('osrm_foot', sourceRef('osrm_foot', `OSRM foot routes between the ${course.legacy ? 'Royal Route' : tourRaw.titles.en} stops (FOSSGIS demo server)`,
     'https://routing.openstreetmap.de/routed-foot', 'OSRM, FOSSGIS e.V.', 'ODbL 1.0 (derived from OSM)', inputs.pairs.meta.retrievedAt, 'en'));

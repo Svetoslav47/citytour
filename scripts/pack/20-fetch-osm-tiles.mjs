@@ -8,7 +8,12 @@
 // reproduces exactly that tiling and file naming, verifies each file's <bounds>, and only fetches
 // tiles that are missing (or all of them with --refresh).
 //
-// Usage: node scripts/pack/20-fetch-osm-tiles.mjs [--offline | --refresh]
+// Kazimierz course (krakow-kazimierz): five more tiles on the same grid extend the map south and east over
+// Kazimierz, Skałka and the Vistula bank: the row below the Old Town (lat 50.0475-50.0525, lon 19.929-19.953,
+// four tiles) and one tile east of tile 3 (lat 50.0525-50.0575, lon 19.947-19.953), saved as
+// osm/kazimierz-tile{1..5}.osm.gz (west to east, then the north-east tile). The Old Town tiles are unchanged.
+//
+// Usage: node scripts/pack/20-fetch-osm-tiles.mjs [--offline | --refresh]   (both tile sets)
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -35,8 +40,35 @@ export function tiles() {
   return out;
 }
 
+/** Grid cells (col, row) of the Kazimierz extension, on the Old Town grid (row -1 = south of tile 1). */
+export const KAZIMIERZ_CELLS = Object.freeze([[0, -1], [1, -1], [2, -1], [3, -1], [3, 0]]);
+
+/** The 5 Kazimierz tiles, n = 1..5 in KAZIMIERZ_CELLS order. */
+export function kazimierzTiles() {
+  return KAZIMIERZ_CELLS.map(([col, row], i) => {
+    const minLon = round4(ORIGIN.lon + col * STEP.lon);
+    const minLat = round4(ORIGIN.lat + row * STEP.lat);
+    return { n: i + 1, rel: `osm/kazimierz-tile${i + 1}.osm.gz`, bbox: [minLon, minLat, round4(minLon + STEP.lon), round4(minLat + STEP.lat)] };
+  });
+}
+
+/** Every tile the map builds use: the Old Town 3x3 grid, then the Kazimierz extension. */
+export function allTiles() {
+  return [...tiles(), ...kazimierzTiles()];
+}
+
 function round4(x) {
   return Math.round(x * 1e4) / 1e4;
+}
+
+/**
+ * gzip with the fetch time in the header MTIME field (seconds, UTC), like the lead's Old Town tiles: the pack build
+ * reads it as the map's retrieval time (90-emit.mjs gzipMtimeIso). Node's gzipSync writes 0 there.
+ */
+export function gzipWithMtime(buf, ms) {
+  const gz = gzipSync(buf, { level: 9 });
+  gz.writeUInt32LE(Math.floor(ms / 1000), 4);
+  return gz;
 }
 
 export function tileUrl(bbox) {
@@ -62,14 +94,14 @@ export function osmStats(xml) {
 
 async function main(args) {
   const http = createHttp();
-  for (const t of tiles()) {
+  for (const t of allTiles()) {
     const p = rawPath(t.rel);
     if (existsSync(p) && !args.refresh) {
       const xml = gunzipSync(readFileSync(p)).toString('utf8');
       const b = parseBounds(xml);
       if (!sameBbox(b, t.bbox)) throw new Error(`data/raw/${t.rel}: <bounds> ${JSON.stringify(b)} != expected ${JSON.stringify(t.bbox)}`);
       const s = osmStats(xml);
-      console.log(`osm tile${t.n} keep  bbox=${t.bbox.join(',')} ${fmtBytes(readFileSync(p).length)} nodes=${s.nodes} ways=${s.ways} relations=${s.relations} newestEdit=${s.newestEdit}`);
+      console.log(`osm ${t.rel} keep  bbox=${t.bbox.join(',')} ${fmtBytes(readFileSync(p).length)} nodes=${s.nodes} ways=${s.ways} relations=${s.relations} newestEdit=${s.newestEdit}`);
       continue;
     }
     if (args.offline) throw new MissingSnapshotError(t.rel);
@@ -77,9 +109,9 @@ async function main(args) {
     const xml = body.toString('utf8');
     if (!sameBbox(parseBounds(xml), t.bbox)) throw new Error(`tile${t.n}: response has no matching <bounds> (got ${xml.slice(0, 200)})`);
     mkdirSync(dirname(p), { recursive: true });
-    writeFileSync(p, gzipSync(body, { level: 9 }));
+    writeFileSync(p, gzipWithMtime(body, Date.now()));
     const s = osmStats(xml);
-    console.log(`osm tile${t.n} wrote bbox=${t.bbox.join(',')} ${fmtBytes(readFileSync(p).length)} nodes=${s.nodes} ways=${s.ways} relations=${s.relations}`);
+    console.log(`osm ${t.rel} wrote bbox=${t.bbox.join(',')} ${fmtBytes(readFileSync(p).length)} nodes=${s.nodes} ways=${s.ways} relations=${s.relations}`);
   }
 }
 

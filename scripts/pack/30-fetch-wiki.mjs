@@ -14,6 +14,10 @@
 // Courses (scripts/pack/lib/course.mjs): the summaries are shared by every course; the stop texts are per tour
 // (default course: data/raw/wiki/stops-text-*.json; others: data/raw/tours/<tourId>/wiki/stops-text-*.json).
 //
+// A tour may list `sourceQids` (review-only key of data/tours/<tourId>.json): extra articles a stop story cites
+// (e.g. the Ethnographic Museum for the Kazimierz Town Hall). Their full texts go into the same stop-text files,
+// after the stops.
+//
 // Usage: node scripts/pack/30-fetch-wiki.mjs [--offline | --refresh] [--course <courseId> | --tour <tourId>]
 
 import { resolveCourse } from './lib/course.mjs';
@@ -182,7 +186,9 @@ async function fetchStopTexts(http, lang, stopQids, byQ) {
 
 async function main(args) {
   const course = resolveCourse(args);
-  const stopQids = readTour(course.tourFile).stops.map((s) => s.wikidataId);
+  const tour = readTour(course.tourFile);
+  const stopQids = tour.stops.map((s) => s.wikidataId);
+  const textQids = [...stopQids, ...(tour.sourceQids ?? []).filter((q) => !stopQids.includes(q))];
   const wd = readSnapshot('wikidata/krakow-items.json');
   const byQ = new Map(wd.items.map((i) => [i.qid, i]));
   const qids = selectQids(wd.items, stopQids);
@@ -192,9 +198,9 @@ async function main(args) {
     console.log(`wiki ${lang} summaries ${s.meta.count} (missing ${s.meta.missing.length}), retrieved ${s.meta.retrievedAt}`);
   }
   for (const lang of LANGS) {
-    const s = await ensureSnapshot(course.rawRel(`wiki/stops-text-${lang}.json`), args, () => fetchStopTexts(http, lang, stopQids, byQ));
+    const s = await ensureSnapshot(course.rawRel(`wiki/stops-text-${lang}.json`), args, () => fetchStopTexts(http, lang, textQids, byQ));
     const chars = Object.values(s.pages).map((p) => p.chars);
-    console.log(`wiki ${lang} stop texts ${s.meta.count}/${stopQids.length} (${chars.length ? Math.min(...chars) : 0}-${chars.length ? Math.max(...chars) : 0} chars), missing: ${s.meta.missing.map((m) => m.qid).join(' ') || 'none'}`);
+    console.log(`wiki ${lang} stop texts ${s.meta.count}/${textQids.length} (${chars.length ? Math.min(...chars) : 0}-${chars.length ? Math.max(...chars) : 0} chars), missing: ${s.meta.missing.map((m) => m.qid).join(' ') || 'none'}`);
   }
 }
 

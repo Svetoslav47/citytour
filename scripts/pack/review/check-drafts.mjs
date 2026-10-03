@@ -25,6 +25,9 @@
 //                   or summaries-<lang>.json, matched by title + revision id) and has >= 2 words
 //   meta / format   front matter, required sections, review state (empty reviewed => status draft; filled
 //                   reviewed "<initials> <YYYY-MM-DD>" => status approved|edited), view hint
+//   tone            only for stops marked `"sensitive": true` in the tour file (review-only key; the Kazimierz
+//                   synagogues, docs/research/new-tours.md §2.2): no exclamation mark and none of SENSITIVE_FORBIDDEN
+//                   (trivia, joke, superlative-hype and game/prize words, en/pl/zh) in any section or the view hint
 //
 // Machine translations (<poiId>.pl.md / .zh.md with `generatedBy: mt`, prompt scripts/pack/prompts/translate-v1.md):
 //   the same section checks, run with the EN file's claims plus the translation's own (optional) claims; front
@@ -74,6 +77,31 @@ export const FORBIDDEN_WORDS = Object.freeze([
   'on your left', 'on your right', 'to your left', 'to your right', 'behind you', 'po lewej', 'po prawej', 'za tobą',
   '左边', '右边', '左侧', '右侧',
 ]);
+
+/**
+ * Tone rule for sensitive stops (Holocaust, pogrom, places of worship and remembrance; docs/research/new-tours.md
+ * §2.2): words that frame the place as trivia, entertainment or a game. Matched case-insensitively; ASCII entries as
+ * whole-word prefixes (so "joke" also catches "jokes"), others as substrings. Exclamation marks are rejected too.
+ */
+export const SENSITIVE_FORBIDDEN = Object.freeze([
+  'fun fact', 'funny', 'joke', 'trivia', 'did you know', 'amazing', 'incredible', 'awesome', 'exciting',
+  'fascinating', 'thrilling', 'spooky', 'prize', 'reward', 'bonus', 'points', 'unlock', 'badge',
+  'ciekawostk', 'zabawn', 'żart', 'niesamowit', 'nagrod', 'bonus', 'odblokuj', 'ekscytując', 'fascynując',
+  '趣闻', '有趣', '好玩', '笑话', '奖品', '奖励', '积分', '解锁', '惊人', '神奇', '刺激',
+]);
+const SENSITIVE_RES = [...new Set(SENSITIVE_FORBIDDEN)].map((w) =>
+  /^[\x20-\x7e]+$/.test(w)
+    ? { word: w, test: (raw) => new RegExp(`\\b${w}`, 'i').test(raw) }
+    : { word: w, test: (raw) => raw.toLowerCase().includes(w.toLowerCase()) },
+);
+
+/** Tone hits (sensitive stops only): exclamation marks and SENSITIVE_FORBIDDEN words in `raw`. */
+export function toneHits(raw) {
+  const hits = [];
+  if (/[!！]/.test(raw)) hits.push('exclamation mark');
+  for (const r of SENSITIVE_RES) if (r.test(raw)) hits.push(`"${r.word}"`);
+  return hits;
+}
 
 export const SECTIONS = Object.freeze(['teaser', 'full', 'deep']);
 export const LANGS = Object.freeze(['en', 'pl', 'zh']);
@@ -476,6 +504,10 @@ export function checkReview(parsed, ctx) {
     words[s] = sizeOf(stripPauses(sentences.join(' ')), meta.lang);
     if (!LANGS.includes(meta.lang)) continue;
     for (const f of checkSection(s, sentences, meta.lang, claims, names)) fail(s, f.check, f.detail);
+    if (stop?.sensitive === true) {
+      const hits = toneHits(sentences.join(' '));
+      if (hits.length) fail(s, 'tone', `sensitive stop: ${hits.join(', ')}`);
+    }
   }
 
   // View hint.
@@ -484,6 +516,7 @@ export function checkReview(parsed, ctx) {
   else {
     const raw = parsed.view.feature;
     if (/[#*_`{}[]/.test(raw) || FORBIDDEN_RES.some((r) => r.test(raw))) fail('view hint', 'view', 'feature contains a forbidden pattern');
+    if (stop?.sensitive === true && toneHits(raw).length) fail('view hint', 'tone', `sensitive stop: ${toneHits(raw).join(', ')}`);
   }
   return { failures, warnings, words, claims: claims.length };
 }
