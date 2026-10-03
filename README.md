@@ -20,6 +20,7 @@ _Updated as each capability lands. Every entry links to the code that uses it._
 | --- | --- | --- | --- |
 | — | — | — | planned |
 | Next-stop notification (glanceable with the screen off; text-only arrival line) | Notification Kit `notificationManager` (`requestEnableNotification`, `publish` id 1001 `isAlertOnce` SERVICE_INFORMATION slot, `cancel`) | [`services/notify/TourNotifier.ets`](entry/src/main/ets/services/notify/TourNotifier.ets), text rules in [`core/notify/NotifyText.ets`](entry/src/main/ets/core/notify/NotifyText.ets) | verified on emulator (sdk24) |
+| Pre-rendered stop-story clips (studio voice, offline) with native-TTS fallback per sentence | Media Kit `AVPlayer` (`fdSrc` from Localization Kit `resourceManager.getRawFd`, `STREAM_USAGE_AUDIOBOOK`) | [`services/audio/ClipPlayer.ets`](entry/src/main/ets/services/audio/ClipPlayer.ets), selection in [`core/speech/ClipSelection.ets`](entry/src/main/ets/core/speech/ClipSelection.ets), used by [`services/speech/NarrationPlayer.ets`](entry/src/main/ets/services/speech/NarrationPlayer.ets) | code path only: **no clips ship yet** (the ElevenLabs render has not run), so every sentence uses native TTS; logged as `NARR_AUDIO src=tts reason=no_manifest` |
 | Arrival haptic | Sensor Service Kit `vibrator` (`isSupportEffectSync` preset, timed fallback; `ohos.permission.VIBRATE`) | [`services/haptics/Haptics.ets`](entry/src/main/ets/services/haptics/Haptics.ets) | called and logged; the emulator has no motor (`14600101`, logged, no crash) |
 
 ## Mocked or simulated behavior
@@ -69,6 +70,19 @@ devecocli build
 
 The debug `.hap` is written to `entry/build/default/outputs/default/`.
 
+### Optional: pre-rendered stop-story voice (ElevenLabs, build time)
+
+The app never calls ElevenLabs and ships no key. A build-time script can render one mp3 per story sentence into `entry/src/main/resources/rawfile/audio/` plus `audio/manifest.json`; at runtime a sentence plays from its clip only when the manifest's `textSha256` equals the SHA-256 of the exact sentence text (same language and persona), otherwise native TTS speaks it (`NARR_AUDIO src=prerendered|tts|text`). Without the folder the app behaves exactly as before.
+
+```bash
+node scripts/voice/render-elevenlabs.mjs --dry-run       # clips, characters and credits per language; no key needed
+export ELEVENLABS_API_KEY=...  ELEVENLABS_VOICE_ID=...    # in your own shell only, never in a file in this repo
+node scripts/voice/render-elevenlabs.mjs --limit 3       # smoke test: 3 clips
+node scripts/voice/render-elevenlabs.mjs                 # the rest; reruns skip unchanged sentences
+```
+
+Model `eleven_multilingual_v2`, mono `mp3_44100_64` by default (`--output-format mp3_22050_32` halves the size). Input is the pack's `narrations/<lang>.json`; `--narrations-dir`, `--langs`, `--lengths`, `--fixture` and `--help` change that. The pre-commit hook rejects ElevenLabs key values.
+
 ### Signing
 
 Debug builds run unsigned on the emulator, and the `.hap` we submit is the **unsigned debug build** from a tagged commit (verified to install and run on the emulator; see `docs/PLAN.md` task S4). Signing is only needed for a physical device: open the project in DevEco Studio and go to **File → Project Structure → Signing Configs → Automatically generate** (this needs a Huawei account). That writes `signingConfigs` into `build-profile.json5`; never commit it. Signing material stays out of git (see `.gitignore`).
@@ -100,9 +114,9 @@ DEVICE=sdk24 scripts/smoke.sh   # the same on another emulator or device
 
 - anything in `entry/src/main/ets/core/` imports `@kit.*` (`core/` holds the pure, unit-tested logic; the local test runner cannot load system APIs);
 - any `.ets` file under `entry/src/main/ets/` uses a State Management V1 decorator (`@Component`, `@State`, `@Prop`, `@Link`, `@Observed`, `@Provide`, ...). The project uses V2 only. The unmodified DevEco scaffold page `pages/Index.ets` is exempt until it is replaced;
-- `node --test scripts/pack/` fails (only once the data pipeline has `*.test.mjs` files).
+- `node --test` over the `*.test.mjs` files in `scripts/pack/` and `scripts/voice/` fails.
 
-**Where tests live.** `entry/src/test/List.test.ets` registers one suite file per module under test (`GeoMath`, `CourseEstimator`, `FixFilter`, `HeldKarp`, `TriggerPolicy`, `AnnouncementQueue`, `TourEngine`, `Phrases`, `DemoWalkPlayer`, `VoicePolicy`, `LegTracker`, `Replay`, `PackParser`, `NarrationValidator`, `MapCamera`) plus `Harness`. Each file starts as a passing stub and names the task that owns it; add cases to the existing file instead of editing `List.test.ets`.
+**Where tests live.** `entry/src/test/List.test.ets` registers one suite file per module under test (`GeoMath`, `CourseEstimator`, `FixFilter`, `HeldKarp`, `TriggerPolicy`, `AnnouncementQueue`, `TourEngine`, `Phrases`, `DemoWalkPlayer`, `VoicePolicy`, `LegTracker`, `Replay`, `PackParser`, `NarrationValidator`, `MapCamera`, `ClipSelection`) plus `Harness`. Each file starts as a passing stub and names the task that owns it; add cases to the existing file instead of editing `List.test.ets`.
 
 **`scripts/smoke.sh`** runs `devecocli run --device "$DEVICE"` (default `Pura 90`), requires its `Smoke: PASS` (launched, no crash, not blank), then reads the app log (`devecocli log --keyword CityTour`) and requires the `APP_START` event once the app emits it. The Demo walk checks are added later.
 
