@@ -3,6 +3,7 @@
 // scripts/pack/prompts/historian-v1.md §9). Node 22+ ESM, stdlib only.
 //
 // Usage: node scripts/pack/review/check-drafts.mjs [file.md ...]
+//        node scripts/pack/review/check-drafts.mjs --hash <poiId> ...   (sourceSha256 for a fresh translation)
 //   no arguments: every <poiId>.<lang>.md in this directory, plus coverage (every tour stop has an en
 //   file, >= 3 en files have a deep section). Prints a per-file PASS/FAIL table; exit 1 on any failure.
 //
@@ -562,7 +563,16 @@ export function main(argv = process.argv.slice(2), repo = REPO) {
   return { ok: failed === 0 && coverage.length === 0, output: lines.join('\n'), results, coverage };
 }
 
+/** `--hash <poiId>...`: scriptHash of each EN file, the sourceSha256 a fresh translation records. */
+export function hashLines(poiIds, dir = REVIEW_DIR) {
+  return poiIds.map((id) => `${id} ${scriptHash(parseReviewFile(readFileSync(join(dir, `${id}.en.md`), 'utf8')))}`);
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if (process.argv[2] === '--hash') {
+    console.log(hashLines(process.argv.slice(3)).join('\n'));
+    process.exit(0);
+  }
   const { ok, output } = main();
   console.log(output);
   process.exitCode = ok ? 0 : 1;

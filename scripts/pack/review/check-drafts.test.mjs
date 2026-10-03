@@ -240,3 +240,30 @@ test('the committed review files: all 11 tour stops have an en draft and every f
   assert.ok(ok, output);
   assert.equal(results.filter((r) => r.lang === 'en').length, 11);
 });
+
+test('translations: EN claims inherited, translation meta required, STALE warning when the EN text changed', async () => {
+  const { scriptHash, reviewState } = await import('./check-drafts.mjs');
+  const en = parseReviewFile(fixture());
+  const pl = (sha, extra = []) => [
+    '---', 'poiId: poi_test_1', 'persona: historian', 'lang: pl', 'generatedBy: mt', 'translatedFrom: en',
+    'promptId: translate-v1', 'model: claude-opus-5-5', 'translated: 2026-10-03', `sourceSha256: ${sha}`, 'reviewed:', 'status: draft',
+    '---', '## teaser',
+    'To jest Test Gate, zbudowana z czerwonej cegły w 1400 roku, przy głównej drodze do miasta.',
+    'Spójrz na kamiennego orła nad łukiem, którego wyrzeźbił Jan Kowalski.',
+    '## full', ...FULL_LINES, '## claims', ...extra, '## view hint', 'look: up', 'feature: kamienny orzeł nad łukiem', '',
+  ].join('\n');
+  const plCtx = { ...ctx, fileName: 'poi_test_1.pl.md', enParsed: en };
+  const fresh = checkReview(parseReviewFile(pl(scriptHash(en))), plCtx);
+  assert.equal(fresh.claims, 4, 'EN claims are inherited');
+  assert.ok(!fresh.failures.some((f) => f.check === 'meta' || f.check === 'claims_quote' || f.check === 'numbers'));
+  assert.ok(!fresh.warnings.some((w) => w.startsWith('STALE')));
+  const stale = checkReview(parseReviewFile(pl('a'.repeat(64))), plCtx);
+  assert.ok(stale.warnings.some((w) => w.startsWith('STALE')));
+  assert.ok(checkReview(parseReviewFile(pl('nothex')), plCtx).failures.some((f) => f.detail.includes('sourceSha256')));
+  assert.ok(checkReview(parseReviewFile(pl(scriptHash(en))), { ...plCtx, enParsed: null }).failures.some((f) => f.detail.includes('no EN source')));
+  // Approving the EN file does not change its script hash; editing the text does.
+  assert.equal(scriptHash(parseReviewFile(fixture({ meta: { reviewed: 'MS 2026-10-03', status: 'approved' } }))), scriptHash(en));
+  assert.notEqual(scriptHash(parseReviewFile(fixture({ teaser: ['This is the Test Gate, built of red brick in 1400, by the road.'] }))), scriptHash(en));
+  assert.deepEqual(reviewState({ reviewed: 'MS 2026-10-03', status: 'edited' }), { reviewed: true, review: { reviewer: 'MS', at: '2026-10-03', status: 'edited' } });
+  assert.ok(reviewState({ reviewed: '', status: 'approved' }).error);
+});
