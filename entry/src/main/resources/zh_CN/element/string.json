@@ -1655,6 +1655,26 @@
     {
       "name": "settings_online_voice_note",
       "value": "没有录音的句子会从 CityTour 服务器获取（2.5 秒内）并保存在手机上。关闭或离线时由内置语音朗读。"
+    },
+    {
+      "name": "route_time_available",
+      "value": "可用时间"
+    },
+    {
+      "name": "route_budget_all",
+      "value": "全部站点"
+    },
+    {
+      "name": "route_budget_min_a11y",
+      "value": "%d 分钟"
+    },
+    {
+      "name": "route_budget_best",
+      "value": "最佳 %1$d 站（共 %2$d 站）"
+    },
+    {
+      "name": "route_budget_exact",
+      "value": "精确求解"
     }
   ]
 }

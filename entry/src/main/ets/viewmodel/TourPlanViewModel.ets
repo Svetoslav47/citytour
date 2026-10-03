@@ -45,6 +45,8 @@ const CONTROL_TIMEOUT_MS: number = 8000;
 /** DESIGN §3.4: only claim a saving the user can notice. */
 const MIN_SAVING_TO_SHOW_M: number = 50;
 const PLANNER_ALGOS: string[] = ['heldkarp', 'orienteering', 'nn2opt'];
+/** X1 "Time available" options in minutes; 0 = all stops (user decision: the whole tour is ~54 min with stories). */
+export const BUDGET_OPTIONS_MIN: number[] = [0, 30, 45];
 
 @ObservedV2
 export class TourPlanViewModel {
@@ -80,6 +82,8 @@ export class TourPlanViewModel {
   @Trace showOrder: boolean = false;
   @Trace orderRows: OrderRow[] = [];
   @Trace orderPreview: PreviewPoint[] = [];
+  /** X1: time available in minutes, 0 = all stops (exact orienteering when > 0). */
+  @Trace budgetMin: number = 0;
 
   // Before you go
   @Trace showSheet: boolean = false;
@@ -199,21 +203,39 @@ export class TourPlanViewModel {
     return true;
   }
 
-  /** Route ready: plan with the controller (Held-Karp in A2/A7; the scripted fake until then). */
+  /** X1: pick a time budget and re-plan (the latest choice wins if a plan is already running). */
+  setBudget(min: number): void {
+    if (min === this.budgetMin && this.plan !== undefined) {
+      return;
+    }
+    this.budgetMin = min;
+    Log.i(LogEvents.ROUTE_PLAN, `where=routeReady action=budget budgetMin=${min} src=ui`);
+    this.planRoute();
+  }
+
+  /** Route ready: plan with the controller (Held-Karp, or exact orienteering under a time budget). */
   async planRoute(): Promise<void> {
     if (this.planning || this.tourId === '') {
       return;
     }
     this.planning = true;
     this.planFailed = false;
-    const p = await withTimeout<TourPlan | undefined>(AppContainer.tourControl().plan(this.tourId, 0),
+    const budget = this.budgetMin;
+    const p = await withTimeout<TourPlan | undefined>(AppContainer.tourControl().plan(this.tourId, budget),
       CONTROL_TIMEOUT_MS, undefined, 'tour.plan');
     this.planning = false;
+    if (budget !== this.budgetMin) {
+      this.planRoute();              // the user changed the budget while this plan ran
+      return;
+    }
     if (p === undefined || p.order.length === 0) {
       this.planFailed = true;
       this.plan = undefined;
+      Log.w(LogEvents.ROUTE_PLAN, `where=routeReady budgetMin=${budget} result=empty`);
       return;
     }
+    Log.i(LogEvents.ROUTE_PLAN, `where=routeReady budgetMin=${budget} chosen=${p.order.length}/${this.stops.length} ` +
+      `algo=${p.algo} exact=${p.exact} walkM=${Math.round(p.walkM)} costS=${Math.round(p.costS)} ms=${p.ms}`);
     const pack = AppContainer.packRepository();
     const routes = safeRoutes(pack);
     this.orderRows = p.order.map((id: string, i: number) => {
@@ -234,14 +256,25 @@ export class TourPlanViewModel {
     return this.orderRows.length > 0 ? this.orderRows[0].name : '';
   }
 
-  /** True when the plan comes from a real planner and saved a noticeable distance. */
+  /** True when the plan comes from a real planner and saved a noticeable distance (full tour only). */
   showSaving(): boolean {
-    return this.plan !== undefined && this.isRealPlanner() && this.plan.savedM >= MIN_SAVING_TO_SHOW_M;
+    return this.plan !== undefined && this.budgetMin === 0 && this.isRealPlanner() &&
+      this.plan.savedM >= MIN_SAVING_TO_SHOW_M;
   }
 
-  /** True when a real planner confirmed the listed order is (near) optimal. */
+  /** True when a real planner confirmed the listed order is (near) optimal (full tour only). */
   showListedOptimal(): boolean {
-    return this.plan !== undefined && this.isRealPlanner() && this.plan.exact && this.plan.savedM < MIN_SAVING_TO_SHOW_M;
+    return this.plan !== undefined && this.budgetMin === 0 && this.isRealPlanner() && this.plan.exact &&
+      this.plan.savedM < MIN_SAVING_TO_SHOW_M;
+  }
+
+  /** X1: a time budget is set and the plan answers it ("Best k of n stops"). */
+  showBudgetResult(): boolean {
+    return this.plan !== undefined && this.budgetMin > 0 && this.isRealPlanner();
+  }
+
+  chosenStops(): number {
+    return this.plan === undefined ? 0 : this.plan.order.length;
   }
 
   isRealPlanner(): boolean {

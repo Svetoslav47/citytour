@@ -493,10 +493,13 @@ export default function heldKarpTest() {
         expect(tp.algo).assertEqual('orienteering');
         expect(tp.budgetS).assertEqual(b);
         expect(tp.order[0]).assertEqual('barbican');
-        check(tp.order.length === 1 || tp.order[tp.order.length - 1] === 'wawel',
-          `budget=${b} order=${tp.order.join(',')}`);
       }
       expect(plan(inputs, 100000).order.length).assertEqual(11);
+      // X1: under a budget the fixed end (Wawel) is free; the full tour still ends there.
+      const short = plan(inputs, 1800);
+      check(short.order.length >= 6 && short.order[short.order.length - 1] !== 'wawel',
+        `budget=1800 order=${short.order.join(',')} costS=${short.costS}`);
+      expect(plan(inputs, 0).order[10]).assertEqual('wawel');
       // A budget below the forced first stop gives an empty plan.
       const far = buildCostInputs(royalPack(), royalTour(true), ROYAL_IDS, royalAt(10));
       expect(plan(far, 60).order.length).assertEqual(0);

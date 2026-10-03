@@ -1655,6 +1655,26 @@
     {
       "name": "settings_online_voice_note",
       "value": "Sentences without a recording are fetched from the CityTour server (within 2.5 s) and kept on the phone. Off or offline: the built-in voice reads them."
+    },
+    {
+      "name": "route_time_available",
+      "value": "Time available"
+    },
+    {
+      "name": "route_budget_all",
+      "value": "All stops"
+    },
+    {
+      "name": "route_budget_min_a11y",
+      "value": "%d minutes"
+    },
+    {
+      "name": "route_budget_best",
+      "value": "Best %1$d of %2$d stops"
+    },
+    {
+      "name": "route_budget_exact",
+      "value": "solved exactly"
     }
   ]
 }
