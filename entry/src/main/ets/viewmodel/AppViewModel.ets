@@ -8,6 +8,7 @@ import { i18n } from '@kit.LocalizationKit';
 import { AppIssue, IssueCode, IssueSeverity } from '../contracts/EngineTypes';
 import { Lang } from '../contracts/Model';
 import { PackLoadResult } from '../contracts/Ports';
+import { AppConfig } from '../app/AppConfig';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
@@ -40,6 +41,8 @@ export class AppViewModel {
   @Trace packIssues: AppIssue[] = [];
   /** Language of narration text and place names. B9/B10 bind it to UserSettings.textLang. */
   @Trace textLang: Lang = Lang.EN;
+  /** Demo walk replay speed last applied to TourControl (TourControl has no getter for it). */
+  @Trace demoSpeed: number = AppConfig.DEMO_DEFAULT_SPEED;
   /** One flow at a time: Tour detail -> Route ready -> Before you go. */
   @Trace tourPlan: TourPlanViewModel = new TourPlanViewModel();
   private loadStarted: boolean = false;

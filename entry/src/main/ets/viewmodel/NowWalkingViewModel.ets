@@ -18,6 +18,7 @@ import { dialAngle, RoundedDistance, roundWalkDistance, shouldUpdateDistance } f
 import { PlaqueState } from '../views/common/Plaque';
 import { PreviewPoint } from '../views/common/RoutePreview';
 import { StopRow } from '../views/common/StopList';
+import { AppViewModel } from './AppViewModel';
 import { localName } from './Format';
 import { findTour, poiName, previewPoints, safePoi } from './PackView';
 
@@ -55,6 +56,7 @@ export class NowWalkingViewModel {
 
   attach(lang: Lang): void {
     this.lang = lang;
+    this.demoSpeed = AppViewModel.get().demoSpeed;
     if (this.unsubscribe !== undefined) {
       return;
     }
@@ -177,6 +179,7 @@ export class NowWalkingViewModel {
 
   setDemoSpeed(mult: number): void {
     this.demoSpeed = mult;
+    AppViewModel.get().demoSpeed = mult;
     try {
       AppContainer.tourControl().setDemoSpeed(mult);
       Log.i(LogEvents.LOC_SOURCE, `kind=demo speed=${mult} where=demoControls`);
@@ -275,7 +278,7 @@ export class NowWalkingViewModel {
   buildStopRows(s: EngineSnapshot): StopRow[] {
     const pack = AppContainer.packRepository();
     return s.stops.map((p: StopProgress, i: number) =>
-      new StopRow(p.order > 0 ? p.order : i + 1, p.poiId, poiName(pack, p.poiId, this.lang), 0, this.plaqueState(s, i)));
+      new StopRow(i + 1, p.poiId, poiName(pack, p.poiId, this.lang), 0, this.plaqueState(s, i)));
   }
 
   openStops(): void {
