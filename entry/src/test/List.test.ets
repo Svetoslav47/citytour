@@ -23,6 +23,7 @@ import notifyTextTest from './NotifyText.test';
 import onboardingTest from './Onboarding.test';
 import clipSelectionTest from './ClipSelection.test';
 import settingsTest from './Settings.test';
+import hudRowsTest from './HudRows.test';
 
 export default function testsuite() {
   harnessTest();
@@ -47,4 +48,5 @@ export default function testsuite() {
   onboardingTest();
   clipSelectionTest();
   settingsTest();
+  hudRowsTest();
 }

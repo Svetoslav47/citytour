@@ -11,6 +11,22 @@
     {
       "name": "perm_vibrate_reason",
       "value": "到达景点时短暂振动提示。"
+    },
+    {
+      "name": "walk_menu_how",
+      "value": "工作原理"
+    },
+    {
+      "name": "walk_menu_how_hide",
+      "value": "隐藏工作原理"
+    },
+    {
+      "name": "hud_title",
+      "value": "工作原理"
+    },
+    {
+      "name": "hud_live",
+      "value": "实时数值"
     }
   ]
 }

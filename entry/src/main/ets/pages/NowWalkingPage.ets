@@ -6,6 +6,7 @@
  * is read by the zh-CN voice. Back (chevron down) returns Home and the tour keeps running.
  * Ids: btnMinimise, btnWalkMenu, badgeSimulated, chipFallbackVoice, btnReplay, btnPlayPause, btnSkip,
  * btnStops, btnNextStopText, btnBackHome, btnJumpNext, segSpeedN.
+ * B12: the ⋯ menu toggles the "How it works" HUD (views/walk/HowItWorksHud, id hudHowItWorks) over the map.
  */
 import { IssueCode } from '../contracts/EngineTypes';
 import { Log } from '../app/Log';
@@ -19,6 +20,7 @@ import { StopList } from '../views/common/StopList';
 import { Radius, Size, Space, Type } from '../views/common/Tokens';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { DemoControlsSheet } from '../views/walk/DemoControlsSheet';
+import { HowItWorksHud, HudPrefs, hudRowsFor } from '../views/walk/HowItWorksHud';
 import { NextStopBlock } from '../views/walk/NextStopBlock';
 import { NowPlayingCard } from '../views/walk/NowPlayingCard';
 import { WalkControls } from '../views/walk/WalkControls';
@@ -26,6 +28,9 @@ import { SafeArea } from '../viewmodel/SafeArea';
 
 const MAP_H: number = 300;
 const MAP_H_READING: number = 200;
+/** B12: with the HUD on, the map box reaches this far below the HUD, so the HUD never covers the panel and a strip of
+ * map (user dot, route) stays visible under it (24 vp of it sit under the panel's rounded top). */
+const HUD_MAP_STRIP: number = 120;
 
 @ComponentV2
 export struct NowWalkingPage {
@@ -34,6 +39,10 @@ export struct NowWalkingPage {
   /** Window avoid areas (edge-to-edge window, issue #63): the map runs under the status bar (DESIGN §3.6), the
    * header capsule and chips sit below it, the panel runs under the navigation indicator and its controls clear it. */
   @Local sa: SafeArea = SafeArea.get();
+  /** B12: "How it works" HUD on/off, kept for the app session. */
+  @Local hud: HudPrefs = HudPrefs.get();
+  /** Height of the chips + HUD overlay column (onAreaChange), for the map box and its follow inset. */
+  @Local overlayH: number = 0;
 
   aboutToAppear(): void {
     this.vm.attach(this.app.textLang);
@@ -124,6 +133,23 @@ export struct NowWalkingPage {
     }
     const i = topIssue(this.vm.snap.issues);
     return i === undefined ? undefined : i.code;
+  }
+
+  /** Map box height: the DESIGN height, grown with the HUD on so the HUD sits over the map, never over the panel. */
+  private mapBoxH(): number {
+    const base: number = (this.vm.state() === WalkState.READING ? MAP_H_READING : MAP_H) + this.sa.top;
+    return this.hud.visible && this.overlayH > 0 ? Math.max(base, this.overlayH + HUD_MAP_STRIP) : base;
+  }
+
+  /** Map follow inset: below the header (DESIGN), or below the HUD while it is on, so the user dot stays visible. */
+  private mapTopInset(): number {
+    const base: number = 96 + this.sa.top;
+    return this.hud.visible && this.overlayH > 0 ? Math.max(base, this.overlayH) : base;
+  }
+
+  private toggleHud(): void {
+    this.hud.visible = !this.hud.visible;
+    Log.i(LogEvents.APP_PAGE, `page=NowWalking hud=${this.hud.visible ? 'on' : 'off'}`);
   }
 
   private confirmEnd(): void {
@@ -226,6 +252,10 @@ export struct NowWalkingPage {
           action: () => this.app.openFullMap('walk')
         },
         {
+          value: this.hud.visible ? $r('app.string.walk_menu_how_hide') : $r('app.string.walk_menu_how'),
+          action: () => this.toggleHud()
+        },
+        {
           value: $r('app.string.cta_end_tour'),
           enabled: !this.finished(),
           action: () => this.confirmEnd()
@@ -281,10 +311,16 @@ export struct NowWalkingPage {
           .shadow(ShadowStyle.OUTER_DEFAULT_XS)
           .constraintSize({ maxWidth: 300 })
       }
+      if (this.hud.visible) {
+        HowItWorksHud({ rows: hudRowsFor(this.vm.snap, this.vm.stopName, this.vm.demoSpeed) })
+      }
     }
     .alignItems(HorizontalAlign.End)
     .width('100%')
-    .padding({ right: Space.S3 + this.sa.right, top: 64 + this.sa.top })
+    .padding({ left: Space.S3 + this.sa.left, right: Space.S3 + this.sa.right, top: 64 + this.sa.top })
+    .onAreaChange((_old: Area, now: Area) => {
+      this.overlayH = Number(now.height);
+    })
     .hitTestBehavior(HitTestMode.Transparent)   // the header buttons underneath stay tappable
   }
 
@@ -460,8 +496,8 @@ export struct NowWalkingPage {
             bounds: this.vm.sceneBounds,
             follow: this.vm.scene.user !== undefined,
             followScale: 1.4,
-            boxHeight: (this.vm.state() === WalkState.READING ? MAP_H_READING : MAP_H) + this.sa.top,
-            topInset: 96 + this.sa.top,
+            boxHeight: this.mapBoxH(),
+            topInset: this.mapTopInset(),
             bottomInset: 24,
             mapId: 'mapWalk'
           })

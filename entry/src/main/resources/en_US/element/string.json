@@ -1503,6 +1503,18 @@
     {
       "name": "about_voice_body",
       "value": "Narration voice generated with ElevenLabs (eleven_multilingual_v2, voice 'George'); scripts AI-drafted, see review status. The clips are rendered at build time and ship inside the app: no network and no API key at runtime. Directions and anything without a clip use the on-device HarmonyOS voice, or text."
+    },
+    {
+      "name": "walk_menu_how_hide",
+      "value": "Hide How it works"
+    },
+    {
+      "name": "hud_title",
+      "value": "HOW IT WORKS"
+    },
+    {
+      "name": "hud_live",
+      "value": "live values"
     }
   ]
 }
