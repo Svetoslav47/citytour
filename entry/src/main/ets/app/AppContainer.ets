@@ -1,7 +1,9 @@
 /*
  * Composition root (docs/ARCHITECTURE.md §1.2 lifecycle, §12.1). EntryAbility calls init() in onCreate and
  * shutdown() in onDestroy. init() builds services but starts nothing. ViewModels read the getters only.
- * T0 wiring: tourControl() = ScriptedTourControl (SIMULATED) until A7; permissions() returns a safe stub until A5.
+ * T0 wiring: tourControl() = ScriptedTourControl (SIMULATED) until A7.
+ * A5 wiring: permissions() = PermissionService (location permission + switch), realLocation() = RealLocationSource
+ * (Location Kit), demoWalk() = DemoWalkSource (SIMULATED track replay). Built in init(), started by their users.
  * A4 wiring: voice() = VoiceManager (listVoices/downloadVoice + pure VoicePolicy), speech() = NarrationPlayer
  * (TTS playType 0 -> PcmPlayer AudioRenderer). Both share one TtsEngines, so each engine exists once per app.
  * A6 wiring: background() = BackgroundRunner (one continuous task ['location','audioPlayback']; it stops speech
@@ -19,6 +21,9 @@ import {
 import { PcmPlayer } from '../services/audio/PcmPlayer';
 import { BackgroundRunner } from '../services/background/BackgroundRunner';
 import { MediaSessionService } from '../services/media/MediaSessionService';
+import { DemoWalkSource } from '../services/location/DemoWalkSource';
+import { PermissionService } from '../services/location/PermissionService';
+import { RealLocationSource } from '../services/location/RealLocationSource';
 import { PackFactory } from '../services/pack/PackFactory';
 import { NarrationPlayer } from '../services/speech/NarrationPlayer';
 import { TtsEngines } from '../services/speech/TtsEngines';
@@ -28,7 +33,7 @@ import { SystemClock } from './Clock';
 import { HilogLogger, Log } from './Log';
 import { LogEvents } from './LogEvents';
 
-/** Until A5: reports UNKNOWN and never opens a dialog. */
+/** Before init() (no UIAbilityContext): reports UNKNOWN and never opens a dialog. */
 class StubPermissionPort implements PermissionPort {
   locationState(): Promise<PermissionState> {
     return Promise.resolve(PermissionState.UNKNOWN);
@@ -62,6 +67,8 @@ export class AppContainer {
   private static permImpl: PermissionPort | undefined = undefined;
   private static bgImpl: BackgroundRunner | undefined = undefined;
   private static avsImpl: MediaSessionService | undefined = undefined;
+  private static realLocImpl: RealLocationSource | undefined = undefined;
+  private static demoImpl: DemoWalkSource | undefined = undefined;
 
   /** Idempotent. Builds services; starts nothing. */
   static init(ctx: common.UIAbilityContext): void {
@@ -73,7 +80,9 @@ export class AppContainer {
       AppContainer.packImpl = PackFactory.create();
       AppContainer.tourImpl = new ScriptedTourControl();
       AppContainer.buildSpeech();
-      AppContainer.permImpl = new StubPermissionPort();
+      AppContainer.permImpl = new PermissionService(ctx);
+      AppContainer.realLocImpl = new RealLocationSource(AppContainer.permImpl);
+      AppContainer.demoImpl = new DemoWalkSource(ctx);
     } catch (e) {
       Log.e(LogEvents.UNCAUGHT, `where=AppContainer.init ${Log.errKv(e as Object)}`);
     }
@@ -102,6 +111,12 @@ export class AppContainer {
       if (AppContainer.speechImpl !== undefined) {
         AppContainer.speechImpl.dispose();
       }
+      if (AppContainer.realLocImpl !== undefined) {
+        AppContainer.realLocImpl.stop();
+      }
+      if (AppContainer.demoImpl !== undefined) {
+        AppContainer.demoImpl.stop();
+      }
     } catch (e) {
       Log.e(LogEvents.UNCAUGHT, `where=AppContainer.shutdown ${Log.errKv(e as Object)}`);
     }
@@ -112,6 +127,8 @@ export class AppContainer {
     AppContainer.permImpl = undefined;
     AppContainer.bgImpl = undefined;
     AppContainer.avsImpl = undefined;
+    AppContainer.realLocImpl = undefined;
+    AppContainer.demoImpl = undefined;
     AppContainer.ctx = undefined;
   }
 
@@ -183,7 +200,8 @@ export class AppContainer {
 
   static permissions(): PermissionPort {
     if (AppContainer.permImpl === undefined) {
-      AppContainer.permImpl = new StubPermissionPort();
+      AppContainer.permImpl = AppContainer.ctx !== undefined ? new PermissionService(AppContainer.ctx) :
+        new StubPermissionPort();
     }
     return AppContainer.permImpl;
   }
@@ -214,5 +232,21 @@ export class AppContainer {
       AppContainer.avsImpl = new MediaSessionService(() => AppContainer.context());
     }
     return AppContainer.avsImpl;
+  }
+
+  /** Location Kit source (asks for the permission and the location switch on start()). */
+  static realLocation(): RealLocationSource {
+    if (AppContainer.realLocImpl === undefined) {
+      AppContainer.realLocImpl = new RealLocationSource(AppContainer.permissions());
+    }
+    return AppContainer.realLocImpl;
+  }
+
+  /** SIMULATED Demo walk source. Undefined before init() (it needs the context to read the rawfile track). */
+  static demoWalk(): DemoWalkSource | undefined {
+    if (AppContainer.demoImpl === undefined && AppContainer.ctx !== undefined) {
+      AppContainer.demoImpl = new DemoWalkSource(AppContainer.ctx);
+    }
+    return AppContainer.demoImpl;
   }
 }

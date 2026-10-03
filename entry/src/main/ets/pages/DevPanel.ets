@@ -1,7 +1,7 @@
 /*
  * Developer-only page (A-owned). Opened with:
  *   hdc shell aa start -a EntryAbility -b com.hackyeah.citytour --ps page dev
- * Later tasks add buttons for location sources (A5).
+ * Location sources (A5): LocationDevSection in DevPanelLocation.ets.
  *
  * A4 speech buttons exercise the real stack through AppContainer.speech() / voice():
  *   "EN sample (3 sentences)"  English text, voice chosen by the strategy (emulator: zh voice = "Fallback voice")
@@ -32,6 +32,7 @@ import { stripPauseMarkup } from '../core/speech/VoicePolicy';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
+import { LocationDevSection } from './DevPanelLocation';
 
 const EN_SAMPLE: string[] = [
   'Welcome to the Main Market Square in Krakow.[p300]',
@@ -456,6 +457,7 @@ struct DevPanel {
           .fontSize(24)
           .fontWeight(FontWeight.Bold)
           .margin({ top: 48 })
+        LocationDevSection()
         Text('Speech (A4)').fontSize(18).fontWeight(FontWeight.Medium)
         Text(this.chip)
           .id('voiceChip')
