@@ -57,7 +57,7 @@ async function main(argv: string[]): Promise<number> {
     log: (s) => console.log(`publish-course: ${s}`)
   });
   const b = r.allowedBreakdown;
-  console.log(`publish-course: allowed ${r.allowedCount} (narration ${b.narration} incl. ${b.cityNarration} from the city, ` +
+  console.log(`publish-course: allowed ${r.allowedCount} (narration ${b.narration}, ${b.cityNarration} of them only in the city pack; ` +
     `system ${b.system}, numeric ${b.numeric}); shipped clips not allowed: ${r.clipsNotAllowed}`);
   console.log(`publish-course: blobs written ${r.blobsWritten}, shipped clips pre-seeded in tts-index ${r.shippedIndexed}`);
   if (r.clipsNotAllowed > 0) {

@@ -454,7 +454,7 @@ export async function publishCourse(o: PublishOptions): Promise<PublishResult> {
       addSentences(narration, list);
     }
     cityNarration = narration.size - before;
-    log(`city ${city.cityId} ${city.version}: ${cityNarration} more narration sentences allowed`);
+    log(`city ${city.cityId} ${city.version}: ${cityNarration} narration sentences allowed that the course pack does not have`);
   }
   const sl = (await import(pathToFileURL(o.systemLinesPath).href)) as SystemLinesModule;
   const toursRaw = await readJson<Tour[] | { tours: Tour[] }>(join(o.packDir, 'tours.json'));
