@@ -338,6 +338,8 @@ export struct HomePage {
     .borderRadius(Radius.LG)
     .backgroundColor($r('app.color.bg_surface'))
     .accessibilityGroup(true)
+    .id('rowAllPlaces')
+    .onClick(() => this.app.openFullMap('explore'))   // B13: full map, explore mode (all places)
   }
 
   /** SERVER.md §6: Home -> Courses. Hidden when the build has no course server (RemoteConfig.BASE_URL ''). */

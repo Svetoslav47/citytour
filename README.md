@@ -59,6 +59,10 @@ Taken on the Pura 90 emulator (API 24 image, `devecocli ui screenshot`). The amb
 |---|---|---|
 | <img src="docs/img/lockscreen.png" width="220" alt="Lock screen playback card"> | <img src="docs/img/settings.png" width="220" alt="Settings"> | <img src="docs/img/about.png" width="220" alt="About and licences"> |
 
+| All places (explore map) | Place card |
+|---|---|
+| <img src="docs/img/explore-map.png" width="220" alt="Full map in explore mode: every place with a story as a dot over the Old Town"> | <img src="docs/img/explore-card.png" width="220" alt="Place card sheet: kind, name, teaser, From Wikipedia label, Details"> |
+
 | Polish UI | Chinese UI |
 |---|---|
 | <img src="docs/img/home-pl.png" width="220" alt="Home in Polish"> | <img src="docs/img/home-zh.png" width="220" alt="Home in Chinese"> |
@@ -85,6 +89,7 @@ Narration tiers in the pack (from [`validation-report.json`](entry/src/main/reso
 - **Voices on the emulator.** The emulator has no English or Polish system voice: English is read by the Chinese voice (labelled "Fallback voice"), and Polish lines without a studio clip are shown as text. Stories with studio clips play in all three languages.
 - **AI-drafted content, not yet reviewed.** The Historian stories (English, then machine-translated to Polish and Chinese) and the Polish and Chinese UI strings were drafted by AI and have not been checked by a historian or native speakers. The app labels unreviewed stories.
 - **Sparse Chinese sources.** Only 71 places have a Chinese Wikipedia summary; most Chinese place texts are the name-only template.
+- **Basic explore map.** Home › "All places in Kraków" opens the full map with every place as a dot (places with a sourced story from the overview zoom, name-only places as you zoom in, crowded dots thinned). The DESIGN §3.7 filter chips, count clusters and the card's Listen button are not built yet.
 - **Kraków ArcGIS licence unverified** (see the table above).
 - **No vibration on the emulator.** Arrival haptics are called and logged, but the emulator has no motor (`14600101`, no crash).
 

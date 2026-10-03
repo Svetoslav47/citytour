@@ -1707,6 +1707,18 @@
     {
       "name": "widget_idle_foot",
       "value": "Tap to start a tour"
+    },
+    {
+      "name": "map_places_show",
+      "value": "Show all places"
+    },
+    {
+      "name": "map_places_hide",
+      "value": "Hide all places"
+    },
+    {
+      "name": "place_card_details",
+      "value": "Details"
     }
   ]
 }

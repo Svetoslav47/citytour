@@ -14,6 +14,7 @@ import { Camera, fitBounds, pan, worldToScreen, zoomAt } from '../../core/map/Ca
 import { KRAKOW_PROJECTION } from '../../core/geo/Projection';
 import { DARK, LIGHT, MapPalette } from './MapStyle';
 import { MapOverlay, MapRenderer } from './MapRenderer';
+import { PoiLayer } from './PoiLayer';
 
 const MAP_FRAME: string = 'MAP_FRAME';
 
@@ -38,6 +39,12 @@ export struct MapCanvas {
   @Param bottomInset: number = 0;
   @Param boxHeight: number = 260;
   @Param mapId: string = 'map';
+  /** B13: all places as dots (full map), tappable when `interactive`. */
+  @Param places: PoiLayer | undefined = undefined;
+  /** Bumped by the page when the layer's selection changes, to redraw. */
+  @Param placesRev: number = 0;
+  /** Tap on a place dot: its id ('' = the tap hit no dot). */
+  @Event onTapPlace: (poiId: string) => void = (poiId: string) => {};
   @Local w: number = 0;
   @Local userMoved: boolean = false;
   /** Screen rect of the base image (vp), updated with the camera. */
@@ -57,7 +64,7 @@ export struct MapCanvas {
   private panLastY: number = 0;
   private frames: number = 0;
 
-  @Monitor('map', 'scene', 'bounds', 'follow', 'w', 'boxHeight')
+  @Monitor('map', 'scene', 'bounds', 'follow', 'w', 'boxHeight', 'places', 'placesRev')
   onInputs(): void {
     this.placeCamera();
     this.draw(false);
@@ -109,11 +116,12 @@ export struct MapCanvas {
         this.imgH = br.y - tl.y;
       }
       const ms = this.renderer.draw(this.ctx, this.w, this.boxHeight, this.cam, this.scene, this.palette(), fast,
-        this.imageBase);
+        this.imageBase, this.places);
       this.frames++;
       if (this.frames % 30 === 1 || ms > 33) {
         Log.i(MAP_FRAME, `id=${this.mapId} ms=${ms} s=${this.cam.s.toFixed(2)} layers=${this.renderer.layerCount()} ` +
-          `base=${this.imageBase ? 'image' : 'vector'} fast=${fast} n=${this.frames}`);
+          `base=${this.imageBase ? 'image' : 'vector'} fast=${fast} n=${this.frames}` +
+          (this.places !== undefined ? ` dots=${this.places.shown()}/${this.places.size()}` : ''));
       }
     } catch (e) {
       Log.e(MAP_FRAME, `id=${this.mapId} error ${Log.errKv(e as Object)}`);
@@ -190,14 +198,23 @@ export struct MapCanvas {
               this.gesturing = false;
               this.draw(false);
             })))
-        .gesture(TapGesture({ count: 2 }).onAction((e: GestureEvent) => {
-          if (!this.interactive) {
-            return;
-          }
-          this.userMoved = true;
-          this.cam = zoomAt(this.cam, 2, this.w / 2, this.boxHeight / 2, this.w, this.boxHeight);
-          this.draw(false);
-        }))
+        // Double tap zooms, a single tap picks a place dot; exclusive, double first (doc faqs-arkui-306), so a
+        // double tap never also selects. Tap point: fingerList[0].localX/Y (doc faqs-arkui-4).
+        .gesture(GestureGroup(GestureMode.Exclusive,
+          TapGesture({ count: 2 }).onAction((e: GestureEvent) => {
+            if (!this.interactive) {
+              return;
+            }
+            this.userMoved = true;
+            this.cam = zoomAt(this.cam, 2, this.w / 2, this.boxHeight / 2, this.w, this.boxHeight);
+            this.draw(false);
+          }),
+          TapGesture({ count: 1 }).onAction((e: GestureEvent) => {
+            if (!this.interactive || this.places === undefined || e.fingerList.length === 0) {
+              return;
+            }
+            this.onTapPlace(this.places.hit(e.fingerList[0].localX, e.fingerList[0].localY));
+          })))
 
       if (this.map !== undefined || this.imageBase) {
         Text($r('app.string.map_attribution'))
