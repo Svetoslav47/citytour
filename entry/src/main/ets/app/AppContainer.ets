@@ -3,10 +3,10 @@
  * shutdown() in onDestroy. init() builds services but starts nothing. ViewModels read the getters only.
  * A5 wiring: permissions() = PermissionService (location permission + switch), realLocation() = RealLocationSource
  * (Location Kit), demoWalk() = DemoWalkSource (SIMULATED track replay). Built in init(), started by their users.
- * A7 wiring: tourControl() = TourController (engine + Planner + speech + background() + mediaSession()). Ports whose
- * task is not merged yet (location sources A5, notifier/haptics A8) are provided as
- * `undefined`, which the controller treats as a logged no-op. ScriptedTourControl stays for UI previews
- * (scriptedTourControl()).
+ * A7 wiring: tourControl() = TourController (engine + Planner + speech + background() + mediaSession() +
+ * realLocation()/demoWalk() + permissions()). DemoWalkSource reaches the controller's DemoControls through
+ * DemoWalkControls. Notifier/haptics (A8) are not merged yet: provided as `undefined`, which the controller treats
+ * as a logged no-op. ScriptedTourControl stays for UI previews (scriptedTourControl()).
  * A4 wiring: voice() = VoiceManager (listVoices/downloadVoice + pure VoicePolicy), speech() = NarrationPlayer
  * (TTS playType 0 -> PcmPlayer AudioRenderer). Both share one TtsEngines, so each engine exists once per app.
  * A6 wiring: background() = BackgroundRunner (one continuous task ['location','audioPlayback']; it stops speech
@@ -60,6 +60,39 @@ class StubPermissionPort implements PermissionPort {
   }
 }
 
+/** TourController's DemoControls over the A5 DemoWalkSource (ArkTS has no structural typing). */
+class DemoWalkControls implements DemoControls {
+  private readonly src: DemoWalkSource;
+
+  constructor(src: DemoWalkSource) {
+    this.src = src;
+  }
+
+  wraps(s: DemoWalkSource): boolean {
+    return this.src === s;
+  }
+
+  setSpeed(mult: number): void {
+    this.src.setSpeed(mult);
+  }
+
+  jumpToNextStop(): void {
+    this.src.jumpToNextStop();
+  }
+
+  setHoldPredicate(p: () => boolean): void {
+    this.src.setHoldPredicate(p);
+  }
+
+  isHolding(): boolean {
+    return this.src.isHolding();
+  }
+
+  rewind(): void {
+    this.src.rewind();
+  }
+}
+
 export class AppContainer {
   private static ctx: common.UIAbilityContext | undefined = undefined;
   private static clockImpl: Clock = new SystemClock();
@@ -74,6 +107,7 @@ export class AppContainer {
   private static avsImpl: MediaSessionService | undefined = undefined;
   private static realLocImpl: RealLocationSource | undefined = undefined;
   private static demoImpl: DemoWalkSource | undefined = undefined;
+  private static demoCtlImpl: DemoWalkControls | undefined = undefined;
 
   /** Idempotent. Builds services; starts nothing. */
   static init(ctx: common.UIAbilityContext): void {
@@ -144,6 +178,7 @@ export class AppContainer {
     AppContainer.avsImpl = undefined;
     AppContainer.realLocImpl = undefined;
     AppContainer.demoImpl = undefined;
+    AppContainer.demoCtlImpl = undefined;
     AppContainer.ctx = undefined;
   }
 
@@ -197,7 +232,7 @@ export class AppContainer {
       clock: AppContainer.clockImpl,
       scheduler: new SystemScheduler(),
       sourceFor: (kind: FixSource): LocationSource | undefined => AppContainer.locationSource(kind),
-      demoControls: (): DemoControls | undefined => undefined,          // A5: DemoWalkSource adapter
+      demoControls: (): DemoControls | undefined => AppContainer.demoControls(),
       background: (): BackgroundPort | undefined => AppContainer.background(),
       media: (): MediaSessionPort | undefined => AppContainer.mediaSession(),
       notifier: (): NotifierPort | undefined => undefined,              // A8
@@ -207,9 +242,20 @@ export class AppContainer {
     return new TourController(deps);
   }
 
-  /** A5 provides RealLocationSource / DemoWalkSource; until then no source exists (the controller logs it). */
+  /** The LocationSource for a kind: RealLocationSource (Location Kit) or the SIMULATED DemoWalkSource. */
   static locationSource(kind: FixSource): LocationSource | undefined {
-    return undefined;
+    return kind === FixSource.DEMO ? AppContainer.demoWalk() : AppContainer.realLocation();
+  }
+
+  private static demoControls(): DemoControls | undefined {
+    const d: DemoWalkSource | undefined = AppContainer.demoWalk();
+    if (d === undefined) {
+      return undefined;
+    }
+    if (AppContainer.demoCtlImpl === undefined || !AppContainer.demoCtlImpl.wraps(d)) {
+      AppContainer.demoCtlImpl = new DemoWalkControls(d);
+    }
+    return AppContainer.demoCtlImpl;
   }
 
   static packRepository(): PackRepository {

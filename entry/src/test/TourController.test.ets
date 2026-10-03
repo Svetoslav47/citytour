@@ -332,7 +332,16 @@ class FakeSource implements LocationSource {
 class FakeDemo implements DemoControls {
   speed: number = 0;
   jumps: number = 0;
+  rewinds: number = 0;
   hold: () => boolean = () => false;
+
+  isHolding(): boolean {
+    return this.hold();
+  }
+
+  rewind(): void {
+    this.rewinds++;
+  }
 
   setSpeed(mult: number): void {
     this.speed = mult;
@@ -581,6 +590,7 @@ export default function tourControllerTest() {
       expect(h.media.active).assertTrue();
       expect(h.demo.starts).assertEqual(1);
       expect(h.demoCtl.speed).assertEqual(4);
+      expect(h.demoCtl.rewinds).assertEqual(1);                        // a new tour walks from the start
       expect(h.speech.spoken.length > 0).assertTrue();          // the welcome line starts at once
       for (const id of p.order) {
         h.walkTo(id, 1.3);

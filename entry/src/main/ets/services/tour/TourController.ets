@@ -75,6 +75,10 @@ export interface DemoControls {
   jumpToNextStop(): void;
   /** While it returns true the demo walk holds at a stop (re-emits jittered hold fixes). */
   setHoldPredicate(p: () => boolean): void;
+  /** The last tick extended a hold ("Demo assist: waiting at stop while the story plays"). */
+  isHolding(): boolean;
+  /** Back to the first sample on the next start() (a stopped walk otherwise resumes where it was). */
+  rewind(): void;
 }
 
 /** Everything the controller talks to. Optional services return undefined until their task is merged. */
@@ -327,7 +331,7 @@ export class TourController implements TourControl {
       this.sourceKind = kind;
       if (this.running) {
         this.stopSources();
-        this.startSources();
+        this.startSources(false);
       } else {
         this.rebuildReadyEngine();       // the welcome line says "simulated walk" only for DEMO
       }
@@ -789,7 +793,8 @@ export class TourController implements TourControl {
     }
     this.startedAtMs = this.deps.clock.nowMs();
     this.lastActiveFixMs = Number.NaN;
-    this.startSources();
+    this.stopSources();                  // a plan-time origin source restarts with this session's callbacks
+    this.startSources(true);
     this.tickId = this.deps.scheduler.every(TICK_MS, () => this.onTick(gen));
     this.dispatchType(EngineEventType.START_TOUR);
   }
@@ -835,7 +840,8 @@ export class TourController implements TourControl {
     }
   }
 
-  private startSources(): void {
+  /** `fresh`: a new tour, so the demo walk starts from its first sample. */
+  private startSources(fresh: boolean): void {
     const gen: number = this.generation;
     const kind: FixSource = this.sourceKind;
     const src: LocationSource | undefined = this.safeGet<LocationSource>(() => this.deps.sourceFor(kind), 'source');
@@ -845,7 +851,7 @@ export class TourController implements TourControl {
     } else {
       this.activeSource = src;
       if (kind === FixSource.DEMO) {
-        this.wireDemo();
+        this.wireDemo(fresh);
       }
       this.deps.log.info(LogEvents.LOC_SOURCE, `kind=${kind} role=active`);
       this.startSource(src, kind, gen, true);
@@ -855,12 +861,15 @@ export class TourController implements TourControl {
     }
   }
 
-  private wireDemo(): void {
+  private wireDemo(fresh: boolean): void {
     const dc: DemoControls | undefined = this.demo();
     if (dc === undefined) {
       return;
     }
     try {
+      if (fresh) {
+        dc.rewind();
+      }
       dc.setHoldPredicate(() => this.storyActive());
       dc.setSpeed(this.opts.demoSpeed);
     } catch (e) {
@@ -880,7 +889,7 @@ export class TourController implements TourControl {
       return;
     }
     perms.locationState().then((ps: PermissionState) => {
-      if (gen !== this.generation || ps !== PermissionState.GRANTED || real.isRunning()) {
+      if (gen !== this.generation || ps !== PermissionState.GRANTED) {
         return;
       }
       this.shadowSource = real;
@@ -1199,6 +1208,15 @@ export class TourController implements TourControl {
 
   // ================================================================ snapshot
 
+  private demoHolding(): boolean {
+    const dc: DemoControls | undefined = this.demo();
+    try {
+      return dc !== undefined ? dc.isHolding() : this.storyActive();
+    } catch (e) {
+      return false;
+    }
+  }
+
   private storyActive(): boolean {
     const st: TourState | undefined = this.state;
     return st !== undefined && st.phase === TourPhase.AT_STOP && st.activeIdx >= 0;
@@ -1221,7 +1239,7 @@ export class TourController implements TourControl {
       bgRunning: bgRunning, avsActive: avsActive,
       ttsEngine: textOnly || vp === undefined ? 'none' : `${vp.engineLocale}/${vp.person}`,
       sourceKind: this.sourceKind, realGpsAccuracyM: this.realAccuracyM,
-      demoHold: this.running && this.sourceKind === FixSource.DEMO && this.storyActive()
+      demoHold: this.running && this.sourceKind === FixSource.DEMO && this.demoHolding()
     };
     return p;
   }
