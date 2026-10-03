@@ -1743,6 +1743,34 @@
     {
       "name": "settings_pack_none",
       "value": "Nie pobrano jeszcze spaceru"
+    },
+    {
+      "name": "cover_photo_credit",
+      "value": "Zdjęcie: %s"
+    },
+    {
+      "name": "cover_alt_title",
+      "value": "Zdjęcie okładkowe: %s"
+    },
+    {
+      "name": "tour_route_header",
+      "value": "Trasa"
+    },
+    {
+      "name": "about_cover_title",
+      "value": "Zdjęcia okładkowe"
+    },
+    {
+      "name": "about_cover_source",
+      "value": "Źródło: %1$s, %2$s"
+    },
+    {
+      "name": "about_cover_licence",
+      "value": "Licencja: %s"
+    },
+    {
+      "name": "about_cover_changes",
+      "value": "Przycięte do 16:10 i zmniejszone przez zespół CityTour; udostępnione na tej samej licencji."
     }
   ]
 }

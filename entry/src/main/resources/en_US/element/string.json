@@ -1743,6 +1743,34 @@
     {
       "name": "settings_pack_none",
       "value": "No walk downloaded yet"
+    },
+    {
+      "name": "cover_photo_credit",
+      "value": "Photo: %s"
+    },
+    {
+      "name": "cover_alt_title",
+      "value": "Cover photo of %s"
+    },
+    {
+      "name": "tour_route_header",
+      "value": "Route"
+    },
+    {
+      "name": "about_cover_title",
+      "value": "Cover photos"
+    },
+    {
+      "name": "about_cover_source",
+      "value": "Source: %1$s, %2$s"
+    },
+    {
+      "name": "about_cover_licence",
+      "value": "Licence: %s"
+    },
+    {
+      "name": "about_cover_changes",
+      "value": "Cropped to 16:10 and resized by the CityTour team; shared under the same licence."
     }
   ]
 }

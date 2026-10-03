@@ -1,5 +1,6 @@
 /*
- * Home (DESIGN §3.2): the "Now walking" continue card when a tour runs, the Royal Route card, a one-tap
+ * Home (DESIGN §3.2): the "Now walking" continue card when a tour runs, the tour card (cover photo, or the route map
+ * when the course has no cover), a one-tap
  * "Try a demo walk" (id btnDemoWalk, SIMULATED; only for the Kraków course) and the offline place count. Root
  * content of the Navigation. The app ships no built-in course: with none installed Home shows the empty state
  * "Download your first walk" (id cardNoCourse, button btnBrowseWalks -> Courses); a course that fails to load shows
@@ -11,6 +12,8 @@ import { distanceRes, durationRes } from '../viewmodel/Format';
 import { HomeViewModel } from '../viewmodel/HomeViewModel';
 import { IssueBanner } from '../views/common/IssueBanner';
 import { MapCanvas } from '../views/map/MapCanvas';
+import { CoverPhoto } from '../views/common/CoverPhoto';
+import { CoverView } from '../core/remote/CoverRules';
 import { SimulatedBadge } from '../views/common/SimulatedBadge';
 import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
 import { IssueCode, StopProgress } from '../contracts/EngineTypes';
@@ -197,8 +200,19 @@ export struct HomePage {
   @Builder
   tourCard() {
     Column() {
-      MapCanvas({ map: this.vm.map, scene: this.vm.mapScene, bounds: this.vm.mapBounds, boxHeight: 180,
-        mapId: 'mapHome' })
+      // Cover photo (16:10, full bleed; the card clips the top corners); the map preview when the course has none.
+      if (this.vm.cover.view() === CoverView.FALLBACK) {
+        MapCanvas({ map: this.vm.map, scene: this.vm.mapScene, bounds: this.vm.mapBounds, boxHeight: 180,
+          mapId: 'mapHome' })
+      } else {
+        CoverPhoto({
+          path: this.vm.cover.path,
+          credit: this.vm.cover.credit,
+          alt: $r('app.string.cover_alt_title', this.vm.title),
+          ratio: 16 / 10,
+          photoId: 'coverHome'
+        })
+      }
       Column({ space: 2 }) {
         Text(this.vm.title)
           .fontSize(Type.TITLE3)
