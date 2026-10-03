@@ -940,6 +940,54 @@ export class TourController implements TourControl {
     }
   }
 
+  /**
+   * X2 (issue #37): the story language, live. Saved for the next plan(); with a tour planned or running, the voice
+   * plan is re-run for `lang` (VoiceManager logs VOICE_PLAN, A13 clips re-applied so the "Studio voice" /
+   * "Fallback voice" label stays honest) and TourEngine.switchLang continues the queued stories at the next
+   * sentence boundary in the new language. Pause, skip, AVSession, nav cues and the continuous task are untouched.
+   */
+  setStoryLang(lang: Lang): void {
+    try {
+      this.opts.lang = lang;
+      const st: TourState | undefined = this.state;
+      const tour: Tour | undefined = this.tour;
+      const ph: TourPhase = this.phase();
+      if (st === undefined || tour === undefined || ph === TourPhase.IDLE || ph === TourPhase.PLANNING ||
+        ph === TourPhase.FINISHED || ph === TourPhase.ABORTED) {
+        this.deps.log.info(LogEvents.LANG_SWITCH, `to=${lang} where=next_plan phase=${ph}`);
+        return;
+      }
+      const prev: VoicePlan | undefined = this.voicePlan;
+      this.ctrlIssues = this.ctrlIssues.filter((i: AppIssue) =>
+        i.code !== IssueCode.TTS_INIT_FAIL && i.code !== IssueCode.VOICE_UNAVAILABLE);
+      const base: VoicePlan = this.resolveVoice();
+      this.reportVoice(base);
+      const vp: VoicePlan = this.applyClips(tour, base);
+      if (lang === st.input.lang && prev !== undefined && prev.label === vp.label &&
+        prev.speechMode === vp.speechMode && prev.engineLocale === vp.engineLocale) {
+        this.deps.log.info(LogEvents.LANG_SWITCH, `to=${lang} action=none reason=same_lang_and_voice`);
+        return;
+      }
+      this.voicePlan = vp;
+      this.narrLogged.clear();
+      const personaId: string = tour.personaId;
+      const fxs: Effect[] = TourEngine.switchLang(st, lang,
+        (poiId: string, len: NarrationLength) => this.narrationFor(poiId, personaId, lang, len), vp,
+        this.deps.clock.nowMs());
+      for (const fx of fxs) {
+        this.execute(fx);
+      }
+      this.flushDeferred();
+      const u: Utterance | undefined = st.queue.inFlight();
+      if (u !== undefined && !st.speechText) {
+        this.prefetchAfter(u);             // replaces the parked old-language sentence (new utterance ids)
+      }
+      this.publishNow();
+    } catch (e) {
+      this.deps.log.error(LogEvents.UNCAUGHT, `where=TourController.setStoryLang ${errText(e as Object)}`);
+    }
+  }
+
   /** A9: the Spoken directions toggle: applies to the running tour at once (setOptions calls it too). */
   setSpokenDirections(on: boolean): void {
     this.opts.spokenDirections = on;
