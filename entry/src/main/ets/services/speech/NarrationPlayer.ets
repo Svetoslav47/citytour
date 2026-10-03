@@ -29,7 +29,10 @@
  * pause, resume-from-start, preempt, stop; one done/error per utterance). Otherwise the TTS/text path runs as
  * before. A clip that fails to open/prepare/play (e.g. deleted from the HAP) is marked failed and that sentence
  * falls back to TTS (or text) on the spot. One NARR_AUDIO line per utterance: src=prerendered|tts|text reason=...
- * No manifest in the HAP (the default until the ElevenLabs render runs) = exactly the previous behaviour.
+ * No manifest in the HAP = exactly the previous behaviour. Phase 2: TourController runs the tour on
+ * ClipSelection.storyVoicePlan (voice mode + PRERENDERED when the story language has clips, so Polish is spoken);
+ * text sentences of such a tour (Polish lines without a clip) use the reading timer below. currentPlan() feeds the
+ * live "Studio voice" / "Fallback voice" label.
  */
 import { Lang } from '../../contracts/Model';
 import { SpeechCapabilities, SpeechListener, SpeechPort, Utterance, VoicePlan } from '../../contracts/Ports';
