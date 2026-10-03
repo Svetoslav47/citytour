@@ -1287,6 +1287,190 @@
     {
       "name": "about_ai_model",
       "value": "Stories drafted with Claude (Anthropic) from the cited sources, prompt historian-v1, then reviewed and edited by a person. No AI runs on your phone."
+    },
+    {
+      "name": "settings_a11y_back",
+      "value": "Back"
+    },
+    {
+      "name": "settings_detail_level",
+      "value": "Detail level"
+    },
+    {
+      "name": "settings_detail_brief",
+      "value": "Brief"
+    },
+    {
+      "name": "settings_detail_standard",
+      "value": "Standard"
+    },
+    {
+      "name": "settings_detail_deep",
+      "value": "Deep"
+    },
+    {
+      "name": "settings_detail_brief_note",
+      "value": "Brief: the short version at each stop. Tell me more plays the full story."
+    },
+    {
+      "name": "settings_detail_standard_note",
+      "value": "Standard: the full story when you stop, a short version if you walk past."
+    },
+    {
+      "name": "settings_detail_deep_note",
+      "value": "Deep: the full story at every stop, even if you keep walking."
+    },
+    {
+      "name": "settings_mention_places",
+      "value": "Mention places along the way"
+    },
+    {
+      "name": "settings_not_in_build",
+      "value": "Not in this build yet"
+    },
+    {
+      "name": "settings_sound_haptics",
+      "value": "Sound and haptics"
+    },
+    {
+      "name": "settings_arrival_chime",
+      "value": "Arrival chime"
+    },
+    {
+      "name": "settings_vibrate",
+      "value": "Vibrate on arrival"
+    },
+    {
+      "name": "settings_vibrate_note",
+      "value": "A short vibration when you reach a stop or finish the tour."
+    },
+    {
+      "name": "settings_pack_title",
+      "value": "Kraków pack"
+    },
+    {
+      "name": "settings_pack_line",
+      "value": "%1$d places · %2$d tour stories"
+    },
+    {
+      "name": "settings_pack_size",
+      "value": "%s MB"
+    },
+    {
+      "name": "settings_pack_included",
+      "value": "Included"
+    },
+    {
+      "name": "settings_pack_loading",
+      "value": "Reading the offline pack…"
+    },
+    {
+      "name": "settings_pack_error",
+      "value": "The offline pack couldn't be read."
+    },
+    {
+      "name": "settings_demo_on_note",
+      "value": "On: the next tour you start uses the recorded walk."
+    },
+    {
+      "name": "settings_demo_running_note",
+      "value": "A tour is running. The change applies to the next tour you start."
+    },
+    {
+      "name": "settings_speed_x",
+      "value": "%d×"
+    },
+    {
+      "name": "settings_speed_a11y",
+      "value": "Replay speed %d times"
+    },
+    {
+      "name": "settings_notifications",
+      "value": "Notifications"
+    },
+    {
+      "name": "settings_loc_allowed",
+      "value": "Precise · while using"
+    },
+    {
+      "name": "settings_loc_approx",
+      "value": "Approximate only"
+    },
+    {
+      "name": "settings_loc_switch_off",
+      "value": "Phone location is off"
+    },
+    {
+      "name": "settings_loc_off",
+      "value": "Off"
+    },
+    {
+      "name": "settings_loc_ask",
+      "value": "Not set up"
+    },
+    {
+      "name": "settings_on",
+      "value": "On"
+    },
+    {
+      "name": "settings_off",
+      "value": "Off"
+    },
+    {
+      "name": "settings_perm_note",
+      "value": "Tap a row to allow it. CityTour asks only for what a tour needs."
+    },
+    {
+      "name": "settings_show_intro",
+      "value": "Show introduction again"
+    },
+    {
+      "name": "settings_app_language_note",
+      "value": "System follows your phone's language. It takes effect the next time you open CityTour."
+    },
+    {
+      "name": "settings_voice_now",
+      "value": "What you hear"
+    },
+    {
+      "name": "settings_voice_en_title",
+      "value": "English voice (Laura)"
+    },
+    {
+      "name": "settings_voice_installed",
+      "value": "Installed"
+    },
+    {
+      "name": "settings_voice_downloadable",
+      "value": "Not installed. Can be downloaded."
+    },
+    {
+      "name": "settings_voice_unavailable",
+      "value": "Not available on this device"
+    },
+    {
+      "name": "settings_voice_try_again",
+      "value": "Try again"
+    },
+    {
+      "name": "settings_voice_strategy",
+      "value": "How English is spoken"
+    },
+    {
+      "name": "settings_voice_strategy_note",
+      "value": "Chinese and Polish are not affected. Polish stories are always shown as text unless you choose Listen in English."
+    },
+    {
+      "name": "settings_voice_prerendered",
+      "value": "Studio voice (pre-recorded)"
+    },
+    {
+      "name": "settings_sources_body",
+      "value": "Full licence texts for every source are listed on the About page."
+    },
+    {
+      "name": "settings_selected_a11y",
+      "value": "%s, selected"
     }
   ]
 }
