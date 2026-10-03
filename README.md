@@ -141,6 +141,21 @@ devecocli build
 
 The debug `.hap` is written to `entry/build/default/outputs/default/`.
 
+### Watch build (work in progress, `wearable` module)
+
+The watch HAP (`wearable/`, deviceTypes `wearable`, same bundle) is being built step by step, see
+[`docs/research/WATCH.md`](docs/research/WATCH.md). So far it only launches a placeholder screen.
+
+```bash
+devecocli emulator image download --device-type wearable --os-version "HarmonyOS 6.1.1(24)"   # ~940 MB; retry if the connection drops
+devecocli emulator create --device-type wearable --os-version "HarmonyOS 6.1.1(24)" "Watch 5"
+devecocli emulator start "Watch 5"
+devecocli run --module wearable --device "Watch 5"   # builds wearable-default-unsigned.hap, installs, launches WatchAbility
+```
+
+Watch log lines use the app's hilog domain and the `WATCH_` prefix (`WATCH_APP_START`, `WATCH_PAGE`). The watch HAP is
+written to `wearable/build/default/outputs/default/`.
+
 ### Pre-rendered stop-story voice (ElevenLabs, build time)
 
 The app never calls ElevenLabs and ships no key. Narration voice generated with ElevenLabs (eleven_multilingual_v2, voice 'George'); scripts AI-drafted, see review status. The build-time script rendered one mp3 per sentence into `data/course/krakow/audio/` plus `audio/manifest.json` (committed; stories teaser + full and the system/arrival/nav lines, en/pl/zh, 1155 clips; deep stories have none). They are part of the downloaded course, not the HAP. At runtime a sentence plays from its clip only when the manifest's `textSha256` equals the SHA-256 of the exact sentence text (same language and persona), otherwise native TTS speaks it (`NARR_AUDIO src=prerendered|tts|text`). Without a downloaded course (or without its clips) every sentence uses native TTS or text.

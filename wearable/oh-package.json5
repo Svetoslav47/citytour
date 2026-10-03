@@ -1,0 +1,11 @@
+{
+  "name": "wearable",
+  "version": "1.0.0",
+  "description": "CityTour watch HAP (deviceTypes: wearable). Reuses the shared engine from the common HAR.",
+  "main": "",
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "common": "file:../common"
+  }
+}

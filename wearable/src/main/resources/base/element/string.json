@@ -1,0 +1,7 @@
+{
+  "string": [
+    { "name": "module_desc", "value": "CityTour on the watch" },
+    { "name": "WatchAbility_desc", "value": "Walking tour guide on your wrist" },
+    { "name": "WatchAbility_label", "value": "CityTour" }
+  ]
+}
