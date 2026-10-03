@@ -27,6 +27,9 @@ import systemLinesTest from './SystemLines.test';
 import hudRowsTest from './HudRows.test';
 import langSwitchTest from './LangSwitch.test';
 import tourSummaryTest from './TourSummary.test';
+import remoteEnvelopeTest from './RemoteEnvelope.test';
+import courseRulesTest from './CourseRules.test';
+import voiceChainTest from './VoiceChain.test';
 
 export default function testsuite() {
   harnessTest();
@@ -55,4 +58,7 @@ export default function testsuite() {
   hudRowsTest();
   langSwitchTest();
   tourSummaryTest();
+  remoteEnvelopeTest();
+  courseRulesTest();
+  voiceChainTest();
 }
