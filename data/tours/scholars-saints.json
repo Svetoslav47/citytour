@@ -50,7 +50,21 @@
       "dwellS": 120,
       "prize": 4,
       "triggerRadiusM": 35,
-      "approachRadiusM": 110
+      "approachRadiusM": 110,
+      "view": {
+        "look": "up",
+        "feature": {
+          "en": "the Neo-Gothic front of the university's main building"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "Collegium Novum",
+          "revid": 1362855230,
+          "quote": "The restoration of the Neo-Gothic architectural structure",
+          "file": "data/raw/tours/scholars-saints/wiki/stops-text-en.json"
+        },
+        "review": "to review"
+      }
     },
     {
       "n": 2,
@@ -79,7 +93,21 @@
       "dwellS": 90,
       "prize": 3,
       "triggerRadiusM": 35,
-      "approachRadiusM": 110
+      "approachRadiusM": 110,
+      "view": {
+        "look": "up",
+        "feature": {
+          "en": "the young astronomer, shown as a student of the university"
+        },
+        "basis": {
+          "lang": "pl",
+          "article": "Pomnik Mikołaja Kopernika w Krakowie",
+          "revid": 79769923,
+          "quote": "by posąg przedstawiał astronoma jako studenta uczelni",
+          "file": "data/raw/tours/scholars-saints/wiki/stops-text-pl.json"
+        },
+        "review": "to review"
+      }
     },
     {
       "n": 3,
@@ -108,7 +136,21 @@
       "dwellS": 120,
       "prize": 4,
       "triggerRadiusM": 35,
-      "approachRadiusM": 110
+      "approachRadiusM": 110,
+      "view": {
+        "look": "up",
+        "feature": {
+          "en": "the Baroque church modelled on Sant'Andrea della Valle in Rome"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "Church of St. Anne, Kraków",
+          "revid": 1362854501,
+          "quote": "modelled on Sant'Andrea della Valle in Rome",
+          "file": "data/raw/tours/scholars-saints/wiki/stops-text-en.json"
+        },
+        "review": "to review"
+      }
     },
     {
       "n": 4,
@@ -137,7 +179,21 @@
       "dwellS": 180,
       "prize": 5,
       "triggerRadiusM": 35,
-      "approachRadiusM": 110
+      "approachRadiusM": 110,
+      "view": {
+        "look": "level",
+        "feature": {
+          "en": "the arcaded courtyard where the professors lived"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "Collegium Maius, Kraków",
+          "revid": 1354364199,
+          "quote": "a large courtyard bordered with arcades",
+          "file": "data/raw/tours/scholars-saints/wiki/stops-text-en.json"
+        },
+        "review": "to review"
+      }
     },
     {
       "n": 5,
@@ -166,7 +222,21 @@
       "dwellS": 150,
       "prize": 5,
       "triggerRadiusM": 35,
-      "approachRadiusM": 110
+      "approachRadiusM": 110,
+      "view": {
+        "look": "up",
+        "feature": {
+          "en": "the papal window above the main entrance"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "Bishop's Palace, Kraków",
+          "revid": 1364123457,
+          "quote": "The window above the entrance is known as the \"papal window,\"",
+          "file": "data/raw/tours/scholars-saints/wiki/stops-text-en.json"
+        },
+        "review": "to review"
+      }
     },
     {
       "n": 6,
@@ -195,7 +265,21 @@
       "dwellS": 180,
       "prize": 4,
       "triggerRadiusM": 35,
-      "approachRadiusM": 110
+      "approachRadiusM": 110,
+      "view": {
+        "look": "up",
+        "feature": {
+          "en": "the tall brick and sandstone walls of the old church"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "Basilica of St. Francis of Assisi, Kraków",
+          "revid": 1354747267,
+          "quote": "one of the first tall brick-and-sandstone buildings in the city",
+          "file": "data/raw/tours/scholars-saints/wiki/stops-text-en.json"
+        },
+        "review": "to review"
+      }
     },
     {
       "n": 7,
@@ -224,7 +308,21 @@
       "dwellS": 150,
       "prize": 4,
       "triggerRadiusM": 35,
-      "approachRadiusM": 110
+      "approachRadiusM": 110,
+      "view": {
+        "look": "level",
+        "feature": {
+          "en": "the Gothic portal of the main entrance, inside its later porch"
+        },
+        "basis": {
+          "lang": "pl",
+          "article": "Kościół Świętej Trójcy w Krakowie (ul. Stolarska)",
+          "revid": 80814545,
+          "quote": "Osłaniała ona gotycki, XIV-wieczny portal głównego wejścia",
+          "file": "data/raw/tours/scholars-saints/wiki/stops-text-pl.json"
+        },
+        "review": "to review"
+      }
     },
     {
       "n": 8,
@@ -253,7 +351,21 @@
       "dwellS": 90,
       "prize": 2,
       "triggerRadiusM": 35,
-      "approachRadiusM": 110
+      "approachRadiusM": 110,
+      "view": {
+        "look": "level",
+        "feature": {
+          "en": "the courtyard wall with its three small gates"
+        },
+        "basis": {
+          "lang": "pl",
+          "article": "Kościół św. Józefa w Krakowie (ul. Poselska)",
+          "revid": 80813675,
+          "quote": "zamknięty jest neorenesansowym murem, dekorowanym boniowaniem z trzema bramkami",
+          "file": "data/raw/tours/scholars-saints/wiki/stops-text-pl.json"
+        },
+        "review": "to review"
+      }
     },
     {
       "n": 9,
@@ -282,7 +394,21 @@
       "dwellS": 120,
       "prize": 3,
       "triggerRadiusM": 35,
-      "approachRadiusM": 110
+      "approachRadiusM": 110,
+      "view": {
+        "look": "level",
+        "feature": {
+          "en": "the two storeys of arcades around the courtyard"
+        },
+        "basis": {
+          "lang": "pl",
+          "article": "Collegium Iuridicum Uniwersytetu Jagiellońskiego",
+          "revid": 73630347,
+          "quote": "z dwukondygnacyjnym dziedzińcem arkadowym",
+          "file": "data/raw/tours/scholars-saints/wiki/stops-text-pl.json"
+        },
+        "review": "to review"
+      }
     },
     {
       "n": 10,
@@ -311,7 +437,21 @@
       "dwellS": 90,
       "prize": 3,
       "triggerRadiusM": 35,
-      "approachRadiusM": 110
+      "approachRadiusM": 110,
+      "view": {
+        "look": "up",
+        "feature": {
+          "en": "the school building of 1898 on Plac na Groblach"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "Bartłomiej Nowodoworski 1st Secondary School in Kraków",
+          "revid": 1364577096,
+          "quote": "moved to its present building in Plac na Groblach",
+          "file": "data/raw/tours/scholars-saints/wiki/stops-text-en.json"
+        },
+        "review": "to review"
+      }
     }
   ]
 }
