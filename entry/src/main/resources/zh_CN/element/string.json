@@ -1523,6 +1523,10 @@
     {
       "name": "hud_live",
       "value": "实时数值"
+    },
+    {
+      "name": "walk_menu_lang",
+      "value": "改用%s继续"
     }
   ]
 }

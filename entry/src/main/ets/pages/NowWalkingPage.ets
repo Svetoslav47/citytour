@@ -25,6 +25,7 @@ import { NextStopBlock } from '../views/walk/NextStopBlock';
 import { NowPlayingCard } from '../views/walk/NowPlayingCard';
 import { WalkControls } from '../views/walk/WalkControls';
 import { SafeArea } from '../viewmodel/SafeArea';
+import { liveLangName } from '../core/tour/LangSwitch';
 
 const MAP_H: number = 300;
 const MAP_H_READING: number = 200;
@@ -254,6 +255,16 @@ export struct NowWalkingPage {
         {
           value: this.hud.visible ? $r('app.string.walk_menu_how_hide') : $r('app.string.walk_menu_how'),
           action: () => this.toggleHud()
+        },
+        {
+          value: $r('app.string.walk_menu_lang', liveLangName(this.vm.menuLangs()[0])),
+          enabled: !this.finished(),
+          action: () => this.vm.switchStoryLang(this.vm.menuLangs()[0])
+        },
+        {
+          value: $r('app.string.walk_menu_lang', liveLangName(this.vm.menuLangs()[1])),
+          enabled: !this.finished(),
+          action: () => this.vm.switchStoryLang(this.vm.menuLangs()[1])
         },
         {
           value: $r('app.string.cta_end_tour'),

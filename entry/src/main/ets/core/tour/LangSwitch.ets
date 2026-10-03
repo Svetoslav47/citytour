@@ -11,6 +11,35 @@
  * Which narration an item plays is found by matching the old story's sentences against the item's tail, so the
  * engine needs no extra bookkeeping per item.
  */
+import { Lang } from '../../contracts/Model';
+import { StoryLang } from '../settings/SettingsRules';
+
+/** The languages the Now Walking ⋯ menu can switch to mid-tour, in menu order. */
+export const LIVE_LANGS: Lang[] = [Lang.EN, Lang.PL, Lang.ZH];
+
+/** The menu entries for a tour narrated in `current`: the other live languages. */
+export function otherLiveLangs(current: Lang): Lang[] {
+  return LIVE_LANGS.filter((l: Lang) => l !== current);
+}
+
+/** Each language named in itself (the menu shows "Continue in 中文" whatever the UI language). */
+export function liveLangName(l: Lang): string {
+  if (l === Lang.PL) {
+    return 'Polski';
+  }
+  if (l === Lang.ZH) {
+    return '中文';
+  }
+  return 'English';
+}
+
+/** The saved Story language row for a menu choice (Polski = Polish text, spoken by the studio clips if shipped). */
+export function storyLangForLive(l: Lang): StoryLang {
+  if (l === Lang.PL) {
+    return StoryLang.PL;
+  }
+  return l === Lang.ZH ? StoryLang.ZH : StoryLang.EN;
+}
 
 /** What remapItemTexts did, for the LANG_SWITCH log line and the tests. */
 export class RemapResult {

@@ -24,6 +24,8 @@ import { StopRow } from '../views/common/StopList';
 import { AppViewModel } from './AppViewModel';
 import { localName } from './Format';
 import { findTour, poiName, previewPoints, safePoi } from './PackView';
+import { otherLiveLangs, storyLangForLive } from '../core/tour/LangSwitch';
+import { SettingsViewModel } from './SettingsViewModel';
 
 export enum WalkState {
   IDLE = 'idle', HEADING = 'heading', APPROACHING = 'approaching', AT_STOP = 'atStop', TEASER = 'teaser',
@@ -55,7 +57,7 @@ export class NowWalkingViewModel {
   @Trace showStopsSheet: boolean = false;
   @Trace showVoiceInfo: boolean = false;
   @Trace demoSpeed: number = AppConfig.DEMO_DEFAULT_SPEED;
-  private lang: Lang = Lang.EN;
+  @Trace lang: Lang = Lang.EN;      // story language (X2: changes mid-tour from the ⋯ menu)
   private lastDistanceMs: number = 0;
   private plannedKey: string = '';
   private boundsKey: string = '';
@@ -291,6 +293,34 @@ export class NowWalkingViewModel {
 
     if (this.showStopsSheet) {
       this.stopRows = this.buildStopRows(s);
+    }
+  }
+
+  /** X2: the ⋯ menu's language entries (the other live languages). */
+  menuLangs(): Lang[] {
+    return otherLiveLangs(this.lang);
+  }
+
+  /**
+   * X2: switch the story language from the ⋯ menu. Saved as the Story language setting (B9), which also tells the
+   * running tour (TourControl.setStoryLang): the story continues at the next sentence, captions follow.
+   */
+  switchStoryLang(l: Lang): void {
+    if (l === this.lang) {
+      return;
+    }
+    Log.i(LogEvents.LANG_SWITCH, `to=${l} from=${this.lang} src=ui`);
+    try {
+      SettingsViewModel.get().setStoryLang(storyLangForLive(l));
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=NowWalkingViewModel.switchStoryLang ${Log.errKv(e as Object)}`);
+    }
+    this.lang = l;
+    this.tourTitle = '';               // relocalized on the next snapshot
+    try {
+      this.onSnapshot(AppContainer.tourControl().current());
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=NowWalkingViewModel.switchStoryLang.snapshot ${Log.errKv(e as Object)}`);
     }
   }
 
