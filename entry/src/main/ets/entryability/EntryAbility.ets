@@ -1,63 +1,96 @@
 /*
- * Copyright (c) 2026 Huawei Device Co., Ltd.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * EntryAbility: lifecycle wiring only (docs/ARCHITECTURE.md §1.2).
+ * - onCreate: AppContainer.init (builds services, starts nothing), log APP_START.
+ * - Launch parameter `page=dev` (`aa start ... --ps page dev`) loads pages/DevPanel instead of pages/Index,
+ *   on cold start (onWindowStageCreate) and hot start (onNewWant). Pattern from doc
+ *   开发指南/Ability_Kit_程序框架服务/应用模型/应用组件/UIAbility组件/启动应用内的UIAbility组件/
+ *   uiability-intra-device-interaction ("启动UIAbility的指定页面").
+ * - onBackground does nothing to the tour; onDestroy calls AppContainer.shutdown().
  */
-
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
+import { AppConfig } from '../app/AppConfig';
+import { AppContainer } from '../app/AppContainer';
+import { Log } from '../app/Log';
+import { LogEvents } from '../app/LogEvents';
 
-const DOMAIN = 0x0000;
+const PAGE_INDEX: string = 'pages/Index';
+const PAGE_DEV: string = 'pages/DevPanel';
+
+function pageForWant(want: Want | undefined): string {
+  try {
+    const params = want?.parameters;
+    if (params !== undefined) {
+      const v = params[AppConfig.LAUNCH_PARAM_PAGE];
+      if (typeof v === 'string' && v === AppConfig.LAUNCH_PAGE_DEV) {
+        return PAGE_DEV;
+      }
+    }
+  } catch (e) {
+    Log.w(LogEvents.UNCAUGHT, `where=EntryAbility.pageForWant ${Log.errKv(e as Object)}`);
+  }
+  return PAGE_INDEX;
+}
 
 export default class EntryAbility extends UIAbility {
+  private launchPage: string = PAGE_INDEX;
+  private currentPage: string = '';
+  private stage: window.WindowStage | undefined = undefined;
+
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     try {
       this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
     } catch (err) {
-      hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
+      Log.e(LogEvents.UNCAUGHT, `where=EntryAbility.setColorMode ${Log.errKv(err as Object)}`);
     }
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
+    AppContainer.init(this.context);
+    this.launchPage = pageForWant(want);
+    Log.i(LogEvents.APP_START,
+      `ver=${AppConfig.APP_VERSION} pack=none packKind=${AppContainer.packKind()} page=${this.launchPage}`);
+  }
+
+  onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    const page = pageForWant(want);
+    if (page !== this.currentPage && this.stage !== undefined) {
+      this.loadPage(this.stage, page);
+    }
   }
 
   onDestroy(): void {
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onDestroy');
+    Log.i(LogEvents.APP_STOP, 'reason=onDestroy');
+    AppContainer.shutdown();
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
-    // Main window is created, set main page for this ability
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
-
-    windowStage.loadContent('pages/Index', (err) => {
-      if (err.code) {
-        hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
-        return;
-      }
-      hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
-    });
+    this.stage = windowStage;
+    this.loadPage(windowStage, this.launchPage);
   }
 
   onWindowStageDestroy(): void {
-    // Main window is destroyed, release UI related resources
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageDestroy');
+    this.stage = undefined;
   }
 
   onForeground(): void {
-    // Ability has brought to foreground
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onForeground');
+    Log.i(LogEvents.APP_FG, '');
   }
 
   onBackground(): void {
-    // Ability has back to background
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
+    // The tour keeps running in the background (continuous task, A6).
+    Log.i(LogEvents.APP_BG, '');
+  }
+
+  private loadPage(windowStage: window.WindowStage, page: string): void {
+    try {
+      windowStage.loadContent(page, (err) => {
+        if (err && err.code) {
+          Log.e(LogEvents.UNCAUGHT, `where=EntryAbility.loadContent page=${page} code=${err.code}`);
+          return;
+        }
+        this.currentPage = page;
+        Log.i(LogEvents.APP_PAGE, `page=${page}`);
+      });
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=EntryAbility.loadPage page=${page} ${Log.errKv(e as Object)}`);
+    }
   }
 }
