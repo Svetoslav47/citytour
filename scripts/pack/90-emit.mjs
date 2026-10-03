@@ -29,7 +29,7 @@ import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isMain, RAW_DIR, readSnapshot, REPO_ROOT, TOUR_FILE } from './lib/http.mjs';
 import { assertRecords, checkRecord, LANGS, SCHEMA_VERSION, TIER_ORDER } from './schema.mjs';
-import { PACK_ORIGIN, round6 } from './projection.mjs';
+import { PACK_ORIGIN } from './projection.mjs';
 import {
   inceptionYear, mergePois, orderedText, registerIndex, SOURCE_ID_REGISTER, SOURCE_ID_UNESCO, unescoCore, wdSourceId, wpSourceId,
 } from './40-merge-pois.mjs';
@@ -274,7 +274,7 @@ export async function buildPack(inputs, { hookPath = NARRATE_HOOK } = {}) {
     version: `${builtAt.slice(0, 10).replace(/-/g, '.')}-${sha256(Buffer.from(packFiles.map((f) => `${f.path}:${f.sha256}`).join('\n'))).slice(0, 8)}`,
     builtAt,
     origin: { lat: PACK_ORIGIN.lat, lng: PACK_ORIGIN.lng },
-    bbox: [round6(Math.min(...lats)), round6(Math.min(...lngs)), round6(Math.max(...lats)), round6(Math.max(...lngs))],
+    bbox: [floor6(Math.min(...lats)), floor6(Math.min(...lngs)), ceil6(Math.max(...lats)), ceil6(Math.max(...lngs))],
     files: packFiles,
     counts,
     licenses: [...LICENSES],
@@ -297,6 +297,10 @@ export async function buildPack(inputs, { hookPath = NARRATE_HOOK } = {}) {
   files.push({ path: 'validation-report.json', bytes: Buffer.from(JSON.stringify(report, null, 1) + '\n', 'utf8') });
   return { files, manifest, report, counts, merged };
 }
+
+/** 6-decimal bounds that still contain the extreme value. */
+const floor6 = (v) => Math.floor(v * 1e6) / 1e6;
+const ceil6 = (v) => Math.ceil(v * 1e6) / 1e6;
 
 function countBy(list, key) {
   const out = {};

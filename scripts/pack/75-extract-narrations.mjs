@@ -71,14 +71,14 @@ function isAbbreviation(text, dotIndex) {
   const m = /[\p{L}.]+$/u.exec(text.slice(0, dotIndex));
   if (!m) return false;
   const tok = m[0].toLowerCase();
-  return ABBREVIATIONS.has(tok) || /^\p{L}$/u.test(tok) || /^(\p{L}\.)+\p{L}$/u.test(tok);
+  return ABBREVIATIONS.has(tok) || /^\p{L}$/u.test(tok) || /^(\p{L}{1,2}\.)+\p{L}{1,3}$/u.test(tok);
 }
 
 /**
  * Splits text into sentences. Paragraph breaks always end a sentence; "== Heading ==" lines are skipped.
  * zh: after 。！？ (with closing quotes). en/pl: after . ! ? … when followed by whitespace and an uppercase
  * letter (optionally after an opening quote/bracket), unless the '.' ends an abbreviation, an initial or a
- * dotted abbreviation (m.in, p.n.e).
+ * dotted abbreviation (m.in, p.n.e, n.p.m, e.g).
  */
 export function splitSentences(text, lang) {
   const out = [];
