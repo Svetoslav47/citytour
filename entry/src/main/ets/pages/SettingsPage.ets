@@ -4,7 +4,8 @@
  * Permissions, About. Everything is persisted (UserSettings, PersistenceV2) and applied by SettingsViewModel.
  * Ids for the smoke/verification scripts: btnSettings (Home), rowStoryLanguage, rowAppLanguage, rowVoice,
  * segDetail<brief|standard|deep>, rowSpokenDirections, segTrigger<20|35|50>, rowVibrate, rowDemoWalk,
- * segSpeed<1|2|4|8>, rowLocation, rowNotifications, rowHowMade, rowSources, rowShowIntro.
+ * segSpeed<1|2|4|8>, rowLocation, rowNotifications, rowSources (About & licences: the only place with credits, licences and the AI
+ * note), rowShowIntro.
  *
  * Honesty: "Mention places along the way" and "Arrival chime" have no engine behind them in this build, so their
  * rows are left out (DESIGN §3.11 lists them; the strings stay for when they ship).
@@ -77,7 +78,6 @@ export struct SettingsPage {
   @Local vm: SettingsViewModel = SettingsViewModel.get();
   /** Window avoid areas (edge-to-edge window, issue #63). */
   @Local sa: SafeArea = SafeArea.get();
-  /** SERVER.md §2: Online studio voice (shown only when the build has a course server). */
 
   aboutToAppear(): void {
     Log.i(LogEvents.APP_PAGE, `page=Settings ${SettingsViewModel.summaryKv()}`);
@@ -245,10 +245,6 @@ export struct SettingsPage {
   about() {
     SectionHeader({ label: $r('app.string.settings_about') })
     SettingsCard() {
-      NavRow({
-        title: $r('app.string.settings_how_made'), rowId: 'rowHowMade', onTap: () => this.app.openAbout()
-      })
-      RowDivider()
       NavRow({
         title: $r('app.string.settings_sources'), rowId: 'rowSources',
         onTap: () => this.app.openAbout()

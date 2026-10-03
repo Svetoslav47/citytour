@@ -1,10 +1,10 @@
 /*
- * Display strings for Settings values (task B9): story language rows, app language rows, the honest voice row.
+ * Display strings for Settings values (task B9): story language rows, app language rows, the voice row.
  */
 import { UiLang } from '../../contracts/Settings';
 import { StoryLang, VoiceRow } from '../../core/settings/SettingsRules';
 
-/** plSpoken: the A13 studio clips cover Polish, so the row says spoken instead of text only. */
+/** plSpoken: the A13 clips cover Polish, so the row says spoken instead of text only. */
 export function storyLangRes(l: StoryLang, plSpoken: boolean = false): Resource {
   if (l === StoryLang.ZH) {
     return $r('app.string.lang_zh_spoken');
@@ -35,17 +35,14 @@ export function voiceRowRes(v: VoiceRow): Resource {
   if (v === VoiceRow.LAURA) {
     return $r('app.string.voice_laura_installed');
   }
-  if (v === VoiceRow.FALLBACK) {
-    return $r('app.string.voice_fallback_row');
+  if (v === VoiceRow.FALLBACK || v === VoiceRow.PRERENDERED) {
+    return $r('app.string.onb_spoken');   // the voice type is not labelled on screen (Settings > About names it)
   }
   if (v === VoiceRow.ZH) {
     return $r('app.string.voice_zh');
   }
   if (v === VoiceRow.TEXT_USER) {
     return $r('app.string.voice_text_only');
-  }
-  if (v === VoiceRow.PRERENDERED) {
-    return $r('app.string.settings_voice_prerendered');
   }
   return $r('app.string.voice_text_only_platform');
 }

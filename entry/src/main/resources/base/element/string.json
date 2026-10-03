@@ -241,26 +241,6 @@
       "value": "Stops"
     },
     {
-      "name": "tour_about_stories",
-      "value": "About these stories"
-    },
-    {
-      "name": "tour_about_reviewed",
-      "value": "Drafted with AI, reviewed by a person. %d sources cited."
-    },
-    {
-      "name": "tour_about_ai",
-      "value": "Drafted with AI from the sources, not yet reviewed by a person. %d sources cited."
-    },
-    {
-      "name": "tour_about_extract",
-      "value": "Short descriptions from Wikipedia and the city register. %d sources cited."
-    },
-    {
-      "name": "tour_about_none",
-      "value": "The stories for this tour are still being prepared."
-    },
-    {
       "name": "tour_story_min",
       "value": "%d min"
     },
@@ -446,7 +426,7 @@
     },
     {
       "name": "err_voice_unavailable",
-      "value": "The English voice isn't installed. The Fallback voice reads English."
+      "value": "The English voice isn't installed. The Chinese voice reads English for now."
     },
     {
       "name": "err_tts_err",
@@ -697,24 +677,12 @@
       "value": "%1$d of %2$d visited · %3$s to go"
     },
     {
-      "name": "voice_fallback_badge",
-      "value": "Fallback voice"
-    },
-    {
-      "name": "voice_fallback_tooltip",
-      "value": "English is read by the Chinese on-device voice; the English voice is not installed on this device."
-    },
-    {
       "name": "voice_native",
       "value": "English voice"
     },
     {
       "name": "voice_laura_installed",
       "value": "Laura · Installed"
-    },
-    {
-      "name": "voice_fallback_row",
-      "value": "Fallback voice · Chinese voice reads English"
     },
     {
       "name": "voice_zh",
@@ -738,7 +706,7 @@
     },
     {
       "name": "voice_download_failed",
-      "value": "Couldn't download the voice. The Fallback voice will read English for now; try again later."
+      "value": "Couldn't download the voice. Try again later."
     },
     {
       "name": "voice_ready",
@@ -750,11 +718,11 @@
     },
     {
       "name": "voice_strategy_auto",
-      "value": "Auto: English voice if installed, else Fallback voice"
+      "value": "Auto: English voice if installed, else the Chinese voice"
     },
     {
       "name": "voice_strategy_zh",
-      "value": "Always the Chinese voice (Fallback voice)"
+      "value": "Always the Chinese voice"
     },
     {
       "name": "voice_strategy_text",
@@ -778,7 +746,7 @@
     },
     {
       "name": "lang_pl_footnote",
-      "value": "Polish stories are shown as text. HarmonyOS on-device speech currently speaks English and Chinese."
+      "value": "Polish stories are shown as text on this phone."
     },
     {
       "name": "lang_english",
@@ -813,68 +781,20 @@
       "value": "Facts"
     },
     {
-      "name": "place_sources",
-      "value": "Sources"
-    },
-    {
       "name": "place_transcript",
       "value": "Story"
     },
     {
-      "name": "place_tier_reviewed",
-      "value": "Historian script · reviewed · %d sources"
-    },
-    {
-      "name": "place_tier_grounded",
-      "value": "AI-drafted from Wikipedia and city records"
-    },
-    {
-      "name": "place_tier_wikipedia",
-      "value": "From Wikipedia"
-    },
-    {
-      "name": "place_tier_register",
-      "value": "From the city heritage register"
-    },
-    {
-      "name": "place_tier_basic",
-      "value": "Basic info"
-    },
-    {
-      "name": "place_mt_label",
-      "value": "Machine-translated"
-    },
-    {
-      "name": "place_shown_in_en",
-      "value": "Shown in English"
-    },
-    {
-      "name": "place_ai_note",
-      "value": "Drafted with AI from the sources above, reviewed by a person on %s."
-    },
-    {
-      "name": "place_ai_unreviewed_note",
-      "value": "Drafted with AI from the sources above. Not yet reviewed by a person."
-    },
-    {
-      "name": "place_offline_link",
-      "value": "You're offline. The link will open when you're connected."
-    },
-    {
-      "name": "place_no_story",
-      "value": "No story for this place yet. Here's what the sources say."
-    },
-    {
       "name": "about_title",
-      "value": "Sources and licences"
+      "value": "Credits and licences"
     },
     {
       "name": "about_ai_title",
-      "value": "How these stories are made"
+      "value": "How the stories are made"
     },
     {
       "name": "about_ai_body",
-      "value": "Each tour story was drafted with the help of an AI model from the sources listed with it. A person then checks and edits it; until then the story is labelled AI-drafted. Places outside the tour use short descriptions from Wikipedia or the city's heritage register, shown as they are. Nothing you do in the app is sent anywhere. Stories, maps and voices are stored on your phone."
+      "value": "The tour stories were drafted with an AI model (Claude by Anthropic) from Wikipedia, Wikidata and the city's heritage records; some have been reviewed and edited by a person. Polish and Chinese versions are machine-translated."
     },
     {
       "name": "about_osm",
@@ -895,10 +815,6 @@
     {
       "name": "about_osrm",
       "value": "Walking routes computed with OSRM from OpenStreetMap data"
-    },
-    {
-      "name": "about_mt",
-      "value": "Polish and Chinese stories are machine-translated from the AI-drafted English and labelled as such."
     },
     {
       "name": "map_full",
@@ -997,12 +913,8 @@
       "value": "About"
     },
     {
-      "name": "settings_how_made",
-      "value": "How these stories are made"
-    },
-    {
       "name": "settings_sources",
-      "value": "Sources and licences"
+      "value": "Credits and licences"
     },
     {
       "name": "settings_version",
@@ -1097,24 +1009,12 @@
       "value": "Narration language"
     },
     {
-      "name": "onb_spoken_laura",
-      "value": "Spoken · Laura voice"
-    },
-    {
-      "name": "onb_spoken_fallback",
-      "value": "Spoken · Fallback voice"
-    },
-    {
-      "name": "onb_spoken_zh",
-      "value": "Spoken · 聆小珊"
+      "name": "onb_spoken",
+      "value": "Spoken"
     },
     {
       "name": "onb_checking_voice",
       "value": "Checking the voices on this phone…"
-    },
-    {
-      "name": "onb_installed",
-      "value": "Installed"
     },
     {
       "name": "onb_downloading",
@@ -1157,10 +1057,6 @@
       "value": "Still to see"
     },
     {
-      "name": "summary_sources",
-      "value": "Sources and credits"
-    },
-    {
       "name": "summary_start_again",
       "value": "Start again"
     },
@@ -1187,10 +1083,6 @@
     {
       "name": "walk_end_a11y",
       "value": "End the tour"
-    },
-    {
-      "name": "walk_voice_info_a11y",
-      "value": "Fallback voice. English is read by the Chinese on-device voice."
     },
     {
       "name": "walk_map_a11y",
@@ -1261,22 +1153,6 @@
       "value": "Look down"
     },
     {
-      "name": "place_see_sources",
-      "value": "See sources"
-    },
-    {
-      "name": "place_source_a11y",
-      "value": "Source %1$d: %2$s. %3$s. Opens in the browser."
-    },
-    {
-      "name": "place_reviewed_on",
-      "value": "Reviewed by a person on %s."
-    },
-    {
-      "name": "place_extract_note",
-      "value": "Quoted from the source as it is. Nothing was added."
-    },
-    {
       "name": "place_basic_note",
       "value": "There is no story for this place yet, only its name."
     },
@@ -1299,14 +1175,6 @@
     {
       "name": "about_arcgis_terms",
       "value": "Licence terms not published; used for positions and names only, with attribution."
-    },
-    {
-      "name": "about_ai_disclosure_title",
-      "value": "AI disclosure"
-    },
-    {
-      "name": "about_ai_model",
-      "value": "Stories drafted with Claude (Anthropic) from the cited sources, prompt historian-v1. Only stories marked reviewed were checked and edited by a person. No AI runs on your phone."
     },
     {
       "name": "settings_a11y_back",
@@ -1478,39 +1346,11 @@
     },
     {
       "name": "settings_voice_strategy_note",
-      "value": "Chinese and Polish are not affected. Polish stories use the pre-recorded studio voice; a sentence without a recording is shown as text unless you choose Listen in English."
-    },
-    {
-      "name": "settings_voice_prerendered",
-      "value": "Studio voice (pre-recorded)"
-    },
-    {
-      "name": "voice_studio",
-      "value": "Studio voice"
-    },
-    {
-      "name": "onb_spoken_studio",
-      "value": "Spoken · Studio voice"
-    },
-    {
-      "name": "onb_studio_note_en",
-      "value": "Stories play a pre-recorded studio voice. Directions use the on-device voice (the Chinese voice reads English until the English voice is installed)."
+      "value": "Applies to English only."
     },
     {
       "name": "lang_pl_spoken",
-      "value": "Polski (spoken · studio voice)"
-    },
-    {
-      "name": "lang_pl_footnote_studio",
-      "value": "Polish stories are spoken by a pre-recorded studio voice (AI-generated with ElevenLabs). Directions and other live lines are shown as text: HarmonyOS on-device speech speaks only English and Chinese."
-    },
-    {
-      "name": "voice_studio_tooltip",
-      "value": "Stories play a pre-recorded studio voice, AI-generated with ElevenLabs. Live lines such as directions use the on-device voice."
-    },
-    {
-      "name": "walk_voice_studio_a11y",
-      "value": "Studio voice. Pre-recorded narration, AI-generated with ElevenLabs."
+      "value": "Polski (spoken)"
     },
     {
       "name": "about_voice_title",
@@ -1518,7 +1358,7 @@
     },
     {
       "name": "about_voice_body",
-      "value": "Narration voice generated with ElevenLabs (eleven_multilingual_v2, voice 'George'); scripts AI-drafted, see review status. The clips are rendered at build time and ship inside the app: no network and no API key at runtime. Directions and anything without a clip use the on-device HarmonyOS voice, or text."
+      "value": "Narration voice by ElevenLabs (AI-generated, voice 'George'). Directions and lines without a recording use your phone's built-in voice."
     },
     {
       "name": "walk_menu_how_hide",
@@ -1714,7 +1554,7 @@
     },
     {
       "name": "home_empty_body",
-      "value": "CityTour keeps its walks on the course server. Download one once; after that it works fully offline."
+      "value": "Download a walk to get started. It works offline afterwards."
     },
     {
       "name": "home_empty_cta",

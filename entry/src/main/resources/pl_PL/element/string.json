@@ -241,26 +241,6 @@
       "value": "PRZYSTANKI"
     },
     {
-      "name": "tour_about_stories",
-      "value": "O TYCH OPOWIEŚCIACH"
-    },
-    {
-      "name": "tour_about_reviewed",
-      "value": "Napisane z pomocą AI, sprawdzone przez człowieka. Cytowane źródła: %d."
-    },
-    {
-      "name": "tour_about_ai",
-      "value": "Napisane z pomocą AI na podstawie źródeł, jeszcze niesprawdzone przez człowieka. Cytowane źródła: %d."
-    },
-    {
-      "name": "tour_about_extract",
-      "value": "Krótkie opisy z Wikipedii i rejestru miejskiego. Cytowane źródła: %d."
-    },
-    {
-      "name": "tour_about_none",
-      "value": "Opowieści do tej trasy są jeszcze przygotowywane."
-    },
-    {
       "name": "tour_story_min",
       "value": "%d min"
     },
@@ -446,7 +426,7 @@
     },
     {
       "name": "err_voice_unavailable",
-      "value": "Głos angielski nie jest zainstalowany. Tekst angielski czyta Głos zastępczy."
+      "value": "Głos angielski nie jest zainstalowany. Na razie tekst angielski czyta głos chiński."
     },
     {
       "name": "err_tts_err",
@@ -697,24 +677,12 @@
       "value": "Odwiedzone: %1$d z %2$d · zostało %3$s"
     },
     {
-      "name": "voice_fallback_badge",
-      "value": "Głos zastępczy"
-    },
-    {
-      "name": "voice_fallback_tooltip",
-      "value": "Tekst angielski czyta chiński głos urządzenia; głos angielski nie jest zainstalowany na tym urządzeniu."
-    },
-    {
       "name": "voice_native",
       "value": "Głos angielski"
     },
     {
       "name": "voice_laura_installed",
       "value": "Laura · Zainstalowany"
-    },
-    {
-      "name": "voice_fallback_row",
-      "value": "Głos zastępczy · chiński głos czyta po angielsku"
     },
     {
       "name": "voice_zh",
@@ -738,7 +706,7 @@
     },
     {
       "name": "voice_download_failed",
-      "value": "Nie udało się pobrać głosu. Na razie tekst angielski będzie czytać Głos zastępczy; spróbuj później."
+      "value": "Nie udało się pobrać głosu. Spróbuj później."
     },
     {
       "name": "voice_ready",
@@ -750,11 +718,11 @@
     },
     {
       "name": "voice_strategy_auto",
-      "value": "Auto: głos angielski, jeśli jest zainstalowany, w przeciwnym razie Głos zastępczy"
+      "value": "Auto: głos angielski, jeśli jest zainstalowany, w przeciwnym razie głos chiński"
     },
     {
       "name": "voice_strategy_zh",
-      "value": "Zawsze głos chiński (Głos zastępczy)"
+      "value": "Zawsze głos chiński"
     },
     {
       "name": "voice_strategy_text",
@@ -778,7 +746,7 @@
     },
     {
       "name": "lang_pl_footnote",
-      "value": "Polskie opowieści są wyświetlane jako tekst. Synteza mowy w HarmonyOS obsługuje obecnie na urządzeniu angielski i chiński."
+      "value": "Polskie opowieści są na tym telefonie wyświetlane jako tekst."
     },
     {
       "name": "lang_english",
@@ -813,68 +781,20 @@
       "value": "Fakty"
     },
     {
-      "name": "place_sources",
-      "value": "ŹRÓDŁA"
-    },
-    {
       "name": "place_transcript",
       "value": "OPOWIEŚĆ"
     },
     {
-      "name": "place_tier_reviewed",
-      "value": "Tekst Historyka · sprawdzony · źródła: %d"
-    },
-    {
-      "name": "place_tier_grounded",
-      "value": "Opracowane przez AI z Wikipedii i danych miejskich"
-    },
-    {
-      "name": "place_tier_wikipedia",
-      "value": "Z Wikipedii"
-    },
-    {
-      "name": "place_tier_register",
-      "value": "Z miejskiego rejestru zabytków"
-    },
-    {
-      "name": "place_tier_basic",
-      "value": "Podstawowe informacje"
-    },
-    {
-      "name": "place_mt_label",
-      "value": "Przetłumaczone maszynowo"
-    },
-    {
-      "name": "place_shown_in_en",
-      "value": "Wyświetlane po angielsku"
-    },
-    {
-      "name": "place_ai_note",
-      "value": "Napisane z pomocą AI na podstawie powyższych źródeł, sprawdzone przez człowieka %s."
-    },
-    {
-      "name": "place_ai_unreviewed_note",
-      "value": "Napisane z pomocą AI na podstawie powyższych źródeł. Jeszcze niesprawdzone przez człowieka."
-    },
-    {
-      "name": "place_offline_link",
-      "value": "Jesteś offline. Link otworzy się po połączeniu z internetem."
-    },
-    {
-      "name": "place_no_story",
-      "value": "Nie ma jeszcze opowieści o tym miejscu. Oto, co mówią źródła."
-    },
-    {
       "name": "about_title",
-      "value": "Źródła i licencje"
+      "value": "Autorzy i licencje"
     },
     {
       "name": "about_ai_title",
-      "value": "JAK POWSTAJĄ TE OPOWIEŚCI"
+      "value": "JAK POWSTAJĄ OPOWIEŚCI"
     },
     {
       "name": "about_ai_body",
-      "value": "Każda opowieść na trasie powstała z pomocą modelu AI na podstawie podanych przy niej źródeł. Następnie sprawdza ją i redaguje człowiek; do tego czasu ma oznaczenie „opracowane przez AI”. Miejsca poza trasą mają krótkie opisy z Wikipedii lub miejskiego rejestru zabytków, pokazane bez zmian. Nic, co robisz w aplikacji, nie jest nigdzie wysyłane. Opowieści, mapy i głosy są zapisane w telefonie."
+      "value": "Opowieści na trasach powstały z pomocą modelu AI (Claude firmy Anthropic) na podstawie Wikipedii, Wikidanych i miejskiego rejestru zabytków; część z nich sprawdził i zredagował człowiek. Wersje polska i chińska są tłumaczone maszynowo."
     },
     {
       "name": "about_osm",
@@ -895,10 +815,6 @@
     {
       "name": "about_osrm",
       "value": "Trasy piesze obliczone w OSRM na podstawie danych OpenStreetMap"
-    },
-    {
-      "name": "about_mt",
-      "value": "Opowieści po polsku i chińsku są tłumaczone maszynowo z angielskiego tekstu opracowanego przez AI i tak oznaczone."
     },
     {
       "name": "map_full",
@@ -997,12 +913,8 @@
       "value": "INFORMACJE"
     },
     {
-      "name": "settings_how_made",
-      "value": "Jak powstają te opowieści"
-    },
-    {
       "name": "settings_sources",
-      "value": "Źródła i licencje"
+      "value": "Autorzy i licencje"
     },
     {
       "name": "settings_version",
@@ -1097,24 +1009,12 @@
       "value": "Język narracji"
     },
     {
-      "name": "onb_spoken_laura",
-      "value": "Mówiony · głos Laura"
-    },
-    {
-      "name": "onb_spoken_fallback",
-      "value": "Mówiony · Głos zastępczy"
-    },
-    {
-      "name": "onb_spoken_zh",
-      "value": "Mówiony · 聆小珊"
+      "name": "onb_spoken",
+      "value": "Czytane na głos"
     },
     {
       "name": "onb_checking_voice",
       "value": "Sprawdzanie głosów na tym telefonie…"
-    },
-    {
-      "name": "onb_installed",
-      "value": "Zainstalowany"
     },
     {
       "name": "onb_downloading",
@@ -1157,10 +1057,6 @@
       "value": "Jeszcze do odkrycia"
     },
     {
-      "name": "summary_sources",
-      "value": "Źródła i autorzy"
-    },
-    {
       "name": "summary_start_again",
       "value": "Zacznij od nowa"
     },
@@ -1187,10 +1083,6 @@
     {
       "name": "walk_end_a11y",
       "value": "Zakończ trasę"
-    },
-    {
-      "name": "walk_voice_info_a11y",
-      "value": "Głos zastępczy. Tekst angielski czyta chiński głos urządzenia."
     },
     {
       "name": "walk_map_a11y",
@@ -1261,22 +1153,6 @@
       "value": "Spójrz w dół"
     },
     {
-      "name": "place_see_sources",
-      "value": "Zobacz źródła"
-    },
-    {
-      "name": "place_source_a11y",
-      "value": "Źródło %1$d: %2$s. %3$s. Otwiera się w przeglądarce."
-    },
-    {
-      "name": "place_reviewed_on",
-      "value": "Sprawdzone przez człowieka %s."
-    },
-    {
-      "name": "place_extract_note",
-      "value": "Cytat ze źródła bez zmian. Nic nie dodano."
-    },
-    {
       "name": "place_basic_note",
       "value": "Nie ma jeszcze opowieści o tym miejscu, tylko jego nazwa."
     },
@@ -1299,14 +1175,6 @@
     {
       "name": "about_arcgis_terms",
       "value": "Warunki licencji nie zostały opublikowane; dane służą tylko do położeń i nazw, z podaniem źródła."
-    },
-    {
-      "name": "about_ai_disclosure_title",
-      "value": "INFORMACJA O AI"
-    },
-    {
-      "name": "about_ai_model",
-      "value": "Opowieści przygotowane z pomocą Claude (Anthropic) na podstawie cytowanych źródeł, prompt historian-v1. Tylko opowieści oznaczone jako sprawdzone zostały zweryfikowane i zredagowane przez człowieka. Na telefonie nie działa żadna AI."
     },
     {
       "name": "settings_a11y_back",
@@ -1478,39 +1346,11 @@
     },
     {
       "name": "settings_voice_strategy_note",
-      "value": "Nie dotyczy chińskiego i polskiego. Polskie opowieści czyta nagrany głos studyjny; zdanie bez nagrania jest wyświetlane jako tekst, chyba że wybierzesz „Słuchaj po angielsku, czytaj po polsku”."
-    },
-    {
-      "name": "settings_voice_prerendered",
-      "value": "Głos studyjny (nagrany wcześniej)"
-    },
-    {
-      "name": "voice_studio",
-      "value": "Głos studyjny"
-    },
-    {
-      "name": "onb_spoken_studio",
-      "value": "Mówiony · głos studyjny"
-    },
-    {
-      "name": "onb_studio_note_en",
-      "value": "Opowieści odtwarza wcześniej nagrany głos studyjny. Wskazówki czyta głos urządzenia (chiński głos czyta tekst angielski, dopóki nie zainstalujesz głosu angielskiego)."
+      "value": "Dotyczy tylko języka angielskiego."
     },
     {
       "name": "lang_pl_spoken",
-      "value": "Polski (mówiony · głos studyjny)"
-    },
-    {
-      "name": "lang_pl_footnote_studio",
-      "value": "Polskie opowieści czyta wcześniej nagrany głos studyjny (wygenerowany przez AI w ElevenLabs). Wskazówki i inne komunikaty na żywo są wyświetlane jako tekst: synteza mowy HarmonyOS na urządzeniu obsługuje tylko angielski i chiński."
-    },
-    {
-      "name": "voice_studio_tooltip",
-      "value": "Opowieści odtwarza wcześniej nagrany głos studyjny, wygenerowany przez AI w ElevenLabs. Komunikaty na żywo, np. wskazówki, czyta głos urządzenia."
-    },
-    {
-      "name": "walk_voice_studio_a11y",
-      "value": "Głos studyjny. Wcześniej nagrana narracja, wygenerowana przez AI w ElevenLabs."
+      "value": "Polski (mówiony)"
     },
     {
       "name": "about_voice_title",
@@ -1518,7 +1358,7 @@
     },
     {
       "name": "about_voice_body",
-      "value": "Głos narracji wygenerowano w ElevenLabs (eleven_multilingual_v2, głos „George”); teksty opracowane przez AI, sprawdź status weryfikacji. Nagrania powstają podczas budowania aplikacji i są w niej zapisane: w trakcie działania nie jest potrzebna sieć ani klucz API. Wskazówki i wszystko, co nie ma nagrania, czyta głos HarmonyOS na urządzeniu albo jest pokazywane jako tekst."
+      "value": "Głos narracji: ElevenLabs (wygenerowany przez AI, głos „George”). Wskazówki i zdania bez nagrania czyta wbudowany głos telefonu."
     },
     {
       "name": "walk_menu_how_hide",
@@ -1714,7 +1554,7 @@
     },
     {
       "name": "home_empty_body",
-      "value": "CityTour przechowuje spacery na serwerze tras. Pobierz spacer raz; potem działa w pełni offline."
+      "value": "Pobierz spacer, aby zacząć. Potem działa offline."
     },
     {
       "name": "home_empty_cta",
