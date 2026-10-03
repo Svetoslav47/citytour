@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# CityTour pre-commit hook: keep signing material and keys out of git (AGENTS.md "hygienic").
+# Install once per clone (shared by all worktrees): git config core.hooksPath scripts/git-hooks
+# Checks only what is staged for this commit, so it is fast and never blocks on unrelated files.
+set -uo pipefail
+
+STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
+[ -n "$STAGED" ] || exit 0
+problems=0
+report() { echo "pre-commit: BLOCKED: $*" >&2; problems=1; }
+
+# 1. Signing material by file type.
+while IFS= read -r f; do
+  case "$f" in
+    *.p12|*.p7b|*.cer|*.csr|*.keystore) report "signing material staged: $f" ;;
+  esac
+done <<<"$STAGED"
+
+# 2. build-profile.json5 must keep "signingConfigs": [] (devecocli signature generate / DevEco
+#    Studio write real configs with encrypted passwords and local key paths).
+while IFS= read -r f; do
+  case "$f" in
+    build-profile.json5|*/build-profile.json5)
+      if git show ":$f" | grep -q '"\{0,1\}signingConfigs"\{0,1\}[[:space:]]*:' &&
+         ! git show ":$f" | perl -0ne 'exit(/"?signingConfigs"?\s*:\s*\[\s*\]/ ? 0 : 1)'; then
+        report "$f has a non-empty signingConfigs (keep it [] in git; unstage with: git restore --staged $f)"
+      fi ;;
+  esac
+done <<<"$STAGED"
+
+# 3. Keys and tokens in added lines. Reports file names only, never the matched text.
+KEY_RE='sk-ant-[A-Za-z0-9_-]{8,}|ANTHROPIC_API_KEY=["'\'']?[A-Za-z0-9_-]{8,}|BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY'
+hits="$(git diff --cached -U0 --diff-filter=ACMR --no-color |
+  awk -v re="$KEY_RE" '/^\+\+\+ /{f=substr($0,7); next} /^\+/{if (substr($0,2) ~ re) n[f]++}
+    END{for (k in n) print "  " k " (" n[k] " line(s))"}')"
+if [ -n "$hits" ]; then
+  report "a private key or API token pattern appears in added lines of:"
+  printf '%s\n' "$hits" >&2
+fi
+
+if [ "$problems" -ne 0 ]; then
+  echo "pre-commit: commit rejected. Remove the material above from the index (it must never reach the public repo)." >&2
+  exit 1
+fi
+exit 0
