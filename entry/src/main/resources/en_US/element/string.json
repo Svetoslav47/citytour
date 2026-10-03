@@ -1655,6 +1655,38 @@
     {
       "name": "settings_online_voice_note",
       "value": "Sentences without a recording are fetched from the CityTour server (within 2.5 s) and kept on the phone. Off or offline: the built-in voice reads them."
+    },
+    {
+      "name": "widget_display_name",
+      "value": "Next stop"
+    },
+    {
+      "name": "widget_desc",
+      "value": "Your next stop, distance and progress during a tour."
+    },
+    {
+      "name": "widget_next",
+      "value": "Next · %1$d/%2$d"
+    },
+    {
+      "name": "widget_here",
+      "value": "You're here · %1$d/%2$d"
+    },
+    {
+      "name": "widget_at_stop",
+      "value": "Story at this stop"
+    },
+    {
+      "name": "widget_stops_heard",
+      "value": "stops heard"
+    },
+    {
+      "name": "widget_idle_title",
+      "value": "Kraków walking tours"
+    },
+    {
+      "name": "widget_idle_foot",
+      "value": "Tap to start a tour"
     }
   ]
 }

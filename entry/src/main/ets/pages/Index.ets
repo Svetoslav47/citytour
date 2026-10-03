@@ -20,6 +20,7 @@ import { SummaryPage } from './SummaryPage';
 import { TourDetailPage } from './TourDetailPage';
 import { SettingsViewModel } from '../viewmodel/SettingsViewModel';
 import { SummaryViewModel } from '../viewmodel/SummaryViewModel';
+import { WidgetBridge } from '../viewmodel/WidgetBridge';
 import { AppLanguagePage } from '../views/settings/AppLanguagePage';
 import { StoryLanguagePage } from '../views/settings/StoryLanguagePage';
 import { VoicePage } from '../views/settings/VoicePage';
@@ -37,6 +38,7 @@ struct Index {
     RemoteSettings.apply();                  // SERVER.md §2: Online studio voice on/off
     this.app.loadPack();
     SummaryViewModel.startRecording();   // B11: times every tour for its summary
+    WidgetBridge.start(() => this.app.textLang);   // B14: home-screen Next stop card
   }
 
   @Builder

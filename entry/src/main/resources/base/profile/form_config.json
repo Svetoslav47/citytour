@@ -1,0 +1,19 @@
+{
+  "forms": [
+    {
+      "name": "NextStop",
+      "displayName": "$string:widget_display_name",
+      "description": "$string:widget_desc",
+      "src": "./ets/widget/pages/NextStopCard.ets",
+      "uiSyntax": "arkts",
+      "isDefault": true,
+      "updateEnabled": false,
+      "scheduledUpdateTime": "00:00",
+      "updateDuration": 0,
+      "defaultDimension": "2*2",
+      "supportDimensions": [
+        "2*2"
+      ]
+    }
+  ]
+}

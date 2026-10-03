@@ -79,6 +79,7 @@ export class LogEvents {
   static readonly NOTIF_CANCEL: string = 'NOTIF_CANCEL';   // A8: notification 1001 removed (tour end, shutdown)
   static readonly NOTIF_FAIL: string = 'NOTIF_FAIL';       // A8: publish/cancel/slot/wantAgent error
   static readonly HAPTIC: string = 'HAPTIC';
+  static readonly WIDGET: string = 'WIDGET';     // B14: home-screen card add/push/remove
   // Optional server (docs/SERVER.md): courses and the runtime studio voice
   static readonly REMOTE: string = 'REMOTE';             // HTTP call: path, status, ms, reason (never the token or text)
   static readonly COURSE: string = 'COURSE';             // catalog, download, verify, install, delete, active course
