@@ -19,6 +19,8 @@ _Updated as each capability lands. Every entry links to the code that uses it._
 | Capability | Kit / API | Where | Status |
 | --- | --- | --- | --- |
 | — | — | — | planned |
+| Next-stop notification (glanceable with the screen off; text-only arrival line) | Notification Kit `notificationManager` (`requestEnableNotification`, `publish` id 1001 `isAlertOnce` SERVICE_INFORMATION slot, `cancel`) | [`services/notify/TourNotifier.ets`](entry/src/main/ets/services/notify/TourNotifier.ets), text rules in [`core/notify/NotifyText.ets`](entry/src/main/ets/core/notify/NotifyText.ets) | verified on emulator (sdk24) |
+| Arrival haptic | Sensor Service Kit `vibrator` (`isSupportEffectSync` preset, timed fallback; `ohos.permission.VIBRATE`) | [`services/haptics/Haptics.ets`](entry/src/main/ets/services/haptics/Haptics.ets) | called and logged; the emulator has no motor (`14600101`, logged, no crash) |
 
 ## Mocked or simulated behavior
 
