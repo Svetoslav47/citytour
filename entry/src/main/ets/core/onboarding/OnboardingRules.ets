@@ -176,7 +176,3 @@ export function notifRow(enabled: boolean, refused: boolean): NotifRow {
   return refused ? NotifRow.DENIED : NotifRow.ASK;
 }
 
-/** requestEnableNotification: "Notification disabled" = the user refused (doc notification-enable). */
-export const NOTIF_ERR_REFUSED: number = 1600004;
-/** requestEnableNotification: a notification dialog is already displayed. */
-export const NOTIF_ERR_DIALOG_SHOWN: number = 1600013;

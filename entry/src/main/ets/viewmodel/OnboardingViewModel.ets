@@ -8,8 +8,8 @@
  * one Phrases line through the real SpeechPort in the chosen language (Polish: text only, shown as a caption).
  * Step 3 asks in context: Location -> PermissionPort.requestLocation (requestPermissionsFromUser), then the location
  * switch sheet (requestGlobalSwitch) when the switch is off; after a denial the settings sheet
- * (requestPermissionOnSetting). Notifications -> notificationManager.requestEnableNotification (Notification Kit,
- * API 10+; isNotificationEnabled API 11+; doc 开发指南/Notification_Kit_用户通知服务/请求通知授权/notification-enable and
+ * (requestPermissionOnSetting). Notifications -> A8's NotifierPort.requestEnable() (requestEnableNotification,
+ * API 10+); the row reads notificationManager.isNotificationEnabled (API 11+; doc 开发指南/Notification_Kit_用户通知服务/请求通知授权/notification-enable and
  * API参考/Notification_Kit_用户通知服务/ArkTS_API/ohos_notificationManager_NotificationManager模块_/js-apis-notificationmanager).
  * After a refusal (1600004) the row says "Notifications are off" and never nags (DESIGN Flow D);
  * openNotificationSettingsWithResult is not used (起始版本 above API 20).
@@ -30,7 +30,7 @@ import { LogEvents } from '../app/LogEvents';
 import { phrase, PhraseKey } from '../core/content/Phrases';
 import {
   canDownloadEnglish, choiceFor, clampStep, EnVoiceInput, EnVoiceRow, enVoiceRow, LocRow, locationRow, nextStep,
-  NOTIF_ERR_DIALOG_SHOWN, NOTIF_ERR_REFUSED, NotifRow, notifRow, ONB_STEP_PERMS, ONB_STEP_VOICE, percent,
+  NotifRow, notifRow, ONB_STEP_PERMS, ONB_STEP_VOICE, percent,
   selectedRow, voiceLangForPlan, zhSpoken
 } from '../core/onboarding/OnboardingRules';
 import { stripPauseMarkup } from '../core/speech/VoicePolicy';
@@ -49,15 +49,6 @@ const DIALOG_TIMEOUT_MS: number = 120000;
 const NOTIF_QUERY_TIMEOUT_MS: number = 5000;
 /** A sample that never reports done (engine hung) frees the button after this. */
 const SAMPLE_GUARD_MS: number = 20000;
-
-function errCode(e: Object): number {
-  try {
-    const c = (e as Record<string, Object>)['code'];
-    return typeof c === 'number' ? c as number : -1;
-  } catch (x) {
-    return -1;
-  }
-}
 
 /** Forwards SpeechPort callbacks for the one sample utterance to the view model. */
 class SampleListener implements SpeechListener {
@@ -418,34 +409,27 @@ export class OnboardingViewModel {
     this.notif = notifRow(enabled, this.notifRefused);
   }
 
+  /**
+   * Through A8's NotifierPort.requestEnable() (isNotificationEnabled -> requestEnableNotification(ctx)), so the
+   * tour's notifier shares the answer and asks nothing at tour start. false = refused (1600004) or unavailable.
+   */
   async allowNotifications(): Promise<void> {
     if (this.notifBusy || this.notif !== NotifRow.ASK) {
       return;
     }
-    const ctx = AppContainer.context();
-    if (ctx === undefined) {
+    if (AppContainer.context() === undefined) {
       Log.w(LogEvents.NOTIF_DENIED, 'where=onboarding reason=no_context');
       return;
     }
     this.notifBusy = true;
-    const req = new Promise<boolean>((resolve) => {
-      try {
-        notificationManager.requestEnableNotification(ctx).then(() => resolve(true)).catch((e: Object) => {
-          const code = errCode(e);
-          if (code === NOTIF_ERR_REFUSED) {
-            this.notifRefused = true;
-            Log.w(LogEvents.NOTIF_DENIED, `where=onboarding code=${code}`);
-          } else if (code !== NOTIF_ERR_DIALOG_SHOWN) {
-            Log.e(LogEvents.NOTIF_DENIED, `where=onboarding.requestEnableNotification ${Log.errKv(e)}`);
-          }
-          resolve(false);
-        });
-      } catch (e) {
-        Log.e(LogEvents.UNCAUGHT, `where=onboarding.requestEnableNotification ${Log.errKv(e as Object)}`);
-        resolve(false);
-      }
-    });
-    const granted = await withTimeout(req, DIALOG_TIMEOUT_MS, false, 'onboarding.requestEnableNotification');
+    let granted = false;
+    try {
+      granted = await withTimeout(AppContainer.notifier().requestEnable(), DIALOG_TIMEOUT_MS, false,
+        'onboarding.requestEnableNotification');
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=onboarding.requestEnableNotification ${Log.errKv(e as Object)}`);
+    }
+    this.notifRefused = !granted;
     await this.refreshNotifications();
     this.notifBusy = false;
     Log.i(LogEvents.SETTINGS, `key=onboarding_notifications granted=${granted} row=${this.notif}`);
