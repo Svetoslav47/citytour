@@ -156,7 +156,7 @@ export class OnboardingViewModel {
     this.stopSample();
   }
 
-  /** Step 1 visual: the tour stops from the bundled pack (empty until the pack is loaded). */
+  /** Step 1 visual: the tour stops of the active course (empty on first run: no course is downloaded yet). */
   refreshPreview(): void {
     try {
       const pack = AppContainer.packRepository();
