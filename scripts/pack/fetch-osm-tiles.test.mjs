@@ -1,7 +1,7 @@
 // Tests for 20-fetch-osm-tiles.mjs: the tiling must reproduce the lead's committed tiles exactly.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { allTiles, kazimierzTiles, parseBounds, sameBbox, osmStats, tileUrl, tiles } from './20-fetch-osm-tiles.mjs';
+import { allTiles, gzipWithMtime, kazimierzTiles, parseBounds, sameBbox, osmStats, tileUrl, tiles } from './20-fetch-osm-tiles.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { MAP_AREAS } from './60-mapdata.mjs';
@@ -51,5 +51,18 @@ test('committed tiles: every map area file exists and its <bounds> match the til
       const head = gunzipSync(readFileSync(p)).toString('utf8', 0, 600);
       assert.ok(sameBbox(parseBounds(head), byRel.get(rel).bbox), `${rel} bounds`);
     }
+  }
+});
+
+test('gzipWithMtime stores the fetch time in the gzip header and stays valid gzip', () => {
+  const gz = gzipWithMtime(Buffer.from('<osm/>'), Date.UTC(2026, 9, 3, 21, 20, 5, 900));
+  assert.equal(new Date(gz.readUInt32LE(4) * 1000).toISOString(), '2026-10-03T21:20:05.000Z');
+  assert.equal(gunzipSync(gz).toString(), '<osm/>');
+});
+
+test('committed Kazimierz tiles carry their fetch time (gzip MTIME)', () => {
+  for (const t of kazimierzTiles()) {
+    const ms = readFileSync(rawPath(t.rel)).readUInt32LE(4) * 1000;
+    assert.ok(ms > Date.UTC(2026, 9, 3), `${t.rel} has no gzip MTIME`);
   }
 });

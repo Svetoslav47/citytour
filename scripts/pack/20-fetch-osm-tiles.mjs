@@ -61,6 +61,16 @@ function round4(x) {
   return Math.round(x * 1e4) / 1e4;
 }
 
+/**
+ * gzip with the fetch time in the header MTIME field (seconds, UTC), like the lead's Old Town tiles: the pack build
+ * reads it as the map's retrieval time (90-emit.mjs gzipMtimeIso). Node's gzipSync writes 0 there.
+ */
+export function gzipWithMtime(buf, ms) {
+  const gz = gzipSync(buf, { level: 9 });
+  gz.writeUInt32LE(Math.floor(ms / 1000), 4);
+  return gz;
+}
+
 export function tileUrl(bbox) {
   return `${OSM_MAP_API}?bbox=${bbox.map((v) => v.toFixed(4)).join(',')}`;
 }
@@ -99,7 +109,7 @@ async function main(args) {
     const xml = body.toString('utf8');
     if (!sameBbox(parseBounds(xml), t.bbox)) throw new Error(`tile${t.n}: response has no matching <bounds> (got ${xml.slice(0, 200)})`);
     mkdirSync(dirname(p), { recursive: true });
-    writeFileSync(p, gzipSync(body, { level: 9 }));
+    writeFileSync(p, gzipWithMtime(body, Date.now()));
     const s = osmStats(xml);
     console.log(`osm ${t.rel} wrote bbox=${t.bbox.join(',')} ${fmtBytes(readFileSync(p).length)} nodes=${s.nodes} ways=${s.ways} relations=${s.relations}`);
   }
