@@ -307,7 +307,7 @@ Sentence by sentence (Polish): "Polskie opowieści są wyświetlane jako tekst. 
 |---|---|---|
 | Title bar | `Navigation` `.title("CityTour")` `.titleMode(NavigationTitleMode.Full)` `.menus([{ value: '', symbolIcon: gearshape, action → Settings }])` | Menu item accessibility text: "Settings". |
 | Continue card | `Column` in a card (`bg.surface`, radius `r.lg`), `Progress({ type: ProgressType.Linear })` | Whole card tappable → NowWalking. "End tour" is a TEXTUAL button with a confirmation dialog. |
-| Tour card | `Column` → `Image` (16:9, radius `r.md` top), texts, `Chip` row | One tap target. Pressed state uses system `stateStyles` pressed with `interactive_pressed`. |
+| Tour card | `Column` → cover photo (`CoverPhoto`: full-bleed `Image`, 16:10, `objectFit Cover`, card clips the top corners at `r.lg`, black bottom gradient, credit "Photo: <author>, <licence>" 12 fp white), texts, `Chip` row | One tap target. The cover is the course's real photo (Wikimedia Commons, data/ATTRIBUTION.md); a sunken placeholder holds the space while it loads; a course without a cover shows the route map preview instead. Pressed state uses system `stateStyles` pressed with `interactive_pressed`. |
 | Section headers | `SubHeader` (advanced component) ✅ or `Text` overline | |
 | Explore row | `List` + `ListItem` (or `HdsListItem`) with leading `SymbolGlyph($r('sys.symbol.map'))` and trailing `chevron_right` | |
 
@@ -319,6 +319,8 @@ Sentence by sentence (Polish): "Polskie opowieści są wyświetlane jako tekst. 
 **Accessibility:** the tour card reads "The Royal Route. From the Barbican to Wawel Hill. 11 stops, 2.5 kilometres, about 1 hour 20 minutes. Guide: The Historian. Button." Spell out units in `accessibilityText` (screen readers read "km" badly).
 
 ### 3.3 Tour detail
+
+**Cover photo (Oct 2026):** when the course has a cover photo, the hero is that photo (280 vp + status bar, `objectFit Cover`, black bottom gradient) with the tour title (title1, white) and the credit "Photo: <author>, <licence>" on it; the back button floats over it as before. The route map moves to a **Route** section right below the stats (200 vp, radius `r.lg`, same tap → full map). Without a cover the layout below is unchanged. Route ready and Now Walking keep their maps. **Courses screen:** each course card starts with a 16:9 cover banner with the same credit (the catalog's cover before download, the pack's after). About & licences lists the full credit of every downloaded cover.
 
 **Purpose:** decide to go. Show the route, the stops, the commitment (distance and time), and that it's trustworthy.
 

@@ -16,6 +16,7 @@ import { MapOverlay } from '../views/map/MapRenderer';
 import { MapCache, overlayBounds, previewOverlay } from './MapViewModel';
 import { StopRow } from '../views/common/StopList';
 import { withTimeout } from './Async';
+import { CoverModel } from './CoverModel';
 import { SettingsViewModel } from './SettingsViewModel';
 import { localName } from './Format';
 import {
@@ -69,6 +70,8 @@ export class TourPlanViewModel {
   @Trace allReviewed: boolean = false;
   @Trace aiDrafted: boolean = false;
   @Trace voiceLabel: VoiceLabel = VoiceLabel.TEXT_ONLY_PLATFORM;
+  /** Tour detail hero: the active course's cover photo (the map preview stays as the hero when it has none). */
+  @Trace cover: CoverModel = new CoverModel();
 
   // Location gate (Tour detail)
   @Trace locBanner: LocBanner = LocBanner.NONE;
@@ -129,6 +132,13 @@ export class TourPlanViewModel {
       Log.e(LogEvents.UNCAUGHT, `where=TourPlanViewModel.voicePlan ${Log.errKv(e as Object)}`);
     }
     this.found = true;
+    let courseId = '';
+    try {
+      courseId = AppContainer.courses().activeId();
+    } catch (e) {
+      courseId = '';
+    }
+    this.cover.load(courseId, true);
   }
 
   /**

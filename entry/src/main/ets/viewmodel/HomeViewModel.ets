@@ -12,6 +12,7 @@ import { LogEvents } from '../app/LogEvents';
 import { MapData } from '../contracts/Model';
 import { PreviewPoint } from '../views/common/RoutePreview';
 import { AppViewModel } from './AppViewModel';
+import { CoverModel } from './CoverModel';
 import { MapOverlay } from '../views/map/MapRenderer';
 import { MapCache, overlayBounds, previewOverlay } from './MapViewModel';
 import { withTimeout } from './Async';
@@ -42,6 +43,8 @@ export class HomeViewModel {
   @Trace startingDemo: boolean = false;
   @Trace demoFailed: boolean = false;
   @Trace demoOffered: boolean = false;
+  /** The active course's cover photo (falls back to the map preview when it has none). */
+  @Trace cover: CoverModel = new CoverModel();
   private lang: Lang = Lang.EN;
   private unsubscribe: (() => void) | undefined = undefined;
 
@@ -76,6 +79,13 @@ export class HomeViewModel {
       this.placesCount = 0;
     }
     this.hasTour = true;
+    let courseId = '';
+    try {
+      courseId = AppContainer.courses().activeId();
+    } catch (e) {
+      courseId = '';
+    }
+    this.cover.load(courseId, true);
   }
 
   attach(): void {

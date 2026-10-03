@@ -35,7 +35,8 @@ export interface CourseSummary {
   minutes: number;
   langs: string[];
   bytes: number;
-  coverBlob?: string;
+  coverBlob?: string;     // sha256 of the pack's cover.jpg (served by /v1/blobs/:sha256), absent without a cover
+  coverCredit?: string;   // "<author>, <licence>" from the pack's cover.json (shown on the photo before download)
 }
 
 export interface Catalog {
@@ -124,6 +125,45 @@ async function putVerified(blobsDir: string, data: Buffer, sha: string): Promise
     throw new Error(`blob ${sha} failed verification after write`);
   }
   return wrote;
+}
+
+/**
+ * Course version (docs/SERVER.md §3.1): `<pack version>-a<8 hex of sha256(audio/manifest.json)>`, plus
+ * `-c<8 hex>` when the pack has a cover photo, so adding or changing the cover is an update for installed apps.
+ */
+export function courseVersion(packVersion: string, audioSha: string, coverTag?: string): string {
+  return `${packVersion}-a${audioSha.slice(0, 8)}${coverTag ? `-c${coverTag}` : ''}`;
+}
+
+export interface CoverInfo {
+  sha: string;          // sha256 of cover.jpg
+  credit: string;       // "<author>, <licence>"
+  versionTag: string;   // 8 hex of sha256(cover.jpg sha + cover.json sha)
+}
+
+/** The pack's cover photo, or undefined when it has none. Throws when only one of the two files is there. */
+export async function readCover(packDir: string): Promise<CoverInfo | undefined> {
+  const jpg = join(packDir, 'cover.jpg');
+  const json = join(packDir, 'cover.json');
+  if (!existsSync(jpg) && !existsSync(json)) {
+    return undefined;
+  }
+  if (!existsSync(jpg) || !existsSync(json)) {
+    throw new Error(`${packDir}: a cover needs both cover.jpg and cover.json`);
+  }
+  const jsonBytes = await readFile(json);
+  const meta = JSON.parse(jsonBytes.toString('utf8')) as { author?: unknown; license?: unknown };
+  const author = typeof meta.author === 'string' ? meta.author.trim() : '';
+  const license = typeof meta.license === 'string' ? meta.license.trim() : '';
+  if (author === '' || license === '') {
+    throw new Error(`${packDir}/cover.json: author and license are required`);
+  }
+  const sha = sha256Hex(await readFile(jpg));
+  return {
+    sha,
+    credit: `${author}, ${license}`,
+    versionTag: sha256Hex(Buffer.from(`${sha}:${sha256Hex(jsonBytes)}`, 'utf8')).slice(0, 8)
+  };
 }
 
 export function bucketKm(m: number): number {
@@ -239,8 +279,14 @@ export async function publishCourse(o: PublishOptions): Promise<PublishResult> {
   const allowedBytes = Buffer.from(JSON.stringify(allowedList), 'utf8');
   log(`allowed lines: ${allowedList.length} (narration ${narration.size}, system ${system.size}, numeric ${numeric.size})`);
 
+  // ---- cover photo (scripts/pack/lib/cover.mjs: packs/<id>/cover.jpg + cover.json, already signed into `files`)
+  const cover = await readCover(o.packDir);
+  if (cover) {
+    log(`cover ${cover.sha.slice(0, 12)} (${cover.credit})`);
+  }
+
   // ---- manifest
-  const version = `${packManifest.version}-a${audioSha.slice(0, 8)}`;
+  const version = courseVersion(packManifest.version, audioSha, cover?.versionTag);
   const manifest: CourseManifest = {
     schemaVersion: 1,
     courseId: o.courseId,
@@ -279,6 +325,10 @@ export async function publishCourse(o: PublishOptions): Promise<PublishResult> {
     langs,
     bytes: files.reduce((n, f) => n + f.bytes, 0)
   };
+  if (cover) {
+    summary.coverBlob = cover.sha;
+    summary.coverCredit = cover.credit;
+  }
 
   // ---- write the data dir: allowed, manifest, catalog, tts-index (shipped clips pre-seeded: never cost credits)
   const writeCourse = async (root: string, catalogFrom: string): Promise<void> => {

@@ -1,13 +1,14 @@
 /*
  * Courses screen (docs/SERVER.md §6), opened from Home ("Browse walks" on first run, "More courses" later). The app
- * ships no built-in course: the catalog loads on open. One card per course: title in the UI language, city, stops ·
+ * ships no built-in course: the catalog loads on open. One card per course: a 16:9 cover photo banner with its credit
+ * (from the catalog before download, from the pack after), title in the UI language, city, stops ·
  * km · minutes, languages, and the action for its state: Download · size / progress % + Cancel / Downloaded ✓ /
  * Update / Try again / Delete, plus "Use" for a downloaded course that is not active ("In use" on the active one).
  * Notes: server disabled -> "No course server"; offline -> the cached list (or nothing) with an "Offline" note and
  * Try again; an empty catalog -> "No walks are published yet". DESIGN.md tokens (Tokens.ets, app colours),
  * SafeArea insets.
  * Ids: pageCourses, courseRow_<id>, btnCourseDownload_<id>, btnCourseCancel_<id>, btnCourseUse_<id>,
- * btnCourseDelete_<id>, noteCourses.
+ * btnCourseDelete_<id>, courseCover_<id>, noteCourses.
  */
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
@@ -17,6 +18,7 @@ import { CatalogNote, CourseItem, CoursesViewModel } from '../viewmodel/CoursesV
 import { SafeArea } from '../viewmodel/SafeArea';
 import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
 import { SettingsHeader } from '../views/settings/SettingsRows';
+import { CoverPhoto } from '../views/common/CoverPhoto';
 
 @ComponentV2
 export struct CoursesPage {
@@ -178,85 +180,101 @@ export struct CoursesPage {
 
   @Builder
   card(it: CourseItem) {
-    Column({ space: Space.S2 }) {
-      Row({ space: Space.S2 }) {
-        Text(it.title)
-          .fontSize(Type.TITLE3)
-          .lineHeight(Type.TITLE3_LH)
-          .fontWeight(FontWeight.Medium)
-          .fontColor($r('app.color.text_primary'))
-          .layoutWeight(1)
-        if (it.active) {
-          Text($r('app.string.courses_active'))
-            .fontSize(Type.CAPTION)
+    Column() {
+      // 16:9 cover banner (also before download: the catalog's cover, fetched and verified); placeholder while it
+      // loads; no banner for a course without a cover.
+      if (it.hasCover) {
+        CoverPhoto({
+          path: it.coverPath,
+          credit: it.coverCredit,
+          alt: $r('app.string.cover_alt_title', it.title),
+          ratio: 16 / 9,
+          textPadding: Space.S4,
+          photoId: `courseCover_${it.id}`
+        })
+      }
+      Column({ space: Space.S2 }) {
+        Row({ space: Space.S2 }) {
+          Text(it.title)
+            .fontSize(Type.TITLE3)
+            .lineHeight(Type.TITLE3_LH)
             .fontWeight(FontWeight.Medium)
-            .fontColor($r('app.color.accent'))
-            .height(24)
-            .padding({ left: Space.S2, right: Space.S2 })
-            .borderRadius(Radius.SM)
-            .backgroundColor($r('app.color.accent_subtle'))
+            .fontColor($r('app.color.text_primary'))
+            .layoutWeight(1)
+          if (it.active) {
+            Text($r('app.string.courses_active'))
+              .fontSize(Type.CAPTION)
+              .fontWeight(FontWeight.Medium)
+              .fontColor($r('app.color.accent'))
+              .height(24)
+              .padding({ left: Space.S2, right: Space.S2 })
+              .borderRadius(Radius.SM)
+              .backgroundColor($r('app.color.accent_subtle'))
+          }
         }
-      }
-      .width('100%')
+        .width('100%')
 
-      if (it.city !== '') {
-        Text(it.city)
-          .fontSize(Type.CALLOUT)
-          .lineHeight(Type.CALLOUT_LH)
-          .fontColor($r('app.color.text_secondary'))
-      }
-      Text(it.km !== '' ? $r('app.string.courses_meta', it.stops, it.km, it.minutes) :
-        $r('app.string.courses_meta_no_km', it.stops, it.minutes))
-        .fontSize(Type.FOOTNOTE)
-        .lineHeight(Type.FOOTNOTE_LH)
-        .fontFeature(TABULAR)
-        .fontColor($r('app.color.text_secondary'))
-      Row({ space: Space.S2 }) {
-        if (it.langs !== '') {
-          this.chip(it.langs)
+        if (it.city !== '') {
+          Text(it.city)
+            .fontSize(Type.CALLOUT)
+            .lineHeight(Type.CALLOUT_LH)
+            .fontColor($r('app.color.text_secondary'))
         }
-      }
-
-      if (it.failed) {
-        Text($r('app.string.courses_failed'))
+        Text(it.km !== '' ? $r('app.string.courses_meta', it.stops, it.km, it.minutes) :
+          $r('app.string.courses_meta_no_km', it.stops, it.minutes))
           .fontSize(Type.FOOTNOTE)
           .lineHeight(Type.FOOTNOTE_LH)
-          .fontColor($r('app.color.signal_error'))
-      }
+          .fontFeature(TABULAR)
+          .fontColor($r('app.color.text_secondary'))
+        Row({ space: Space.S2 }) {
+          if (it.langs !== '') {
+            this.chip(it.langs)
+          }
+        }
 
-      Row({ space: Space.S2 }) {
-        this.primaryAction(it)
-        Blank()
-        if (it.canSelect && !it.active && !it.downloading) {
-          Button($r('app.string.courses_use'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.NORMAL })
-            .id(`btnCourseUse_${it.id}`)
-            .height(36)
-            .fontSize(Type.CALLOUT)
-            .fontColor($r('app.color.accent'))
-            .backgroundColor($r('app.color.accent_subtle'))
-            .enabled(!this.vm.tourRunning && !this.vm.busySwitch)
-            .onClick(() => {
-              this.vm.select(it.id);
-            })
-        }
-        if (it.canDelete && !it.downloading) {
-          Button($r('app.string.courses_delete'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
-            .id(`btnCourseDelete_${it.id}`)
-            .height(Size.TOUCH)
-            .fontSize(Type.CALLOUT)
+        if (it.failed) {
+          Text($r('app.string.courses_failed'))
+            .fontSize(Type.FOOTNOTE)
+            .lineHeight(Type.FOOTNOTE_LH)
             .fontColor($r('app.color.signal_error'))
-            .enabled(!(it.active && this.vm.tourRunning))
-            .onClick(() => this.confirmDelete(it))
         }
+
+        Row({ space: Space.S2 }) {
+          this.primaryAction(it)
+          Blank()
+          if (it.canSelect && !it.active && !it.downloading) {
+            Button($r('app.string.courses_use'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.NORMAL })
+              .id(`btnCourseUse_${it.id}`)
+              .height(36)
+              .fontSize(Type.CALLOUT)
+              .fontColor($r('app.color.accent'))
+              .backgroundColor($r('app.color.accent_subtle'))
+              .enabled(!this.vm.tourRunning && !this.vm.busySwitch)
+              .onClick(() => {
+                this.vm.select(it.id);
+              })
+          }
+          if (it.canDelete && !it.downloading) {
+            Button($r('app.string.courses_delete'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
+              .id(`btnCourseDelete_${it.id}`)
+              .height(Size.TOUCH)
+              .fontSize(Type.CALLOUT)
+              .fontColor($r('app.color.signal_error'))
+              .enabled(!(it.active && this.vm.tourRunning))
+              .onClick(() => this.confirmDelete(it))
+          }
+        }
+        .width('100%')
+        .margin({ top: Space.S1 })
       }
+      .alignItems(HorizontalAlign.Start)
       .width('100%')
-      .margin({ top: Space.S1 })
+      .padding(Space.S4)
     }
     .id(`courseRow_${it.id}`)
-    .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding(Space.S4)
     .borderRadius(Radius.LG)
+    .clip(true)
     .backgroundColor($r('app.color.bg_surface'))
   }
 

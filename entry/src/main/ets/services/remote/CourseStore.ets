@@ -18,8 +18,8 @@ import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
 import { InstalledCourse } from '../../core/remote/CourseRules';
 import {
-  CourseFile, CourseManifest, CourseSummary, DEFAULT_AUDIO_MANIFEST, manifestBytes, packDir, safeRelPath, validId,
-  validVersion
+  CourseFile, CourseManifest, CourseSummary, DEFAULT_AUDIO_MANIFEST, manifestBytes, packDir, safeRelPath, SHA256_RE,
+  validId, validVersion
 } from '../../core/remote/ServerApi';
 import { FileStore } from './FileStore';
 import { RemoteClient } from './RemoteClient';
@@ -95,6 +95,9 @@ function summaryFrom(v: Object | undefined): CourseSummary {
       }
     }
   }
+  const cover = str(r, 'coverBlob');
+  s.coverBlob = SHA256_RE.test(cover) ? cover : '';
+  s.coverCredit = s.coverBlob !== '' ? str(r, 'coverCredit') : '';
   return s;
 }
 

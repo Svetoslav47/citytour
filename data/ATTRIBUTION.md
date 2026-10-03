@@ -24,3 +24,22 @@ Shown in the app under **Settings › About › Sources and licences**, and per 
 
 - Historian stop scripts (teaser, full, deep) for the 11 Royal Route stops: drafted by Claude (Anthropic) from the cited Wikipedia text with the prompt in `scripts/pack/prompts/`, validated by `scripts/pack/80-validate.mjs`, and labelled "AI-drafted, not yet reviewed" in the app until a person approves them (`scripts/pack/review/`).
 - Polish and Chinese versions of those scripts and of the UI strings are machine translations by the same model and have not been checked by native speakers.
+
+## Tour cover photos
+
+Each course has one cover photo (Home, Courses, Tour detail). All three are real photographs from Wikimedia Commons
+under CC BY-SA 4.0; none is AI-generated. Source: `data/course/<courseId>/cover/` (`cover.jpg` + `cover.json` with the
+full credit); `scripts/pack/build-pack.sh` copies both into the course pack (`packs/<courseId>/cover.jpg`, `cover.json`),
+so they are part of the signed course manifest. The app shows "Photo: <author>, <licence>" on the photo and the full
+credit in **Settings › About › Sources and licences**. Retrieved 2026-10-03 with the Commons API (`imageinfo` +
+`extmetadata`).
+
+**Changes (all three):** cropped to 16:10 and resized to 1280×800 px, re-encoded as JPEG, by the CityTour team. As
+adaptations of CC BY-SA 4.0 works, the cropped covers are shared under the same licence,
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+
+| Course | Photo | Author | Licence | Source |
+|---|---|---|---|---|
+| `krakow` (The Royal Route) | Wawel Royal Castle above the Vistula in evening sun after rain (Commons Quality image) | Jakub Hałun | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | [File:20200826 Wawel i Wisła w Krakowie 1752 1334.jpg](https://commons.wikimedia.org/wiki/File:20200826_Wawel_i_Wis%C5%82a_w_Krakowie_1752_1334.jpg) |
+| `krakow-scholars` (Scholars and Saints) | The arcaded courtyard of the Collegium Maius with its well | Chris Olszewski | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | [File:Courtyard of the Collegium Maius, Kraków, 2024, 09.jpg](https://commons.wikimedia.org/wiki/File:Courtyard_of_the_Collegium_Maius,_Krak%C3%B3w,_2024,_09.jpg) |
+| `krakow-kazimierz` (Kazimierz) | The Old Synagogue on Szeroka Street, Kazimierz (Commons Quality image) | Marco Almbauer | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | [File:Alte Synagoge (Krakau).jpg](https://commons.wikimedia.org/wiki/File:Alte_Synagoge_(Krakau).jpg) |

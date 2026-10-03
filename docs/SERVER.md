@@ -39,7 +39,13 @@ secrets.
 | `GET /v1/blobs/:sha256` | none | the file bytes. Content-addressed, `Cache-Control: public, max-age=31536000, immutable`, `ETag`. |
 | `POST /v1/tts` | `Authorization: Bearer <token>` | `audio/mpeg`, with headers `X-Text-Sha256` and `X-Cache: hit\|miss` |
 
-`CourseSummary` = `{id, version, title:{en,pl,zh}, city, stops, km, minutes, langs:[...], bytes, coverBlob?}`
+`CourseSummary` = `{id, version, title:{en,pl,zh}, city, stops, km, minutes, langs:[...], bytes, coverBlob?, coverCredit?}`
+
+`coverBlob` is the sha256 of the pack's cover photo (`packs/<packId>/cover.jpg`, 1280×800 JPEG, ≤ 250 KB), served by
+`GET /v1/blobs/:sha256` like any blob; `coverCredit` is `"<author>, <licence>"` from the pack's `cover.json` (full
+credit: author, licence + URL, Commons page, changes; data/ATTRIBUTION.md). Both are absent for a course without a
+cover. The app fetches the cover for a catalog row before download (verifies the sha256, caches it as
+`filesDir/covers/<sha>.jpg`), and reads `cover.jpg`/`cover.json` from the installed pack afterwards.
 
 `CourseManifest` = `{schemaVersion:1, courseId, version, publishedAt, packId, files:[{path, sha256, bytes}],
 audio:{manifestPath, clips:N}, allowedTtsSha:<sha256 of the allowed-lines file>}`
@@ -77,7 +83,7 @@ what it serves (the files are signed once at publish time). Reference implementa
 `narrations/<lang>.json`), `audio/manifest.json`, and every clip under the path the clip manifest already uses
 (`audio/<lang>/<group-or-poi>/<hash>.mp3`). Download each `files[i]` from `/v1/blobs/<sha256>`, check
 `sha256(bytes) == files[i].sha256` and `bytes.length == files[i].bytes`, then write it to `<courseDir>/<path>`.
-`version` = `<pack version>-a<first 8 hex of sha256(audio/manifest.json)>`, so it changes when either changes.
+`version` = `<pack version>-a<first 8 hex of sha256(audio/manifest.json)>`, plus `-c<first 8 hex of sha256(<cover.jpg sha>:<cover.json sha>)>` when the pack has a cover photo, so it changes when any of them changes. The cover files sit in the pack folder but are not listed in the pack's own `manifest.json` (the rest of the pack stays byte-identical); publish-course signs every file of the pack folder.
 `allowedTtsSha` = sha256 of the exact `allowed.json` bytes (a JSON array of sorted lowercase hex strings).
 
 **Allowed set content.** Narration sentences of every narration file of the pack; every system/arrival/nav line
