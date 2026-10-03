@@ -9,7 +9,7 @@ import { distanceRes, durationRes, langNameRes, voiceLabelRes } from '../viewmod
 import { LocBanner, TourPlanViewModel } from '../viewmodel/TourPlanViewModel';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { IssueBanner } from '../views/common/IssueBanner';
-import { RoutePreview } from '../views/common/RoutePreview';
+import { MapCanvas } from '../views/map/MapCanvas';
 import { StopList } from '../views/common/StopList';
 import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
 import { IssueCode } from '../contracts/EngineTypes';
@@ -238,7 +238,8 @@ export struct TourDetailPage {
         Scroll() {
           Column() {
             Stack({ alignContent: Alignment.TopStart }) {
-              RoutePreview({ points: this.vm.preview, boxHeight: 260, topInset: 40 })
+              MapCanvas({ map: this.vm.map, scene: this.vm.scene, bounds: this.vm.sceneBounds, boxHeight: 260,
+                topInset: 40, mapId: 'mapTourDetail' })
                 .accessibilityText($r('app.string.tour_map_a11y', this.vm.title, this.vm.stops.length))
               FloatingIconButton({
                 symbol: $r('sys.symbol.chevron_backward'),

@@ -7,7 +7,7 @@ import { AppViewModel, PackState } from '../viewmodel/AppViewModel';
 import { distanceRes, durationRes } from '../viewmodel/Format';
 import { HomeViewModel } from '../viewmodel/HomeViewModel';
 import { IssueBanner } from '../views/common/IssueBanner';
-import { RoutePreview } from '../views/common/RoutePreview';
+import { MapCanvas } from '../views/map/MapCanvas';
 import { SimulatedBadge } from '../views/common/SimulatedBadge';
 import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
 import { IssueCode, StopProgress } from '../contracts/EngineTypes';
@@ -176,7 +176,8 @@ export struct HomePage {
   @Builder
   tourCard() {
     Column() {
-      RoutePreview({ points: this.vm.preview, boxHeight: 180 })
+      MapCanvas({ map: this.vm.map, scene: this.vm.mapScene, bounds: this.vm.mapBounds, boxHeight: 180,
+        mapId: 'mapHome' })
       Column({ space: 2 }) {
         Text(this.vm.title)
           .fontSize(Type.TITLE3)

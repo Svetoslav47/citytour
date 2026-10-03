@@ -8,8 +8,11 @@ import { FixSource } from '../contracts/Ports';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
+import { MapData } from '../contracts/Model';
 import { PreviewPoint } from '../views/common/RoutePreview';
 import { AppViewModel } from './AppViewModel';
+import { MapOverlay } from '../views/map/MapRenderer';
+import { MapCache, overlayBounds, previewOverlay } from './MapViewModel';
 import { withTimeout } from './Async';
 import { localName } from './Format';
 import { findTour, listedMetres, personaName, poiName, previewPoints } from './PackView';
@@ -30,6 +33,9 @@ export class HomeViewModel {
   @Trace guideName: string = '';
   @Trace placesCount: number = 0;
   @Trace preview: PreviewPoint[] = [];
+  @Trace map: MapData | undefined = undefined;
+  @Trace mapScene: MapOverlay = new MapOverlay();
+  @Trace mapBounds: number[] = [];
   @Trace snap: EngineSnapshot | undefined = undefined;
   @Trace currentStopName: string = '';
   @Trace startingDemo: boolean = false;
@@ -56,6 +62,9 @@ export class HomeViewModel {
     this.estMinutes = tour.estMinutes;
     this.guideName = personaName(pack, tour.personaId, lang);
     this.preview = previewPoints(pack, ids);
+    this.map = MapCache.detailMap();
+    this.mapScene = previewOverlay(ids, lang);
+    this.mapBounds = overlayBounds(this.mapScene) ?? [];
     try {
       this.placesCount = pack.pois().length;
     } catch (e) {

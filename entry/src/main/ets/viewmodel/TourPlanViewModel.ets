@@ -10,7 +10,10 @@ import { VoiceLabel } from '../contracts/Settings';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
+import { MapData } from '../contracts/Model';
 import { PreviewPoint } from '../views/common/RoutePreview';
+import { MapOverlay } from '../views/map/MapRenderer';
+import { MapCache, overlayBounds, previewOverlay } from './MapViewModel';
 import { StopRow } from '../views/common/StopList';
 import { withTimeout } from './Async';
 import { localName } from './Format';
@@ -52,6 +55,11 @@ export class TourPlanViewModel {
   @Trace guideName: string = '';
   @Trace stops: StopRow[] = [];
   @Trace preview: PreviewPoint[] = [];
+  @Trace map: MapData | undefined = undefined;
+  @Trace scene: MapOverlay = new MapOverlay();
+  @Trace sceneBounds: number[] = [];
+  @Trace orderScene: MapOverlay = new MapOverlay();
+  @Trace orderBounds: number[] = [];
   @Trace listedM: number = 0;
   @Trace estMinutes: number = 0;
   @Trace sourcesCount: number = 0;
@@ -96,6 +104,9 @@ export class TourPlanViewModel {
     this.guideName = personaName(pack, tour.personaId, lang);
     this.stops = stopRows(pack, ids, tour.personaId, lang);
     this.preview = previewPoints(pack, ids);
+    this.map = MapCache.detailMap();
+    this.scene = previewOverlay(ids, lang);
+    this.sceneBounds = overlayBounds(this.scene) ?? [];
     this.listedM = listedMetres(pack, ids);
     this.estMinutes = tour.estMinutes;
     const src = sourceSummary(pack, ids, tour.personaId, lang);
@@ -203,6 +214,8 @@ export class TourPlanViewModel {
       return new OrderRow(i + 1, id, poiName(pack, id, this.textLang), leg);
     });
     this.orderPreview = previewPoints(pack, p.order);
+    this.orderScene = previewOverlay(p.order, this.textLang);
+    this.orderBounds = overlayBounds(this.orderScene) ?? [];
     this.plan = p;
   }
 

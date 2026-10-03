@@ -13,7 +13,7 @@ import { LogEvents } from '../app/LogEvents';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { NowWalkingViewModel, WalkState } from '../viewmodel/NowWalkingViewModel';
 import { IssueBanner, topIssue } from '../views/common/IssueBanner';
-import { RoutePreview } from '../views/common/RoutePreview';
+import { MapCanvas } from '../views/map/MapCanvas';
 import { SimulatedBadge } from '../views/common/SimulatedBadge';
 import { StopList } from '../views/common/StopList';
 import { Radius, Size, Space, Type } from '../views/common/Tokens';
@@ -417,14 +417,16 @@ export struct NowWalkingPage {
     NavDestination() {
       Stack({ alignContent: Alignment.TopStart }) {
         Column() {
-          RoutePreview({
-            points: this.vm.routePoints,
-            states: this.vm.routeStates,
-            user: this.vm.user,
-            userSimulated: this.vm.isDemo(),
+          MapCanvas({
+            map: this.vm.map,
+            scene: this.vm.scene,
+            bounds: this.vm.sceneBounds,
+            follow: this.vm.scene.user !== undefined,
+            followScale: 1.4,
             boxHeight: this.vm.state() === WalkState.READING ? MAP_H_READING : MAP_H,
             topInset: 96,
-            bottomInset: 24
+            bottomInset: 24,
+            mapId: 'mapWalk'
           })
             .accessibilityText($r('app.string.walk_map_a11y', this.vm.stopName))
           this.panel()
