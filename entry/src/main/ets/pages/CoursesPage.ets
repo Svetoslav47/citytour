@@ -269,7 +269,10 @@ export struct CoursesPage {
             this.notes()
             ForEach(this.vm.items, (it: CourseItem) => {
               this.card(it)
-            }, (it: CourseItem) => it.id)
+            }, (it: CourseItem) =>
+              // rebuild() makes new CourseItem objects: key on the row state too, or ForEach keeps the old row
+              // bound to the old object and never shows "downloading" / the progress bar.
+              `${it.id}|${it.state}|${it.downloading}|${it.active}|${it.failed}|${it.cancelling}`)
           }
           .width('100%')
           .padding({ left: Space.S4, right: Space.S4, bottom: Space.S6 + this.sa.bottom })

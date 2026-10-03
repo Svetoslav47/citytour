@@ -7,6 +7,7 @@
  * mkdir(path, recursion) 11+, rename, rmdir, unlink, access, listFile, stat, readText), js-apis-cryptoframework
  * (createMd SHA256, update/digest Promise), js-apis-util (TextEncoder/TextDecoder).
  */
+import { BusinessError } from '@kit.BasicServicesKit';
 import { fileIo as fs } from '@kit.CoreFileKit';
 import { cryptoFramework } from '@kit.CryptoArchitectureKit';
 import { util } from '@kit.ArkTS';
@@ -40,6 +41,10 @@ export class FileStore {
       await fs.mkdir(path, true);
       return true;
     } catch (e) {
+      // Parallel downloads race to create the same folder: "File exists" (13900015) means another worker won.
+      if ((e as BusinessError).code === 13900015 || await FileStore.exists(path)) {
+        return true;
+      }
       Log.w(LogEvents.COURSE, `event=mkdir_fail path=${path} ${Log.errKv(e as Object)}`);
       return false;
     }
