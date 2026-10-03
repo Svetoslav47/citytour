@@ -1,8 +1,8 @@
 {
  "validatorVersion": 1,
  "summary": {
-  "narrations": 12906,
-  "pass": 12906,
+  "narrations": 12912,
+  "pass": 12912,
   "fallback": 0,
   "dropped": 0,
   "rejectedCandidates": 0,
@@ -28,22 +28,24 @@
   },
   "pl": {
    "reviewed": 0,
-   "grounded-ai": 0,
-   "source-extract": 319,
+   "grounded-ai": 25,
+   "source-extract": 297,
    "name-only": 3982
   },
   "zh": {
    "reviewed": 0,
-   "grounded-ai": 0,
-   "source-extract": 93,
+   "grounded-ai": 25,
+   "source-extract": 71,
    "name-only": 4208
   },
   "narrationsPerLength": {
    "en:deep": 3,
    "en:full": 11,
    "en:teaser": 4290,
+   "pl:deep": 3,
    "pl:full": 11,
    "pl:teaser": 4290,
+   "zh:deep": 3,
    "zh:full": 11,
    "zh:teaser": 4290
   },
@@ -70,7 +72,7 @@
  "build": {
   "builtAt": "2026-10-03T14:11:07Z",
   "validatorVersion": 1,
-  "drafts": 25,
+  "drafts": 75,
   "poisExcluded": {
    "city": 1,
    "outsideBox": 5,
