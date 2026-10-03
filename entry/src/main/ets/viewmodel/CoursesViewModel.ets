@@ -67,7 +67,9 @@ export class RemoteSettings {
   /** App start + every toggle: push the setting into RemoteVoice. */
   static apply(): void {
     try {
-      AppContainer.remoteVoice().setOnlineVoice(RemoteSettings.get().onlineStudioVoice);
+      // Product decision: the studio voice is always on; the built-in voice is only the offline last resort,
+      // so there is no user switch (a value saved by an earlier build is ignored).
+      AppContainer.remoteVoice().setOnlineVoice(true);
     } catch (e) {
       Log.e(LogEvents.UNCAUGHT, `where=RemoteSettings.apply ${Log.errKv(e as Object)}`);
     }

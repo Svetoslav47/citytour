@@ -22,7 +22,6 @@ import {
 } from '../views/settings/SettingsRows';
 import { storyLangRes, uiLangRes, voiceRowRes } from '../views/settings/SettingsText';
 import { SafeArea } from '../viewmodel/SafeArea';
-import { RemoteSettings } from '../viewmodel/CoursesViewModel';
 
 function detailNote(d: DetailLevel): Resource {
   if (d === DetailLevel.BRIEF) {
@@ -79,8 +78,6 @@ export struct SettingsPage {
   /** Window avoid areas (edge-to-edge window, issue #63). */
   @Local sa: SafeArea = SafeArea.get();
   /** SERVER.md §2: Online studio voice (shown only when the build has a course server). */
-  @Local remote: RemoteSettings = RemoteSettings.get();
-  @Local serverOn: boolean = RemoteSettings.serverEnabled();
 
   aboutToAppear(): void {
     Log.i(LogEvents.APP_PAGE, `page=Settings ${SettingsViewModel.summaryKv()}`);
@@ -108,14 +105,6 @@ export struct SettingsPage {
         title: $r('app.string.settings_voice'), value: voiceRowRes(this.vm.voiceRow),
         rowId: 'rowVoice', onTap: () => this.open(Routes.SETTINGS_VOICE, '')
       })
-      if (this.serverOn) {
-        RowDivider()
-        ToggleRow({
-          title: $r('app.string.settings_online_voice'), subtitle: $r('app.string.settings_online_voice_note'),
-          isOn: this.remote.onlineStudioVoice, rowId: 'rowOnlineVoice',
-          onToggle: (on: boolean) => this.remote.setOnlineVoice(on)
-        })
-      }
       RowDivider()
       NavRow({
         title: $r('app.string.settings_guide'), value: this.vm.guideName, rowId: 'rowGuide', tappable: false
