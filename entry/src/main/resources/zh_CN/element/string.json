@@ -18,7 +18,7 @@
     },
     {
       "name": "perm_background_reason",
-      "value": "手机放进口袋后，导游仍会继续讲解。"
+      "value": "您游览时，即使屏幕关闭，导游也会继续讲解。"
     },
     {
       "name": "perm_vibrate_reason",
@@ -354,7 +354,7 @@
     },
     {
       "name": "byg_lock_title",
-      "value": "收起手机。"
+      "value": "抬起头，尽情欣赏这座城市。"
     },
     {
       "name": "byg_lock_body",
@@ -942,7 +942,7 @@
     },
     {
       "name": "onb1_body",
-      "value": "戴上耳机，收起手机，出发吧。历史学家将带您游览这座城市，每到一处便为您讲解。"
+      "value": "戴上耳机，把目光留给这座城市。历史学家将带您游览，每到一处便为您讲解。"
     },
     {
       "name": "onb2_title",

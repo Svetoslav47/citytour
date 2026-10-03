@@ -18,7 +18,7 @@
     },
     {
       "name": "perm_background_reason",
-      "value": "Keeps your guide talking while your phone is in your pocket."
+      "value": "Keeps your guide talking while you explore, even with the screen off."
     },
     {
       "name": "perm_vibrate_reason",
@@ -354,7 +354,7 @@
     },
     {
       "name": "byg_lock_title",
-      "value": "Put your phone away."
+      "value": "Look up and enjoy the city."
     },
     {
       "name": "byg_lock_body",
@@ -942,7 +942,7 @@
     },
     {
       "name": "onb1_body",
-      "value": "Put your headphones in, put your phone away and walk. The Historian leads you through the city and tells you about each place as you reach it."
+      "value": "Put your headphones in and keep your eyes on the city. The Historian leads you through it and tells you about each place as you reach it."
     },
     {
       "name": "onb2_title",

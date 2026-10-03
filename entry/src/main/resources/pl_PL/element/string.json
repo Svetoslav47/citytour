@@ -18,7 +18,7 @@
     },
     {
       "name": "perm_background_reason",
-      "value": "Przewodnik mówi dalej, gdy telefon jest w kieszeni."
+      "value": "Przewodnik mówi dalej, gdy zwiedzasz, nawet przy wyłączonym ekranie."
     },
     {
       "name": "perm_vibrate_reason",
@@ -354,7 +354,7 @@
     },
     {
       "name": "byg_lock_title",
-      "value": "Schowaj telefon."
+      "value": "Podnieś wzrok i ciesz się miastem."
     },
     {
       "name": "byg_lock_body",
@@ -942,7 +942,7 @@
     },
     {
       "name": "onb1_body",
-      "value": "Załóż słuchawki, schowaj telefon i ruszaj. Historyk poprowadzi Cię przez miasto i opowie o każdym miejscu, gdy do niego dojdziesz."
+      "value": "Załóż słuchawki i patrz na miasto, nie na ekran. Historyk poprowadzi Cię przez nie i opowie o każdym miejscu, gdy do niego dojdziesz."
     },
     {
       "name": "onb2_title",
