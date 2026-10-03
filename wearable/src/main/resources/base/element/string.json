@@ -19,6 +19,94 @@
     {
       "name": "perm_vibrate_reason",
       "value": "Short vibrations on your wrist tell you that you have arrived and on which side to look."
+    },
+    {
+      "name": "label_simulated",
+      "value": "SIMULATED"
+    },
+    {
+      "name": "start_meta",
+      "value": "%s stops · about %s min"
+    },
+    {
+      "name": "start_walk",
+      "value": "Start walk"
+    },
+    {
+      "name": "start_demo",
+      "value": "Demo walk"
+    },
+    {
+      "name": "start_demo_note",
+      "value": "Replays a recorded walk"
+    },
+    {
+      "name": "start_pack_error",
+      "value": "Tour data could not be loaded"
+    },
+    {
+      "name": "glance_here",
+      "value": "Here"
+    },
+    {
+      "name": "glance_progress",
+      "value": "%s / %s"
+    },
+    {
+      "name": "glance_end_hint",
+      "value": "Long-press to end"
+    },
+    {
+      "name": "status_pack",
+      "value": "Tour data error"
+    },
+    {
+      "name": "status_permission",
+      "value": "Location permission needed"
+    },
+    {
+      "name": "status_location_off",
+      "value": "Turn on location"
+    },
+    {
+      "name": "status_no_fix",
+      "value": "Waiting for GPS…"
+    },
+    {
+      "name": "status_off_route",
+      "value": "Off route · re-planning"
+    },
+    {
+      "name": "finished_title",
+      "value": "Tour complete"
+    },
+    {
+      "name": "finished_stops",
+      "value": "%s of %s stops"
+    },
+    {
+      "name": "finished_done",
+      "value": "Done"
+    },
+    {
+      "name": "cue_arrival",
+      "value": "You've arrived"
+    },
+    {
+      "name": "cue_look_left",
+      "value": "Look left"
+    },
+    {
+      "name": "cue_look_right",
+      "value": "Look right"
+    },
+    {
+      "name": "cue_off_route",
+      "value": "Off route"
+    },
+    {
+      "name": "a11y_arrow",
+      "value": "Direction to the next stop"
     }
   ]
 }

@@ -54,6 +54,7 @@ class WatchDemoControls implements DemoControls {
 export class WatchContainer {
   private static ctrl: TourController | undefined = undefined;
   private static hapticsImpl: WatchHaptics | undefined = undefined;
+  private static packImpl: WatchPackRepository | undefined = undefined;
 
   /** Builds everything; touches no platform API until a tour is planned. Call once from WatchAbility.onCreate. */
   static init(ctx: common.UIAbilityContext): void {
@@ -67,8 +68,10 @@ export class WatchContainer {
     const voice: WatchVoice = new WatchVoice();
     const haptics: WatchHaptics = new WatchHaptics((): RelDir | undefined => WatchContainer.arrivalDir());
     WatchContainer.hapticsImpl = haptics;
+    const pack: WatchPackRepository = new WatchPackRepository(ctx, WatchConfig.PACK_DIR);
+    WatchContainer.packImpl = pack;
     const deps: TourControllerDeps = {
-      pack: new WatchPackRepository(ctx, WatchConfig.PACK_DIR),
+      pack: pack,
       speech: voice,
       voice: voice,
       log: new HilogLogger(),
@@ -91,6 +94,21 @@ export class WatchContainer {
 
   static tour(): TourController | undefined {
     return WatchContainer.ctrl;
+  }
+
+  static pack(): WatchPackRepository | undefined {
+    return WatchContainer.packImpl;
+  }
+
+  /** Ends the running tour (the controller logs and stops the sources). */
+  static endTour(): void {
+    if (WatchContainer.ctrl !== undefined) {
+      Log.i('WATCH_TOUR', 'action=end');
+      WatchContainer.ctrl.end();
+    }
+    if (WatchContainer.hapticsImpl !== undefined) {
+      WatchContainer.hapticsImpl.cancel();
+    }
   }
 
   static haptics(): WatchHaptics | undefined {
