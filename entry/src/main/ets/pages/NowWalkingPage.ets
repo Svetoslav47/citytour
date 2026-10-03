@@ -22,6 +22,7 @@ import { DemoControlsSheet } from '../views/walk/DemoControlsSheet';
 import { NextStopBlock } from '../views/walk/NextStopBlock';
 import { NowPlayingCard } from '../views/walk/NowPlayingCard';
 import { WalkControls } from '../views/walk/WalkControls';
+import { SafeArea } from '../viewmodel/SafeArea';
 
 const MAP_H: number = 300;
 const MAP_H_READING: number = 200;
@@ -30,6 +31,9 @@ const MAP_H_READING: number = 200;
 export struct NowWalkingPage {
   @Local app: AppViewModel = AppViewModel.get();
   @Local vm: NowWalkingViewModel = new NowWalkingViewModel();
+  /** Window avoid areas (edge-to-edge window, issue #63): the map runs under the status bar (DESIGN §3.6), the
+   * header capsule and chips sit below it, the panel runs under the navigation indicator and its controls clear it. */
+  @Local sa: SafeArea = SafeArea.get();
 
   aboutToAppear(): void {
     this.vm.attach(this.app.textLang);
@@ -229,7 +233,7 @@ export struct NowWalkingPage {
       ])
     }
     .width('100%')
-    .padding({ left: Space.S2, right: Space.S2, top: Space.S2 })
+    .padding({ left: Space.S2 + this.sa.left, right: Space.S2 + this.sa.right, top: Space.S2 + this.sa.top })
   }
 
   @Builder
@@ -279,7 +283,7 @@ export struct NowWalkingPage {
     }
     .alignItems(HorizontalAlign.End)
     .width('100%')
-    .padding({ right: Space.S3, top: 64 })
+    .padding({ right: Space.S3 + this.sa.right, top: 64 + this.sa.top })
     .hitTestBehavior(HitTestMode.Transparent)   // the header buttons underneath stay tappable
   }
 
@@ -398,7 +402,12 @@ export struct NowWalkingPage {
         }
       }
       .width('100%')
-      .padding({ left: Space.S4, right: Space.S4, top: Space.S5, bottom: Space.S5 })
+      .padding({
+        left: Space.S4 + this.sa.left,
+        right: Space.S4 + this.sa.right,
+        top: Space.S5,
+        bottom: Space.S5 + this.sa.bottom
+      })
     }
     .scrollBar(BarState.Off)
     .align(Alignment.Top)
@@ -443,8 +452,8 @@ export struct NowWalkingPage {
             bounds: this.vm.sceneBounds,
             follow: this.vm.scene.user !== undefined,
             followScale: 1.4,
-            boxHeight: this.vm.state() === WalkState.READING ? MAP_H_READING : MAP_H,
-            topInset: 96,
+            boxHeight: (this.vm.state() === WalkState.READING ? MAP_H_READING : MAP_H) + this.sa.top,
+            topInset: 96 + this.sa.top,
             bottomInset: 24,
             mapId: 'mapWalk'
           })

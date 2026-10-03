@@ -39,6 +39,7 @@ import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { LocationDevSection } from './DevPanelLocation';
+import { SafeArea } from '../viewmodel/SafeArea';
 
 const EN_SAMPLE: string[] = [
   'Welcome to the Main Market Square in Krakow.[p300]',
@@ -287,6 +288,8 @@ struct DemoTourSection {
 @Entry
 @ComponentV2
 struct DevPanel {
+  /** Window avoid areas (edge-to-edge window, issue #63). */
+  @Local sa: SafeArea = SafeArea.get();
   @Local status: string = 'speech: initialising...';
   @Local capsLine: string = 'voices: ?';
   @Local planLine: string = 'EN plan: ?';
@@ -586,9 +589,10 @@ struct DevPanel {
         Text('Card text is dev test data (SIMULATED), artist line shows DEMO.').fontSize(11).fontColor('#888888')
       }
       .width('100%')
-      .padding({ left: 16, right: 16, bottom: 32 })
+      .padding({ left: 16, right: 16, bottom: 32 + this.sa.bottom })
     }
     .width('100%')
     .height('100%')
+    .padding({ top: this.sa.top, left: this.sa.left, right: this.sa.right })
   }
 }

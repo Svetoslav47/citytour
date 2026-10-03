@@ -16,11 +16,15 @@ import { Plaque, PlaqueState } from '../views/common/Plaque';
 import { MapCanvas } from '../views/map/MapCanvas';
 import { SimulatedBadge } from '../views/common/SimulatedBadge';
 import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
+import { SafeArea } from '../viewmodel/SafeArea';
 
 @ComponentV2
 export struct RouteReadyPage {
   @Local app: AppViewModel = AppViewModel.get();
   @Local vm: TourPlanViewModel = AppViewModel.get().tourPlan;
+  /** Window avoid areas (edge-to-edge window, issue #63): the map runs under the status bar, the header capsule
+   * sits below it, and the panel's last control clears the navigation indicator. */
+  @Local sa: SafeArea = SafeArea.get();
 
   aboutToAppear(): void {
     this.vm.planRoute();
@@ -312,7 +316,12 @@ export struct RouteReadyPage {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding({ left: Space.S4, right: Space.S4, top: Space.S5, bottom: Space.S5 })
+    .padding({
+      left: Space.S4 + this.sa.left,
+      right: Space.S4 + this.sa.right,
+      top: Space.S5,
+      bottom: Space.S5 + this.sa.bottom
+    })
     .borderRadius({ topLeft: Radius.XL, topRight: Radius.XL })
     .backgroundColor($r('app.color.bg_surface'))
     .shadow(ShadowStyle.OUTER_FLOATING_SM)
@@ -327,8 +336,8 @@ export struct RouteReadyPage {
               map: this.vm.map,
               scene: this.vm.orderScene.stops.length > 0 ? this.vm.orderScene : this.vm.scene,
               bounds: this.vm.orderScene.stops.length > 0 ? this.vm.orderBounds : this.vm.sceneBounds,
-              boxHeight: 300,
-              topInset: 56,
+              boxHeight: 300 + this.sa.top,
+              topInset: 56 + this.sa.top,
               mapId: 'mapRouteReady'
             })
             this.panel()
@@ -364,7 +373,7 @@ export struct RouteReadyPage {
           SimulatedBadge({ visible: this.vm.demo })
         }
         .width('100%')
-        .padding({ left: Space.S2, right: Space.S3, top: Space.S2 })
+        .padding({ left: Space.S2 + this.sa.left, right: Space.S3 + this.sa.right, top: Space.S2 + this.sa.top })
       }
       .width('100%')
       .height('100%')

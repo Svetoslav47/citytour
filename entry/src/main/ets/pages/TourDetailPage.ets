@@ -15,12 +15,16 @@ import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
 import { IssueCode } from '../contracts/EngineTypes';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
+import { SafeArea } from '../viewmodel/SafeArea';
 
 @ComponentV2
 export struct TourDetailPage {
   @Param tourId: string = '';
   @Local app: AppViewModel = AppViewModel.get();
   @Local vm: TourPlanViewModel = AppViewModel.get().tourPlan;
+  /** Window avoid areas (edge-to-edge window, issue #63): the map runs under the status bar, the CTA bar under the
+   * navigation indicator; the back button and the button stay clear of both. */
+  @Local sa: SafeArea = SafeArea.get();
 
   aboutToAppear(): void {
     this.vm.load(this.tourId, this.app.textLang);
@@ -185,11 +189,11 @@ export struct TourDetailPage {
         .padding({ left: Space.S1, top: Space.S2, bottom: Space.S2 })
         .onClick(() => this.app.openAbout())
 
-      Column().height(this.vm.locBanner === LocBanner.NONE ? 104 : 240)
+      Column().height((this.vm.locBanner === LocBanner.NONE ? 104 : 240) + this.sa.bottom)
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding({ left: Space.S4, right: Space.S4, top: 18 })
+    .padding({ left: Space.S4 + this.sa.left, right: Space.S4 + this.sa.right, top: 18 })
   }
 
   @Builder
@@ -234,7 +238,12 @@ export struct TourDetailPage {
       })
     }
     .width('100%')
-    .padding({ left: Space.S4, right: Space.S4, top: Space.S3, bottom: Space.S5 })
+    .padding({
+      left: Space.S4 + this.sa.left,
+      right: Space.S4 + this.sa.right,
+      top: Space.S3,
+      bottom: Space.S5 + this.sa.bottom
+    })
     .backgroundColor($r('app.color.bg_surface'))
     .border({ width: { top: 1 }, color: $r('app.color.divider') })
   }
@@ -245,8 +254,8 @@ export struct TourDetailPage {
         Scroll() {
           Column() {
             Stack({ alignContent: Alignment.TopStart }) {
-              MapCanvas({ map: this.vm.map, scene: this.vm.scene, bounds: this.vm.sceneBounds, boxHeight: 260,
-                topInset: 40, mapId: 'mapTourDetail' })
+              MapCanvas({ map: this.vm.map, scene: this.vm.scene, bounds: this.vm.sceneBounds,
+                boxHeight: 260 + this.sa.top, topInset: 40 + this.sa.top, mapId: 'mapTourDetail' })
                 .onClick(() => this.app.openFullMap('tour'))
                 .accessibilityText($r('app.string.tour_map_a11y', this.vm.title, this.vm.stops.length))
               FloatingIconButton({
@@ -255,7 +264,7 @@ export struct TourDetailPage {
                 buttonId: 'btnBack',
                 onTap: () => this.app.back()
               })
-                .margin({ left: Space.S1, top: Space.S1 })
+                .margin({ left: Space.S1 + this.sa.left, top: Space.S1 + this.sa.top })
             }
             .width('100%')
 
