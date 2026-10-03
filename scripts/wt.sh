@@ -12,7 +12,11 @@ case "$cmd" in
     mkdir -p "$WT_DIR"
     git -C "$ROOT" fetch --quiet origin main 2>/dev/null || true
     base="main"; git -C "$ROOT" rev-parse --verify --quiet origin/main >/dev/null && base="origin/main"
-    git -C "$ROOT" worktree add -b "$branch" "$WT_DIR/$slug" "$base"
+    git -C "$ROOT" worktree add --no-track -b "$branch" "$WT_DIR/$slug" "$base"
+    # carry over local-only (gitignored) agent config, if present
+    for f in CLAUDE.local.md .claude/settings.local.json .claude/skills; do
+      [ -e "$ROOT/$f" ] && mkdir -p "$(dirname "$WT_DIR/$slug/$f")" && cp -R "$ROOT/$f" "$WT_DIR/$slug/$f"
+    done
     echo "Worktree ready: $WT_DIR/$slug (branch $branch from $base)"
     echo "Next: cd \"$WT_DIR/$slug\" && claude"
     ;;
