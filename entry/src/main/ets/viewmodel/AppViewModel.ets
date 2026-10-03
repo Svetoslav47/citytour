@@ -173,7 +173,7 @@ export class AppViewModel {
     this.openTour(tourId);
   }
 
-  /** Full map; `mode` is 'walk' (live tour) or 'tour' (planned route). */
+  /** Full map; `mode` is 'walk' (live tour), 'tour' (planned route) or 'explore' (all places, B13). */
   openFullMap(mode: string): void {
     this.push(Routes.FULL_MAP, mode);
   }

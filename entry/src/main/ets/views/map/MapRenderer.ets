@@ -1,7 +1,7 @@
 /*
  * Draws the offline map on an ArkUI Canvas (ARCHITECTURE §3.2): one Path2D per pack layer, built once in world
  * metres (pack geometry is decimetre ints in the Projection frame), then per frame one setTransform for the
- * camera, layers bottom to top, the route, and screen-space overlays (plaques, user). During a gesture
+ * camera, layers bottom to top, the route, and screen-space overlays (explore dots, plaques, user). During a gesture
  * (`fast`) only water, green, major streets and the overlays are drawn. Returns the frame time in ms
  * (logged as MAP_FRAME by MapCanvas). Canvas: doc ts-components-canvas-canvas (CanvasRenderingContext2D, Path2D).
  */
@@ -9,6 +9,7 @@ import { MapData, MapFeature, MapLayer } from '../../contracts/Model';
 import { Camera } from '../../core/map/Camera';
 import { PlaqueState } from '../common/Plaque';
 import { defaultMinScale, LineWidth, MapPalette } from './MapStyle';
+import { PoiLayer } from './PoiLayer';
 
 export class StopMark {
   x: number;
@@ -136,7 +137,7 @@ export class MapRenderer {
 
   /** `transparentLand`: clear instead of painting the land, so a base image under the canvas shows through. */
   draw(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camera, ov: MapOverlay, pal: MapPalette,
-    fast: boolean, transparentLand: boolean = false): number {
+    fast: boolean, transparentLand: boolean = false, places: PoiLayer | undefined = undefined): number {
     const t0 = Date.now();
     const s = cam.s;
     ctx.resetTransform();
@@ -166,6 +167,9 @@ export class MapRenderer {
 
     ctx.resetTransform();
     ctx.setLineDash([]);
+    if (places !== undefined) {
+      places.draw(ctx, w, h, cam, pal);   // B13 explore layer: under the stop plaques and the user
+    }
     this.drawStops(ctx, w, h, cam, ov, pal);
     if (ov.user !== undefined) {
       this.drawUser(ctx, w, h, cam, ov.user, pal);
