@@ -54,7 +54,8 @@ class Job {
   synthDone: boolean = false;
   started: boolean = false;
   finished: boolean = false;
-  t0: number = 0;
+  t0: number = 0;          // speak() time (UTT latency / duration)
+  synthT0: number = 0;     // synthesis request time
   synthTimer: number = -1;
   watchdog: number = -1;
   textTimer: number = -1;
@@ -355,6 +356,7 @@ export class NarrationPlayer implements SpeechPort {
     }
     job.synthStarted = true;
     job.synthDone = false;
+    job.synthT0 = Date.now();
     job.reqId = this.engines.newRequestId(`${job.u.itemId}#${job.u.id}`);
     if (!this.systemPlayback) {
       this.pcm.open(job.segId);
@@ -392,7 +394,7 @@ export class NarrationPlayer implements SpeechPort {
           job.synthDone = true;
           this.clearSynthTimer(job);
           Log.d(LogEvents.TTS_INIT, `event=synth_done id=${job.u.id} bytes=${this.pcm.bytesOf(job.segId)}` +
-            ` ms=${Date.now() - job.t0}`);
+            ` ms=${Date.now() - job.synthT0}`);
           if (!this.systemPlayback) {
             this.pcm.finish(job.segId);
             if (this.current === job) {
