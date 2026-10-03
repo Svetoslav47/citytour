@@ -1,0 +1,38 @@
+// Registers every planned local unit-test suite (docs/PLAN.md task T1).
+// Each suite file is owned by one task and already exists as a passing stub, so later tasks
+// only edit their own <Suite>.test.ets and never this file. Run with scripts/test.sh.
+import harnessTest from './Harness.test';
+import geoMathTest from './GeoMath.test';
+import courseEstimatorTest from './CourseEstimator.test';
+import fixFilterTest from './FixFilter.test';
+import heldKarpTest from './HeldKarp.test';
+import triggerPolicyTest from './TriggerPolicy.test';
+import announcementQueueTest from './AnnouncementQueue.test';
+import tourEngineTest from './TourEngine.test';
+import phrasesTest from './Phrases.test';
+import demoWalkPlayerTest from './DemoWalkPlayer.test';
+import voicePolicyTest from './VoicePolicy.test';
+import legTrackerTest from './LegTracker.test';
+import replayTest from './Replay.test';
+import packParserTest from './PackParser.test';
+import narrationValidatorTest from './NarrationValidator.test';
+import mapCameraTest from './MapCamera.test';
+
+export default function testsuite() {
+  harnessTest();
+  geoMathTest();
+  courseEstimatorTest();
+  fixFilterTest();
+  heldKarpTest();
+  triggerPolicyTest();
+  announcementQueueTest();
+  tourEngineTest();
+  phrasesTest();
+  demoWalkPlayerTest();
+  voicePolicyTest();
+  legTrackerTest();
+  replayTest();
+  packParserTest();
+  narrationValidatorTest();
+  mapCameraTest();
+}

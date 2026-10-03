@@ -29,3 +29,7 @@ CLAUDE.local.md
 .claude/settings.local.json
 .claude/worktrees/
 .claude/skills/commit-cadence/
+
+# local screenshots and pipeline download cache
+.shots/
+data/cache/
