@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Before you go</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1D6B5B}a:hover{color:#155446}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #F4F5F3; font-family: 'HarmonyOS Sans', 'HarmonyOS Sans SC', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Noto Sans SC', sans-serif; color: #16181A; -webkit-font-smoothing: antialiased">
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 390px; height: 844px">
+  <div style="position: absolute; left: 0; top: 0; width: 390px; height: 380px; overflow: hidden; background: #EEEEEA;">
+    <div style="position: absolute; left: 0; top: 0; width: 1000px; height: 1289px; transform-origin: 0 0; transform: {{mapTransform}}">
+      <img src="/_blob/47c1f630f4c212aa493463e6caf6c0c2" alt="" style="position: absolute; left: 0; top: 0; width: 1000px; height: 1289px">
+      <svg viewBox="0 0 1000 1289" width="1000" height="1289" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+        <polyline points="{{route}}" fill="none" stroke="#FFFFFF" stroke-width="{{casingW}}" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <polyline points="{{route}}" fill="none" stroke="#1D6B5B" stroke-width="{{routeW}}" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <polyline points="{{approach}}" fill="none" stroke="#1D6B5B" stroke-width="{{dotW}}" stroke-dasharray="{{dotDash}}" stroke-linecap="round" stroke-linejoin="round"></polyline>
+      </svg>
+    </div>
+    <svg width="80" height="80" viewBox="0 0 80 80" style="position: absolute; left: {{coneLeft}}px; top: {{coneTop}}px; transform: rotate({{coneRot}}deg); transform-origin: 40px 40px" aria-hidden="true">
+      <defs>
+        <radialGradient id="coneBYG" cx="40" cy="40" r="40" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#2F6FDE" stop-opacity="0.30"></stop>
+          <stop offset="1" stop-color="#2F6FDE" stop-opacity="0"></stop>
+        </radialGradient>
+      </defs>
+      <path d="M40 40L20 5.36A40 40 0 0 1 60 5.36Z" fill="url(#coneBYG)"></path>
+    </svg>
+    <sc-for list="{{plaques}}" as="p" hint-placeholder-count="11">
+      <div style="{{p.style}}">{{p.n}}</div>
+    </sc-for>
+    <div role="img" aria-label="Your location" style="position: absolute; left: {{userLeft}}px; top: {{userTop}}px; width: 14px; height: 14px; border-radius: 50%; background: #2F6FDE; border: 3px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12)"></div>
+  </div>
+  <div style="position: absolute; left: 12px; top: 50px; height: 48px; display: flex; align-items: center; border-radius: 24px; background: rgba(244,245,243,0.76); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.08);">
+    <button type="button" aria-label="Back" style="border: 0; margin: 0; padding: 0; background: transparent; font-family: inherit; cursor: pointer; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; color: #16181A"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block;"><path d="M14.5 5.5L8 12l6.5 6.5"></path></svg></button>
+    <h1 style="margin: 0 20px 0 0; font-size: 17px; line-height: 22px; font-weight: 500">Your route</h1>
+  </div>
+  <div style="position: absolute; left: 12px; top: 108px; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px 0 10px; border-radius: 14px; background: rgba(244,245,243,0.76); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.08); font-size: 12px; line-height: 16px; font-weight: 500; color: #16181A"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2F6FDE; box-shadow: 0 0 0 2px #FFFFFF"></span>Numbered in walking order from you</div>
+  <button type="button" aria-label="Map attribution" style="border: 0; margin: 0; padding: 0; background: transparent; font-family: inherit; cursor: pointer; position: absolute; right: 6px; top: 300px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; color: #5A6066">
+    <span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(244,245,243,0.76); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block;"><circle cx="12" cy="12" r="8.75"></circle><path d="M12 11v5.25"></path><circle cx="12" cy="7.9" r="0.6" fill="currentColor"></circle></svg></span>
+  </button>
+
+  <section style="position: absolute; left: 0; top: 352px; width: 390px; height: 492px; background: #FFFFFF; border-radius: 28px 28px 0 0; box-shadow: 0 -1px 0 rgba(22,24,26,0.04), 0 -6px 24px rgba(0,0,0,0.08); display: flex; flex-direction: column; padding: 24px 16px 24px; box-sizing: border-box">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.6px; text-transform: uppercase; color: #5A6066;">Starting near you</span>
+        <h2 style="margin: 0; font-size: 22px; line-height: 28px; font-weight: 700; font-variant-numeric: tabular-nums;">Cloth Hall, 120 m away</h2>
+      </div>
+      <button type="button" aria-expanded="false" style="border: 0; margin: 0; padding: 0; background: transparent; font-family: inherit; cursor: pointer; flex: none; height: 48px; margin: -2px -8px 0 0; padding: 0 8px; display: flex; align-items: center; gap: 2px; color: #1D6B5B; font-size: 14px; line-height: 20px; font-weight: 500">Show order <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block;"><path d="M6 9.5l6 6 6-6"></path></svg></button>
+    </div>
+    <p style="margin: 8px 0 0; font-size: 16px; line-height: 24px; color: #16181A; font-variant-numeric: tabular-nums;">2.5 km · 33 min walking<br><span style="color: #5A6066">~1 h 25 min with stories</span></p>
+    <p style="display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 0; font-size: 14px; line-height: 20px; color: #16181A; font-variant-numeric: tabular-nums;"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="flex: none; display: block"><circle cx="12" cy="12" r="10" fill="#1D6B5B"></circle><path d="M7.5 12.25l3 3 6-6.25" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg><span>Optimised order: 640 m shorter than the listed order</span></p>
+
+    <span style="font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.6px; text-transform: uppercase; color: #5A6066; margin-top: 22px">Start from</span>
+    <div role="radiogroup" aria-label="Start from" style="display: flex; height: 48px; padding: 0 4px; border-radius: 24px; background: #EEEFEC; margin-top: 8px">
+          <label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+            <input type="radio" name="startFrom" checked="checked" style="position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none;">
+            <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-weight: 500; font-variant-numeric: tabular-nums; background: #1D6B5B; color: #FFFFFF;">My location</span>
+          </label><label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+            <input type="radio" name="startFrom" style="position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none;">
+            <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-weight: 500; font-variant-numeric: tabular-nums; background: transparent; color: #5A6066;">First stop</span>
+          </label>
+        </div>
+
+    <span style="font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.6px; text-transform: uppercase; color: #5A6066; margin-top: 18px">Time available</span>
+    <div role="radiogroup" aria-label="Time available" style="display: flex; height: 48px; padding: 0 4px; border-radius: 24px; background: #EEEFEC; margin-top: 8px">
+          <label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+            <input type="radio" name="timeAvailable" checked="checked" style="position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none;">
+            <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-weight: 500; font-variant-numeric: tabular-nums; background: #1D6B5B; color: #FFFFFF;">All stops</span>
+          </label><label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+            <input type="radio" name="timeAvailable" style="position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none;">
+            <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-weight: 500; font-variant-numeric: tabular-nums; background: transparent; color: #5A6066;">45 min</span>
+          </label><label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+            <input type="radio" name="timeAvailable" style="position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none;">
+            <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-weight: 500; font-variant-numeric: tabular-nums; background: transparent; color: #5A6066;">90 min</span>
+          </label>
+        </div>
+    <p style="margin: 8px 0 0 4px; font-size: 13px; line-height: 18px; color: #5A6066; font-variant-numeric: tabular-nums;">All 11 stops, renumbered in walking order from you.</p>
+
+    <div style="flex: 1"></div>
+    <button type="button" style="border: 0; margin: 0; padding: 0; background: transparent; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; height: 48px; border-radius: 24px; background: #1D6B5B; color: #FFFFFF; font-size: 16px; line-height: 24px; font-weight: 500;">Begin</button>
+  </section>
+  </div>
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 390px; height: 844px; background: rgba(15,17,18,0.34)"></div>
+  <section role="dialog" aria-modal="true" aria-labelledby="byg-title" style="position: absolute; left: 0; bottom: 0; width: 390px; background: #FFFFFF; border-radius: 28px 28px 0 0; box-shadow: 0 -8px 32px rgba(0,0,0,0.14); display: flex; flex-direction: column; padding: 0 16px 24px; box-sizing: border-box">
+    <div style="display: flex; justify-content: center; padding: 8px 0 4px">
+      <span aria-hidden="true" style="width: 36px; height: 4px; border-radius: 2px; background: rgba(22,24,26,0.18)"></span>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; height: 56px; margin-bottom: 8px">
+      <h2 id="byg-title" style="margin: 0; padding-left: 4px; font-size: 20px; line-height: 26px; font-weight: 700">Before you go</h2>
+      <button type="button" aria-label="Close" style="border: 0; margin: 0; padding: 0; background: transparent; font-family: inherit; cursor: pointer; width: 48px; height: 48px; margin-right: -4px; display: flex; align-items: center; justify-content: center; color: #16181A">
+        <span style="width: 36px; height: 36px; border-radius: 50%; background: rgba(22,24,26,0.055); display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block;"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"></path></svg></span>
+      </button>
+    </div>
+    <ol style="list-style: none; margin: 0; padding: 0 4px; display: flex; flex-direction: column">
+      <li style="display: flex; gap: 14px; padding: 0 0 20px; position: relative">
+        <span style="position: relative; flex: none; width: 28px; display: flex; justify-content: center">
+          <span style="position: absolute; left: 13px; width: 2px; top: 20px; bottom: 0; background: #E1E3DF"></span>
+          <span style="position: relative; width: 28px; height: 28px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid #6B7176; background: #FFFFFF; color: #16181A; display: flex; align-items: center; justify-content: center; font-size: 13px; line-height: 16px; font-weight: 700; font-variant-numeric: tabular-nums;">1</span>
+        </span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px; padding-top: 2px; min-width: 0">
+          <span style="font-size: 16px; line-height: 24px; font-weight: 500">Headphones in.</span>
+          <span style="font-size: 14px; line-height: 20px; color: #5A6066">The guide talks as you walk.</span>
+        </span>
+        <span style="flex: none; color: #5A6066; padding-top: 2px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block;"><path d="M3.5 14.5h2.75a1.75 1.75 0 0 1 1.75 1.75v2.5a1.75 1.75 0 0 1-1.75 1.75H5.25A1.75 1.75 0 0 1 3.5 18.75V12a8.5 8.5 0 0 1 17 0v6.75a1.75 1.75 0 0 1-1.75 1.75h-1a1.75 1.75 0 0 1-1.75-1.75v-2.5a1.75 1.75 0 0 1 1.75-1.75h2.75"></path></svg></span>
+      </li>
+      <li style="display: flex; gap: 14px; padding: 0 0 20px; position: relative">
+        <span style="position: relative; flex: none; width: 28px; display: flex; justify-content: center">
+          <span style="position: absolute; left: 13px; width: 2px; top: 0; bottom: 0; background: #E1E3DF"></span>
+          <span style="position: relative; width: 28px; height: 28px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid #6B7176; background: #FFFFFF; color: #16181A; display: flex; align-items: center; justify-content: center; font-size: 13px; line-height: 16px; font-weight: 700; font-variant-numeric: tabular-nums;">2</span>
+        </span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px; padding-top: 2px; min-width: 0">
+          <span style="font-size: 16px; line-height: 24px; font-weight: 500">Check the volume.</span>
+          
+          <button type="button" style="border: 0; margin: 0; padding: 0; background: transparent; font-family: inherit; cursor: pointer; align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; height: 40px; margin-top: 8px; padding: 0 18px 0 14px; border-radius: 20px; background: rgba(22,24,26,0.055); color: #1D6B5B; font-size: 14px; line-height: 20px; font-weight: 500; box-shadow: 0 0 0 4px transparent"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block;"><path d="M3.75 9.5h3.5L12 5.25v13.5L7.25 14.5h-3.5z"></path><path d="M15.5 9a4.25 4.25 0 0 1 0 6"></path><path d="M18.25 6.25a8 8 0 0 1 0 11.5"></path></svg>Play a test line</button>
+        </span>
+        <span style="flex: none; color: #5A6066; padding-top: 2px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block;"><path d="M3.75 9.5h3.5L12 5.25v13.5L7.25 14.5h-3.5z"></path><path d="M15.5 9a4.25 4.25 0 0 1 0 6"></path><path d="M18.25 6.25a8 8 0 0 1 0 11.5"></path></svg></span>
+      </li>
+      <li style="display: flex; gap: 14px; padding: 0 0 0; position: relative">
+        <span style="position: relative; flex: none; width: 28px; display: flex; justify-content: center">
+          <span style="position: absolute; left: 13px; width: 2px; top: 0; bottom: auto; height: 20px; background: #E1E3DF"></span>
+          <span style="position: relative; width: 28px; height: 28px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid #6B7176; background: #FFFFFF; color: #16181A; display: flex; align-items: center; justify-content: center; font-size: 13px; line-height: 16px; font-weight: 700; font-variant-numeric: tabular-nums;">3</span>
+        </span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px; padding-top: 2px; min-width: 0">
+          <span style="font-size: 16px; line-height: 24px; font-weight: 500">Lock your phone.</span>
+          <span style="font-size: 14px; line-height: 20px; color: #5A6066">I'll keep talking and tell you where to look.</span>
+        </span>
+        <span style="flex: none; color: #5A6066; padding-top: 2px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block;"><rect x="5" y="10.25" width="14" height="10.25" rx="2.5" fill="currentColor"></rect><path d="M8.25 10.25V7.75a3.75 3.75 0 0 1 7.5 0v2.5"></path></svg></span>
+      </li>
+    </ol>
+    <p style="display: flex; gap: 8px; margin: 24px 4px 0; font-size: 13px; line-height: 18px; color: #5A6066"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5A6066" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block; margin-top: 1px;"><circle cx="12" cy="12" r="8.75"></circle><path d="M12 11v5.25"></path><circle cx="12" cy="7.9" r="0.6" fill="currentColor"></circle></svg><span>While the tour runs, CityTour uses your location with the screen locked. You'll see a system notification. Stop any time from the app or the notification.</span></p>
+    <div style="margin-top: 20px">
+      <button type="button" style="border: 0; margin: 0; padding: 0; background: transparent; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; height: 48px; border-radius: 24px; background: #1D6B5B; color: #FFFFFF; font-size: 16px; line-height: 24px; font-weight: 500;">Start walking</button>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const POLY = [[711.4,161.0],[715.7,163.2],[727.6,169.6],[727.8,172.0],[728.4,177.5],[720.7,187.6],[705.7,200.3],[698.9,206.5],[695.3,212.5],[692.2,224.6],[691.6,226.9],[690.8,230.0],[690.4,231.8],[699.6,233.9],[710.5,236.3],[731.7,248.7],[745.3,256.6],[741.1,266.0],[718.6,315.2],[712.1,329.4],[696.2,361.9],[696.1,362.2],[695.2,363.6],[693.8,366.2],[693.7,366.4],[674.5,407.6],[665.6,427.0],[665.5,427.3],[664.2,430.0],[663.4,431.6],[663.2,432.1],[633.9,493.6],[633.7,494.1],[631.9,498.2],[624.1,495.1],[621.3,501.8],[616.5,512.9],[615.7,514.1],[614.8,515.2],[613.3,515.6],[605.1,516.6],[593.6,517.7],[591.7,518.1],[589.7,519.2],[587.1,521.8],[584.8,523.2],[582.9,523.8],[581.1,523.9],[577.4,523.8],[576.7,523.8],[562.4,523.1],[559.5,522.6],[556.6,521.4],[553.2,519.6],[548.7,516.8],[534.5,507.6],[530.6,505.7],[528.7,504.9],[526.1,504.2],[522.7,503.6],[518.5,503.3],[511.6,503.7],[482.6,506.7],[476.3,505.2],[464.1,498.3],[461.9,497.0],[464.1,498.3],[476.3,505.2],[482.6,506.7],[492.2,521.3],[517.4,533.4],[522.1,524.1],[517.4,533.4],[492.0,538.9],[471.2,543.0],[428.2,551.3],[377.4,524.9],[428.2,551.3],[444.9,560.6],[451.4,564.8],[455.8,568.1],[458.9,570.9],[461.4,573.3],[466.9,579.0],[471.5,584.7],[476.7,589.5],[478.7,590.7],[480.2,591.1],[482.6,591.1],[484.1,590.8],[485.9,589.9],[487.9,588.9],[493.0,579.2],[495.0,575.3],[498.3,569.1],[495.0,575.3],[493.0,579.2],[487.9,588.9],[483.7,597.1],[482.3,600.7],[481.4,604.0],[480.9,607.7],[480.9,612.3],[481.2,615.9],[482.2,627.0],[482.8,633.4],[483.2,637.4],[483.6,641.1],[484.6,651.1],[485.0,654.6],[485.8,662.5],[485.9,663.8],[486.4,667.9],[487.1,675.0],[487.7,680.9],[489.3,696.9],[489.6,698.6],[490.8,711.8],[491.3,717.1],[491.4,718.5],[491.6,719.9],[491.7,721.0],[492.1,724.3],[493.2,737.5],[493.3,738.4],[494.6,750.5],[495.2,755.6],[495.8,761.5],[496.1,764.2],[498.9,763.8],[501.7,775.1],[502.3,777.5],[506.5,794.5],[507.0,796.7],[507.3,799.3],[507.4,800.5],[507.6,802.6],[507.9,805.7],[507.9,806.6],[509.2,826.5],[509.5,834.6],[510.1,841.7],[510.3,844.1],[512.6,854.9],[514.3,866.5],[515.2,875.6],[515.4,878.0],[518.0,877.7],[518.7,877.6],[541.2,875.5],[555.6,876.3],[541.2,875.5],[518.7,877.6],[518.0,877.7],[515.4,878.0],[515.8,885.3],[516.4,895.7],[517.6,908.0],[516.9,913.6],[514.4,918.9],[518.9,919.7],[523.8,920.5],[523.8,920.5],[518.9,919.7],[514.4,918.9],[509.4,931.3],[510.2,943.0],[512.0,971.6],[512.6,980.2],[513.6,992.4],[513.7,994.5],[514.4,1000.8],[516.9,1024.8],[517.8,1033.8],[518.4,1039.8],[513.1,1040.1],[498.8,1041.7],[497.8,1050.5],[489.3,1051.7],[497.8,1050.5],[498.8,1041.7],[497.5,1037.5],[488.9,1036.3],[485.8,1035.6],[477.2,1034.5],[472.1,1035.2],[465.4,1034.5],[442.3,1032.1],[438.6,1032.3],[435.2,1032.7],[431.3,1032.8],[428.2,1033.0],[427.3,1036.8],[419.1,1035.6],[417.7,1039.5],[416.7,1043.8],[412.0,1045.5],[342.3,1070.0],[333.6,1073.0],[330.3,1074.8],[327.1,1077.2],[325.1,1080.4],[323.9,1083.4],[323.0,1086.8],[322.8,1089.5],[322.9,1091.3],[323.5,1094.3],[323.9,1096.8],[324.1,1097.2],[325.4,1104.2],[327.2,1112.0],[330.2,1121.4],[332.1,1125.9],[335.3,1131.0],[340.6,1137.8],[342.0,1135.4],[343.6,1133.8],[345.9,1132.4],[361.5,1126.0],[360.2,1122.3],[358.9,1117.7]];
+    const ST = [[705.6,171.9],[700.0,232.0],[577.8,507.0],[461.1,498.4],[522.2,524.2],[377.8,524.2],[494.4,567.2],[555.6,876.5],[533.3,919.5],[488.9,1048.4],[361.1,1117.1]];
+    const IDX = [0, 13, 48, 65, 71, 76, 94, 150, 161, 178, 220];
+    const pts = (a) => a.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const plaque = (label, sx, sy, kind) => {
+      let size = 28;
+      let skin = 'background: #FFFFFF; color: #1D6B5B; box-shadow: inset 0 0 0 2px #1D6B5B, 0 1px 2px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08);';
+      let fs = 12;
+      if (kind === 'next') {
+        size = 34; fs = 13;
+        skin = 'background: #1D6B5B; color: #FFFFFF; box-shadow: 0 0 0 3px #FFFFFF, 0 1px 3px rgba(0,0,0,0.20), 0 3px 10px rgba(0,0,0,0.10);';
+      } else if (kind === 'start') {
+        size = 28; fs = 12;
+        skin = 'background: #1D6B5B; color: #FFFFFF; box-shadow: 0 0 0 2.5px #FFFFFF, 0 1px 3px rgba(0,0,0,0.20), 0 2px 8px rgba(0,0,0,0.10);';
+      } else if (kind === 'small') {
+        size = 24; fs = 12;
+      }
+      return {
+        n: label,
+        style: 'position: absolute; left: ' + (sx - size / 2).toFixed(1) + 'px; top: ' + (sy - size / 2).toFixed(1) +
+          'px; width: ' + size + 'px; height: ' + size + 'px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: ' +
+          fs + 'px; line-height: 16px; font-weight: 700; font-variant-numeric: tabular-nums; ' + skin
+      };
+    };
+
+    const S = 0.6, TX = -130.2, TY = -13.2;
+    const USER = [424, 412];
+    const seg = (a, b) => { const out = []; if (a <= b) { for (let k = a; k <= b; k++) out.push(POLY[k]); } else { for (let k = a; k >= b; k--) out.push(POLY[k]); } return out; };
+    // Optimised order from here: Cloth Hall, Mickiewicz, St Mary's, St Florian's Gate, Barbican, Town Hall Tower, then south to Wawel.
+    const ORDER = [3, 4, 2, 1, 0, 5, 6, 7, 8, 9, 10];
+    const path = [].concat(
+      seg(65, 71),
+      seg(58, 48),
+      seg(47, 0),
+      seg(1, 52),
+      [[517.4, 533.4]], seg(73, 76),
+      seg(77, 220)
+    );
+    const plaques = [];
+    for (let k = ORDER.length - 1; k >= 0; k--) {
+      const s = ST[ORDER[k]];
+      plaques.push(plaque(String(k + 1), s[0] * S + TX, s[1] * S + TY, k === 0 ? 'next' : 'up'));
+    }
+    const ux = USER[0] * S + TX, uy = USER[1] * S + TY;
+    const target = POLY[65];
+    const heading = Math.atan2(target[0] - USER[0], -(target[1] - USER[1])) * 180 / Math.PI;
+    return {
+      mapTransform: 'translate(' + TX + 'px, ' + TY + 'px) scale(' + S + ')',
+      route: pts(path),
+      approach: pts([USER, [440, 452], target]),
+      casingW: (9 / S).toFixed(1),
+      routeW: (5 / S).toFixed(1),
+      dotW: (4 / S).toFixed(1),
+      dotDash: '0.01 ' + (9 / S).toFixed(1),
+      plaques: plaques,
+      userLeft: (ux - 10).toFixed(1),
+      userTop: (uy - 10).toFixed(1),
+      coneLeft: (ux - 40).toFixed(1),
+      coneTop: (uy - 40).toFixed(1),
+      coneRot: heading.toFixed(1)
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Onboarding 2/3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1D6B5B}a:hover{color:#155446}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&amp;display=swap" rel="stylesheet">
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #F4F5F3; font-family: 'HarmonyOS Sans', 'HarmonyOS Sans SC', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Noto Sans SC', sans-serif; color: #16181A; -webkit-font-smoothing: antialiased">
+  <div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: flex; flex-direction: column; padding: 44px 0 24px; box-sizing: border-box">
+    <div style="height: 48px; display: flex; justify-content: flex-end; padding: 0 4px">
+      <button type="button" aria-label="Skip introduction" style="border: 0; margin: 0; padding: 0; background: transparent; font-family: inherit; cursor: pointer; height: 48px; padding: 0 16px; font-size: 16px; line-height: 24px; font-weight: 500; color: #5A6066">Skip</button>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px; padding: 16px 16px 0">
+      <h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 700; letter-spacing: -0.2px">How should the guide speak?</h1>
+      <p style="margin: 0; font-size: 16px; line-height: 24px; color: #5A6066">You can change this any time.</p>
+    </div>
+    <div role="radiogroup" aria-label="Narration language" style="margin: 28px 16px 0; background: #FFFFFF; border-radius: 20px; overflow: hidden">
+      <label style="position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px 16px; cursor: pointer">
+        <input type="radio" name="voice" value="en" checked="checked" style="position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none;">
+        <span style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+          <span style="font-size: 16px; line-height: 24px; font-weight: 500; color: #16181A">English</span>
+          <span style="display: flex; align-items: center; gap: 8px; margin-top: 2px">
+            <span style="font-size: 14px; line-height: 20px; color: #5A6066">Spoken · Laura voice</span>
+            <span style="display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 8px; background: #E3F0EC; color: #1D6B5B; font-size: 12px; line-height: 16px; font-weight: 500">Downloading</span>
+          </span>
+          <span style="display: flex; align-items: center; gap: 10px; margin-top: 10px">
+            <span role="progressbar" aria-label="Downloading English voice" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="flex: 1; height: 4px; border-radius: 2px; background: #E1E3DF; overflow: hidden"><span style="display: block; width: 40%; height: 4px; border-radius: 2px; background: #1D6B5B"></span></span>
+            <span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #5A6066; font-variant-numeric: tabular-nums;">40%</span>
+          </span>
+        </span>
+        <span aria-hidden="true" style="flex: none; width: 20px; height: 20px; border-radius: 50%; background: #1D6B5B; display: flex; align-items: center; justify-content: center; margin-top: 2px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #FFFFFF"></span></span>
+      </label>
+      <div style="height: 1px; background: #E1E3DF; margin-left: 16px"></div>
+      <label style="position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; cursor: pointer">
+        <input type="radio" name="voice" value="zh" style="position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none;">
+        <span style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+          <span lang="zh" style="font-size: 16px; line-height: 24px; font-weight: 500; color: #16181A">中文</span>
+          <span style="font-size: 14px; line-height: 20px; color: #5A6066; margin-top: 2px">Spoken · <span lang="zh">聆小珊</span></span>
+        </span>
+        <span aria-hidden="true" style="flex: none; width: 20px; height: 20px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid #6B7176; margin-top: 2px"></span>
+      </label>
+      <div style="height: 1px; background: #E1E3DF; margin-left: 16px"></div>
+      <label style="position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; cursor: pointer">
+        <input type="radio" name="voice" value="pl" style="position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none;">
+        <span style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+          <span lang="pl" style="font-size: 16px; line-height: 24px; font-weight: 500; color: #16181A">Polski</span>
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 14px; line-height: 20px; color: #5A6066; margin-top: 2px">Text only <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5A6066" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block;"><circle cx="12" cy="12" r="8.75"></circle><path d="M12 11v5.25"></path><circle cx="12" cy="7.9" r="0.6" fill="currentColor"></circle></svg></span>
+        </span>
+        <span aria-hidden="true" style="flex: none; width: 20px; height: 20px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid #6B7176; margin-top: 2px"></span>
+      </label>
+    </div>
+    <p style="display: flex; gap: 8px; margin: 12px 16px 0; padding: 0 4px; font-size: 13px; line-height: 18px; color: #5A6066"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5A6066" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block; margin-top: 1px;"><circle cx="12" cy="12" r="8.75"></circle><path d="M12 11v5.25"></path><circle cx="12" cy="7.9" r="0.6" fill="currentColor"></circle></svg><span>Polish stories are shown as text. On-device speech currently speaks English and Chinese.</span></p>
+    <div style="display: flex; padding: 24px 16px 0">
+      <button type="button" style="border: 0; margin: 0; padding: 0; background: transparent; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 20px 0 16px; border-radius: 24px; background: rgba(22,24,26,0.055); color: #1D6B5B; font-size: 16px; line-height: 24px; font-weight: 500"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block;"><path d="M3.75 9.5h3.5L12 5.25v13.5L7.25 14.5h-3.5z"></path><path d="M15.5 9a4.25 4.25 0 0 1 0 6"></path><path d="M18.25 6.25a8 8 0 0 1 0 11.5"></path></svg>Play a sample</button>
+    </div>
+    <div style="flex: 1"></div>
+    <div style="display: flex; flex-direction: column; gap: 24px; padding: 0 16px">
+      <div role="img" aria-label="Step 2 of 3" style="display: flex; justify-content: center; align-items: center; gap: 6px; height: 16px"><span style="width: 6px; height: 6px; border-radius: 3px; background: rgba(107,113,118,0.38)"></span><span style="width: 18px; height: 6px; border-radius: 3px; background: #1D6B5B"></span><span style="width: 6px; height: 6px; border-radius: 3px; background: rgba(107,113,118,0.38)"></span></div>
+      <button type="button" style="border: 0; margin: 0; padding: 0; background: transparent; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; height: 48px; border-radius: 24px; background: #1D6B5B; color: #FFFFFF; font-size: 16px; line-height: 24px; font-weight: 500;">Continue</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

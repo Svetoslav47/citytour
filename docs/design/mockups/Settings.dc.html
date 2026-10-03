@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1D6B5B}a:hover{color:#155446}
+</style>
+</helmet>
+<div style="width: 390px; height: 1500px; position: relative; overflow: hidden; background: #F4F5F3; font-family: 'HarmonyOS Sans', 'HarmonyOS Sans SC', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Noto Sans SC', sans-serif; color: #16181A; display: flex; flex-direction: column">
+  <div style="flex: none; height: 44px"></div>
+  <div style="flex: none; height: 48px; padding: 0 4px; display: flex; align-items: center">
+    <button aria-label="Back" style="width: 48px; height: 48px; padding: 0; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer"><span style="display: flex; color: #16181A"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M14.5 5.5L8 12l6.5 6.5"></path></svg></span></button>
+  </div>
+  <h1 style="flex: none; margin: 4px 16px 20px; font-size: 28px; line-height: 34px; font-weight: 700">Settings</h1>
+  <div style="display: flex; flex-direction: column; gap: 24px; padding: 0 16px">
+    <section aria-label="Narration" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.6px; color: #5A6066; padding: 0 16px">NARRATION</h2>
+      <div style="background: #FFFFFF; border-radius: 20px; overflow: hidden">
+        <a href="#story-language" style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 12px 0 16px; text-decoration: none; color: #16181A">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">Story language</span></span>
+          <span style="font-size: 14px; line-height: 20px; color: #5A6066; text-align: right">English</span>
+          <span style="display: flex; color: #6B7176"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M9.5 6l6 6-6 6"></path></svg></span>
+        </a>
+        <div style="height: 1px; background: #E1E3DF; margin: 0 16px"></div>
+        <a href="#app-language" style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 12px 0 16px; text-decoration: none; color: #16181A">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">App language</span></span>
+          <span style="font-size: 14px; line-height: 20px; color: #5A6066; text-align: right">System</span>
+          <span style="display: flex; color: #6B7176"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M9.5 6l6 6-6 6"></path></svg></span>
+        </a>
+        <div style="height: 1px; background: #E1E3DF; margin: 0 16px"></div>
+        <a href="#voice" style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 12px 0 16px; text-decoration: none; color: #16181A">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">Voice</span></span>
+          <span style="font-size: 14px; line-height: 20px; color: #5A6066; text-align: right">Laura &#183; Installed</span>
+          <span style="display: flex; color: #6B7176"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M9.5 6l6 6-6 6"></path></svg></span>
+        </a>
+        <div style="height: 1px; background: #E1E3DF; margin: 0 16px"></div>
+        <a href="#guide" style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 12px 0 16px; text-decoration: none; color: #16181A">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">Guide</span></span>
+          <span style="font-size: 14px; line-height: 20px; color: #5A6066; text-align: right">The Historian</span>
+          <span style="display: flex; color: #6B7176"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M9.5 6l6 6-6 6"></path></svg></span>
+        </a>
+        <div style="height: 1px; background: #E1E3DF; margin: 0 16px"></div>
+        <div role="radiogroup" aria-label="Detail level" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 12px">
+          <span style="font-size: 16px; line-height: 22px">Detail level</span>
+          <div style="display: flex; padding: 0 4px; border-radius: 24px; background: #EEEFEC">
+            <label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+              <input type="radio" name="detail" style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+              <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; color: #5A6066; font-weight: 500">Brief</span>
+            </label><label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+              <input type="radio" name="detail" checked style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+              <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; background: #E3F0EC; color: #1D6B5B; font-weight: 500">Standard</span>
+            </label><label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+              <input type="radio" name="detail" style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+              <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; color: #5A6066; font-weight: 500">Deep</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <p style="margin: 0 16px; font-size: 13px; line-height: 18px; color: #5A6066">Standard: about 3 minutes per stop, with directions.</p>
+    </section>
+    <section aria-label="Walking" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.6px; color: #5A6066; padding: 0 16px">WALKING</h2>
+      <div style="background: #FFFFFF; border-radius: 20px; overflow: hidden">
+        <label style="position: relative; display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 8px 16px; box-sizing: border-box; cursor: pointer">
+          <span style="flex: 1; min-width: 0"><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; line-height: 22px">Spoken directions</span><span style="font-size: 14px; line-height: 20px; color: #5A6066">Short directions at turns between stops.</span></span></span>
+          <input type="checkbox" role="switch" checked style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+          <span aria-hidden="true" style="flex: none; width: 40px; height: 24px; border-radius: 12px; background: #1D6B5B; padding: 2px; box-sizing: border-box; display: flex; justify-content: flex-end">
+            <span style="width: 20px; height: 20px; border-radius: 50%; background: #FFFFFF"></span>
+          </span>
+        </label>
+        <div style="height: 1px; background: #E1E3DF; margin: 0 16px"></div>
+        <label style="position: relative; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px; box-sizing: border-box; cursor: pointer">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">Mention places along the way</span></span>
+          <input type="checkbox" role="switch" checked style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+          <span aria-hidden="true" style="flex: none; width: 40px; height: 24px; border-radius: 12px; background: #1D6B5B; padding: 2px; box-sizing: border-box; display: flex; justify-content: flex-end">
+            <span style="width: 20px; height: 20px; border-radius: 50%; background: #FFFFFF"></span>
+          </span>
+        </label>
+        <div style="height: 1px; background: #E1E3DF; margin: 0 16px"></div>
+        <div role="radiogroup" aria-label="Start the story when I&#8217;m within" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 12px">
+          <span style="font-size: 16px; line-height: 22px">Start the story when I&#8217;m within</span>
+          <div style="display: flex; padding: 0 4px; border-radius: 24px; background: #EEEFEC">
+            <label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+              <input type="radio" name="radius" style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+              <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; color: #5A6066; font-weight: 500">20 m</span>
+            </label><label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+              <input type="radio" name="radius" checked style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+              <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; background: #E3F0EC; color: #1D6B5B; font-weight: 500">35 m</span>
+            </label><label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+              <input type="radio" name="radius" style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+              <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; color: #5A6066; font-weight: 500">50 m</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <p style="margin: 0 16px; font-size: 13px; line-height: 18px; color: #5A6066">Larger works better in narrow streets where GPS drifts.</p>
+    </section>
+    <section aria-label="Sound and haptics" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.6px; color: #5A6066; padding: 0 16px">SOUND AND HAPTICS</h2>
+      <div style="background: #FFFFFF; border-radius: 20px; overflow: hidden">
+        <label style="position: relative; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px; box-sizing: border-box; cursor: pointer">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">Arrival chime</span></span>
+          <input type="checkbox" role="switch" checked style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+          <span aria-hidden="true" style="flex: none; width: 40px; height: 24px; border-radius: 12px; background: #1D6B5B; padding: 2px; box-sizing: border-box; display: flex; justify-content: flex-end">
+            <span style="width: 20px; height: 20px; border-radius: 50%; background: #FFFFFF"></span>
+          </span>
+        </label>
+        <div style="height: 1px; background: #E1E3DF; margin: 0 16px"></div>
+        <label style="position: relative; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px; box-sizing: border-box; cursor: pointer">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">Vibrate on arrival</span></span>
+          <input type="checkbox" role="switch" checked style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+          <span aria-hidden="true" style="flex: none; width: 40px; height: 24px; border-radius: 12px; background: #1D6B5B; padding: 2px; box-sizing: border-box; display: flex; justify-content: flex-end">
+            <span style="width: 20px; height: 20px; border-radius: 50%; background: #FFFFFF"></span>
+          </span>
+        </label>
+      </div>
+    </section>
+    <section aria-label="Offline data" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.6px; color: #5A6066; padding: 0 16px">OFFLINE DATA</h2>
+      <div style="background: #FFFFFF; border-radius: 20px; overflow: hidden">
+        <a href="#offline-data" style="display: flex; align-items: center; gap: 8px; min-height: 72px; padding: 0 12px 0 16px; text-decoration: none; color: #16181A">
+          <span style="flex: 1; min-width: 0"><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; line-height: 22px">Krak&#243;w pack</span><span style="font-size: 14px; line-height: 20px; color: #5A6066; font-variant-numeric: tabular-nums">Monuments 395 &#183; Plaques 923 &#183; 11 tour stories</span></span></span>
+          <span style="font-size: 14px; line-height: 20px; color: #5A6066; text-align: right">Included</span>
+          <span style="display: flex; color: #6B7176"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M9.5 6l6 6-6 6"></path></svg></span>
+        </a>
+      </div>
+    </section>
+    <section aria-label="Demo" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.6px; color: #5A6066; padding: 0 16px">DEMO</h2>
+      <div style="background: #FFFFFF; border-radius: 20px; overflow: hidden">
+        <label style="position: relative; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px; box-sizing: border-box; cursor: pointer">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">Demo walk (simulated location)</span></span>
+          <input type="checkbox" role="switch" checked style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+          <span aria-hidden="true" style="flex: none; width: 40px; height: 24px; border-radius: 12px; background: #1D6B5B; padding: 2px; box-sizing: border-box; display: flex; justify-content: flex-end">
+            <span style="width: 20px; height: 20px; border-radius: 50%; background: #FFFFFF"></span>
+          </span>
+        </label>
+        <div style="height: 1px; background: #E1E3DF; margin: 0 16px"></div>
+        <div role="radiogroup" aria-label="Replay speed" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 12px">
+          <span style="font-size: 16px; line-height: 22px">Replay speed</span>
+          <div style="display: flex; padding: 0 4px; border-radius: 24px; background: #EEEFEC">
+            <label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+              <input type="radio" name="speed" style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+              <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; color: #5A6066; font-weight: 500">1&#215;</span>
+            </label><label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+              <input type="radio" name="speed" style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+              <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; color: #5A6066; font-weight: 500">2&#215;</span>
+            </label><label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+              <input type="radio" name="speed" checked style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+              <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; background: #E3F0EC; color: #1D6B5B; font-weight: 500">4&#215;</span>
+            </label><label style="position: relative; flex: 1; height: 48px; display: flex; align-items: center; cursor: pointer">
+              <input type="radio" name="speed" style="position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none">
+              <span style="flex: 1; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; color: #5A6066; font-weight: 500">8&#215;</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <p style="margin: 0; padding: 10px 14px; border-radius: 12px; background: #FFF1D6; color: #7A4F00; font-size: 13px; line-height: 18px">Replays a recorded walk along the Royal Route instead of using GPS. Everything simulated is labelled <span style="font-weight: 700; letter-spacing: 0.6px">SIMULATED</span>.</p>
+    </section>
+    <section aria-label="Permissions" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.6px; color: #5A6066; padding: 0 16px">PERMISSIONS</h2>
+      <div style="background: #FFFFFF; border-radius: 20px; overflow: hidden">
+        <a href="#location" style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 12px 0 16px; text-decoration: none; color: #16181A">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">Location</span></span>
+          <span style="font-size: 14px; line-height: 20px; color: #5A6066; text-align: right">Precise &#183; while using</span>
+          <span style="display: flex; color: #6B7176"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M9.5 6l6 6-6 6"></path></svg></span>
+        </a>
+        <div style="height: 1px; background: #E1E3DF; margin: 0 16px"></div>
+        <a href="#notifications" style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 12px 0 16px; text-decoration: none; color: #16181A">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">Notifications</span></span>
+          <span style="font-size: 14px; line-height: 20px; color: #5A6066; text-align: right">On</span>
+          <span style="display: flex; color: #6B7176"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M9.5 6l6 6-6 6"></path></svg></span>
+        </a>
+      </div>
+    </section>
+    <section aria-label="About" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.6px; color: #5A6066; padding: 0 16px">ABOUT</h2>
+      <div style="background: #FFFFFF; border-radius: 20px; overflow: hidden">
+        <a href="#how-these-stories-are-made" style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 12px 0 16px; text-decoration: none; color: #16181A">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">How these stories are made</span></span>
+          
+          <span style="display: flex; color: #6B7176"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M9.5 6l6 6-6 6"></path></svg></span>
+        </a>
+        <div style="height: 1px; background: #E1E3DF; margin: 0 16px"></div>
+        <a href="#sources-and-licences" style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 12px 0 16px; text-decoration: none; color: #16181A">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">Sources and licences</span></span>
+          
+          <span style="display: flex; color: #6B7176"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M9.5 6l6 6-6 6"></path></svg></span>
+        </a>
+        <div style="height: 1px; background: #E1E3DF; margin: 0 16px"></div>
+        <a href="#introduction" style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 12px 0 16px; text-decoration: none; color: #16181A">
+          <span style="flex: 1; min-width: 0"><span style="font-size: 16px; line-height: 22px">Show introduction again</span></span>
+          
+          <span style="display: flex; color: #6B7176"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; display: block"><path d="M9.5 6l6 6-6 6"></path></svg></span>
+        </a>
+        <div style="height: 1px; background: #E1E3DF; margin: 0 16px"></div>
+        <div style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 16px">
+          <span style="flex: 1; font-size: 16px; line-height: 22px">Version</span>
+          <span style="font-size: 14px; line-height: 20px; color: #5A6066">1.0 (HackYeah 2026 build)</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { };
+  }
+}
+</script>
+</body>
+</html>
