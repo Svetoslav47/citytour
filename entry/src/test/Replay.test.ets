@@ -8,7 +8,7 @@
 // Layer 1 (pure core, deterministic, no timers): Planner (Held-Karp) -> DemoWalkPlayer (hold while a story plays,
 // like DemoWalkSource) -> TourEngine (which runs FixFilter on every fix) with a fake clock and a fake speech engine
 // that needs 2.5 s per sentence. An independent FixFilter classifies the same fixes as a probe.
-// Runs: voice x1 (track time), voice x8 (wall-clock stamps, as on the emulator), text-only x1 (TICK pacing).
+// Runs: voice x1 (track time), voice x4 and x8 (wall-clock stamps, as on the emulator), text-only x1 (TICK pacing).
 // Layer 2: the same track through the real TourController (fake ports: manual clock + scheduler, pack, speech,
 // a demo source that wraps DemoWalkPlayer exactly like DemoWalkSource) at x8, the DevPanel "Start demo tour" flow.
 //
@@ -956,6 +956,13 @@ export default function replayTest() {
       expect(r.st.phase).assertEqual(TourPhase.FINISHED);
     });
 
+    it('voice_x4: wall-clock stamps at x4 (the other demo speed) keep the same outcomes', 0, () => {
+      const r: EngineReplay = new EngineReplay(false, 4, false).run();
+      console.info(r.summary('engine-voice-x4'));
+      assertJuryOutcomes(r.obs, (id: string) => r.statusOf(id));
+      expect(r.st.phase).assertEqual(TourPhase.FINISHED);
+    });
+
     it('text_only_x1: no SPEAK at all, captions paced by TICK, same outcomes', 0, () => {
       const r: EngineReplay = new EngineReplay(true, 1, true).run();
       console.info(r.summary('engine-text-x1'));
@@ -969,7 +976,11 @@ export default function replayTest() {
 
     it('deterministic: two replays produce the identical log', 0, () => {
       const a: EngineReplay = new EngineReplay(false, 1, true).run();
-      const b: EngineReplay = new EngineReplay(false, 1, true).run();
+      // Same plan object: TourPlan.ms is the planner's wall-clock run time (logged in ROUTE_PLAN), 0 or 1 ms
+      // depending on machine load, which made this case flaky. The engine replay itself must be identical.
+      const b: EngineReplay = new EngineReplay(false, 1, true);
+      b.plan = a.plan;
+      b.run();
       const text = (r: EngineReplay): string => r.obs.logs.map((l: LogLine) => `${l.code} ${l.kv}`).join('\n');
       expect(a.obs.logs.length > 50).assertTrue();
       expect(text(a)).assertEqual(text(b));
