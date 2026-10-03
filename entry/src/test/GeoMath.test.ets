@@ -10,6 +10,7 @@ import {
 import {
   KRAKOW_PROJECTION, M_PER_DEG_LAT, M_PER_DEG_LNG_EQUATOR, PACK_ORIGIN_LAT, PACK_ORIGIN_LNG, Projection, XY
 } from '../main/ets/core/geo/Projection';
+import { GridHit, GridIndex } from '../main/ets/core/geo/GridIndex';
 import { RelDir } from '../main/ets/contracts/EngineTypes';
 import { LatLng } from '../main/ets/contracts/Model';
 
@@ -177,6 +178,107 @@ export default function geoMathTest() {
       const b: XY = proj.toXY(BARBICAN_LAT, BARBICAN_LNG);
       near(b.x, 314.5, 0.5);
       near(b.y, 420.1, 0.5);
+    });
+  });
+  describe('GridIndex', () => {
+    // deterministic pseudo-random points in a 3 km x 3 km box around the origin (incl. negative cells)
+    let seed: number = 12345;
+    const rnd = (): number => {
+      seed = (seed * 16807) % 2147483647; // Park-Miller, exact in doubles
+      return seed / 2147483647;
+    };
+    const xs: number[] = [];
+    const ys: number[] = [];
+    const index: GridIndex<number> = new GridIndex<number>(100);
+    for (let i = 0; i < 300; i++) {
+      xs.push(rnd() * 3000 - 1500);
+      ys.push(rnd() * 3000 - 1500);
+      index.add(i, xs[i], ys[i]);
+    }
+    const bruteNearest = (x: number, y: number): number => {
+      let best: number = Number.POSITIVE_INFINITY;
+      for (let i = 0; i < xs.length; i++) {
+        best = Math.min(best, Math.hypot(xs[i] - x, ys[i] - y));
+      }
+      return best;
+    };
+
+    it('nearest_matches_brute_force', 0, () => {
+      expect(index.size()).assertEqual(300);
+      for (let q = 0; q < 100; q++) {
+        const x: number = rnd() * 4000 - 2000;
+        const y: number = rnd() * 4000 - 2000;
+        const want: number = bruteNearest(x, y);
+        const bounded: GridHit<number> | undefined = index.nearest(x, y, 500);
+        if (want <= 500) {
+          expect(bounded === undefined).assertFalse();
+          near((bounded as GridHit<number>).distM, want, 1e-9);
+        } else {
+          expect(bounded === undefined).assertTrue();
+        }
+        const free: GridHit<number> | undefined = index.nearest(x, y);
+        near((free as GridHit<number>).distM, want, 1e-9);
+      }
+    });
+    it('nearest_respects_max_distance_and_far_queries', 0, () => {
+      const g: GridIndex<string> = new GridIndex<string>();
+      g.add('a', 0, 0);
+      g.add('b', 250, 0);
+      expect(g.nearest(100, 0, 99) === undefined).assertTrue();
+      expect((g.nearest(100, 0, 100) as GridHit<string>).item).assertEqual('a');
+      expect((g.nearest(140, 0, 1000) as GridHit<string>).item).assertEqual('b');
+      // a fix in Beijing (thousands of km away) still answers, quickly, via the linear path
+      const far: GridHit<string> | undefined = g.nearest(-7000000, 1000000);
+      expect((far as GridHit<string>).item).assertEqual('a');
+      expect(g.nearest(-7000000, 1000000, 30) === undefined).assertTrue();
+    });
+    it('within_radius_sorted_and_inclusive', 0, () => {
+      const g: GridIndex<string> = new GridIndex<string>();
+      g.add('far', 300, 0);
+      g.add('edge', 0, 100);
+      g.add('mid', -50, 0);
+      g.add('near', 10, 0);
+      const hits: GridHit<string>[] = g.within(0, 0, 100);
+      expect(hits.length).assertEqual(3);
+      expect(hits[0].item).assertEqual('near');
+      expect(hits[1].item).assertEqual('mid');
+      expect(hits[2].item).assertEqual('edge');
+      // and it agrees with brute force on the random set
+      const r: GridHit<number>[] = index.within(120, -340, 260);
+      let count: number = 0;
+      for (let i = 0; i < xs.length; i++) {
+        if (Math.hypot(xs[i] - 120, ys[i] + 340) <= 260) {
+          count++;
+        }
+      }
+      expect(r.length).assertEqual(count);
+      for (let i = 1; i < r.length; i++) {
+        expect(r[i].distM).assertLargerOrEqual(r[i - 1].distM);
+      }
+    });
+    it('in_rect_viewport', 0, () => {
+      let count: number = 0;
+      for (let i = 0; i < xs.length; i++) {
+        if (xs[i] >= -420 && xs[i] <= 610 && ys[i] >= -1000 && ys[i] <= 35) {
+          count++;
+        }
+      }
+      expect(index.inRect(-420, -1000, 610, 35).length).assertEqual(count);
+      // a whole-world rectangle returns everything; an inverted one nothing
+      expect(index.inRect(-1e7, -1e7, 1e7, 1e7).length).assertEqual(300);
+      expect(index.inRect(10, 10, -10, -10).length).assertEqual(0);
+    });
+    it('empty_and_invalid_input', 0, () => {
+      const g: GridIndex<string> = new GridIndex<string>();
+      expect(g.nearest(0, 0) === undefined).assertTrue();
+      expect(g.within(0, 0, 100).length).assertEqual(0);
+      expect(g.add('nan', Number.NaN, 0)).assertFalse();
+      expect(g.size()).assertEqual(0);
+      g.add('a', 5, 5);
+      expect(g.nearest(Number.NaN, 0) === undefined).assertTrue();
+      g.clear();
+      expect(g.size()).assertEqual(0);
+      expect(g.inRect(-10, -10, 10, 10).length).assertEqual(0);
     });
   });
 }
