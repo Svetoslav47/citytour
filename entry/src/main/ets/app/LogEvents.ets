@@ -71,6 +71,9 @@ export class LogEvents {
   static readonly AVS_FAIL: string = 'AVS_FAIL';
   static readonly NOTIF_PUBLISH: string = 'NOTIF_PUBLISH';
   static readonly NOTIF_DENIED: string = 'NOTIF_DENIED';
+  static readonly NOTIF_PERM: string = 'NOTIF_PERM';       // A8: consent state (enabled=0|1 asked=0|1)
+  static readonly NOTIF_CANCEL: string = 'NOTIF_CANCEL';   // A8: notification 1001 removed (tour end, shutdown)
+  static readonly NOTIF_FAIL: string = 'NOTIF_FAIL';       // A8: publish/cancel/slot/wantAgent error
   static readonly HAPTIC: string = 'HAPTIC';
   // Fakes and errors
   static readonly TOUR_SCRIPTED: string = 'TOUR_SCRIPTED';

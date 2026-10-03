@@ -5,8 +5,10 @@
  * (Location Kit), demoWalk() = DemoWalkSource (SIMULATED track replay). Built in init(), started by their users.
  * A7 wiring: tourControl() = TourController (engine + Planner + speech + background() + mediaSession() +
  * realLocation()/demoWalk() + permissions()). DemoWalkSource reaches the controller's DemoControls through
- * DemoWalkControls. Notifier/haptics (A8) are not merged yet: provided as `undefined`, which the controller treats
- * as a logged no-op. ScriptedTourControl stays for UI previews (scriptedTourControl()).
+ * DemoWalkControls. ScriptedTourControl stays for UI previews (scriptedTourControl()).
+ * A8 wiring: notifier() = TourNotifier (Notification Kit, id 1001 next-stop / text-only arrival notification; it
+ * subscribes to the controller's snapshots for the 50 m refresh and the cancel at tour end), haptics() = Haptics
+ * (vibrator preset with isSupportEffectSync check, timed fallback). shutdown() cancels the notification.
  * A4 wiring: voice() = VoiceManager (listVoices/downloadVoice + pure VoicePolicy), speech() = NarrationPlayer
  * (TTS playType 0 -> PcmPlayer AudioRenderer). Both share one TtsEngines, so each engine exists once per app.
  * A6 wiring: background() = BackgroundRunner (one continuous task ['location','audioPlayback']; it stops speech
@@ -31,8 +33,11 @@ import { PackFactory } from '../services/pack/PackFactory';
 import { NarrationPlayer } from '../services/speech/NarrationPlayer';
 import { TtsEngines } from '../services/speech/TtsEngines';
 import { VoiceManager } from '../services/speech/VoiceManager';
+import { TourNotifier } from '../services/notify/TourNotifier';
+import { Haptics } from '../services/haptics/Haptics';
 import { ScriptedTourControl } from '../services/tour/ScriptedTourControl';
 import { DemoControls, TourController, TourControllerDeps } from '../services/tour/TourController';
+import { Lang } from '../contracts/Model';
 import { SystemClock, SystemScheduler } from './Clock';
 import { HilogLogger, Log } from './Log';
 import { LogEvents } from './LogEvents';
@@ -108,6 +113,8 @@ export class AppContainer {
   private static realLocImpl: RealLocationSource | undefined = undefined;
   private static demoImpl: DemoWalkSource | undefined = undefined;
   private static demoCtlImpl: DemoWalkControls | undefined = undefined;
+  private static notifierImpl: TourNotifier | undefined = undefined;
+  private static hapticsImpl: Haptics | undefined = undefined;
 
   /** Idempotent. Builds services; starts nothing. */
   static init(ctx: common.UIAbilityContext): void {
@@ -153,6 +160,15 @@ export class AppContainer {
       Log.e(LogEvents.UNCAUGHT, `where=AppContainer.shutdown.platform ${Log.errKv(e as Object)}`);
     }
     try {
+      if (AppContainer.notifierImpl !== undefined) {
+        AppContainer.notifierImpl.shutdown().catch((e: Object) => {
+          Log.e(LogEvents.UNCAUGHT, `where=AppContainer.shutdown.notifier ${Log.errKv(e)}`);
+        });
+      }
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=AppContainer.shutdown.notifier ${Log.errKv(e as Object)}`);
+    }
+    try {
       if (AppContainer.scriptedImpl !== undefined) {
         AppContainer.scriptedImpl.dispose();
       }
@@ -179,6 +195,8 @@ export class AppContainer {
     AppContainer.realLocImpl = undefined;
     AppContainer.demoImpl = undefined;
     AppContainer.demoCtlImpl = undefined;
+    AppContainer.notifierImpl = undefined;
+    AppContainer.hapticsImpl = undefined;
     AppContainer.ctx = undefined;
   }
 
@@ -235,11 +253,32 @@ export class AppContainer {
       demoControls: (): DemoControls | undefined => AppContainer.demoControls(),
       background: (): BackgroundPort | undefined => AppContainer.background(),
       media: (): MediaSessionPort | undefined => AppContainer.mediaSession(),
-      notifier: (): NotifierPort | undefined => undefined,              // A8
-      haptics: (): HapticsPort | undefined => undefined,                // A8
+      notifier: (): NotifierPort | undefined => AppContainer.notifier(),
+      haptics: (): HapticsPort | undefined => AppContainer.haptics(),
       permissions: (): PermissionPort | undefined => AppContainer.permissions()
     };
-    return new TourController(deps);
+    const ctrl: TourController = new TourController(deps);
+    AppContainer.tourNotifier().attach(ctrl, (): Lang => ctrl.options().lang);
+    return ctrl;
+  }
+
+  static notifier(): NotifierPort {
+    return AppContainer.tourNotifier();
+  }
+
+  /** Concrete TourNotifier: requestEnable() for Onboarding (A12); attach() is done by buildTour(). */
+  static tourNotifier(): TourNotifier {
+    if (AppContainer.notifierImpl === undefined) {
+      AppContainer.notifierImpl = new TourNotifier(() => AppContainer.context());
+    }
+    return AppContainer.notifierImpl;
+  }
+
+  static haptics(): HapticsPort {
+    if (AppContainer.hapticsImpl === undefined) {
+      AppContainer.hapticsImpl = new Haptics();
+    }
+    return AppContainer.hapticsImpl;
   }
 
   /** The LocationSource for a kind: RealLocationSource (Location Kit) or the SIMULATED DemoWalkSource. */
