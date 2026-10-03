@@ -20,6 +20,7 @@ import mapCameraTest from './MapCamera.test';
 import tourControllerTest from './TourController.test';
 import walkDisplayTest from './WalkDisplay.test';
 import notifyTextTest from './NotifyText.test';
+import onboardingTest from './Onboarding.test';
 
 export default function testsuite() {
   harnessTest();
@@ -41,4 +42,5 @@ export default function testsuite() {
   tourControllerTest();
   walkDisplayTest();
   notifyTextTest();
+  onboardingTest();
 }
