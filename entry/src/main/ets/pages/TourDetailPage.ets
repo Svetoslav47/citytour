@@ -167,7 +167,7 @@ export struct TourDetailPage {
       }
 
       this.sectionHeader($r('app.string.tour_stops_header'))
-      StopList({ rows: this.vm.stops })
+      StopList({ rows: this.vm.stops, tappable: true, onTapStop: (poiId: string) => this.app.openPlace(poiId) })
 
       this.sectionHeader($r('app.string.tour_about_stories'))
       Text(this.vm.sourcesCount === 0 ? $r('app.string.tour_about_none') :
@@ -177,6 +177,13 @@ export struct TourDetailPage {
         .lineHeight(Type.CALLOUT_LH)
         .fontColor($r('app.color.text_secondary'))
         .padding({ left: Space.S1, right: Space.S1 })
+      Text($r('app.string.place_see_sources'))
+        .id('btnSeeSources')
+        .fontSize(Type.CALLOUT)
+        .fontWeight(FontWeight.Medium)
+        .fontColor($r('app.color.accent'))
+        .padding({ left: Space.S1, top: Space.S2, bottom: Space.S2 })
+        .onClick(() => this.app.openAbout())
 
       Column().height(this.vm.locBanner === LocBanner.NONE ? 104 : 240)
     }
