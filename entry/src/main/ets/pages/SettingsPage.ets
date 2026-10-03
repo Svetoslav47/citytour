@@ -91,7 +91,7 @@ export struct SettingsPage {
     SectionHeader({ label: $r('app.string.settings_narration') })
     SettingsCard() {
       NavRow({
-        title: $r('app.string.settings_story_language'), value: storyLangRes(this.vm.storyLang()),
+        title: $r('app.string.settings_story_language'), value: storyLangRes(this.vm.storyLang(), this.vm.plSpoken()),
         rowId: 'rowStoryLanguage', onTap: () => this.open(Routes.SETTINGS_STORY_LANG, '')
       })
       RowDivider()

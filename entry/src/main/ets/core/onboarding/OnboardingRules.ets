@@ -68,11 +68,13 @@ export function selectedRow(textLang: string): Lang {
 
 /**
  * The voiceLang to give VoiceManager for saved settings: undefined (follow the text language) unless the pair is
- * a deliberate cross-language choice (B9 "listen in English, read in Polish") or OFF.
+ * a deliberate cross-language choice (B9 "listen in English, read in Polish") or OFF (except Polish, see below).
  */
 export function voiceLangForPlan(textLang: string, voiceLang: string): VoiceLang | undefined {
   if (voiceLang === VoiceLang.OFF) {
-    return VoiceLang.OFF;
+    // A13: Polish is stored as (pl, off) = "no on-device voice in another language", not a "never speak" choice:
+    // follow the text language, so the pre-rendered studio clips can speak it (else text only, platform label).
+    return textLang === Lang.PL ? undefined : VoiceLang.OFF;
   }
   if (voiceLang === VoiceLang.EN && textLang !== Lang.EN) {
     return VoiceLang.EN;

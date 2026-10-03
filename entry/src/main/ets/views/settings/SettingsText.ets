@@ -4,12 +4,13 @@
 import { UiLang } from '../../contracts/Settings';
 import { StoryLang, VoiceRow } from '../../core/settings/SettingsRules';
 
-export function storyLangRes(l: StoryLang): Resource {
+/** plSpoken: the A13 studio clips cover Polish, so the row says spoken instead of text only. */
+export function storyLangRes(l: StoryLang, plSpoken: boolean = false): Resource {
   if (l === StoryLang.ZH) {
     return $r('app.string.lang_zh_spoken');
   }
   if (l === StoryLang.PL) {
-    return $r('app.string.lang_pl_text');
+    return plSpoken ? $r('app.string.lang_pl_spoken') : $r('app.string.lang_pl_text');
   }
   if (l === StoryLang.PL_LISTEN_EN) {
     return $r('app.string.lang_en_listen_pl_read');

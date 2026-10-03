@@ -21,7 +21,7 @@
  */
 import { PersistenceV2 } from '@kit.ArkUI';
 import { notificationManager } from '@kit.NotificationKit';
-import { Lang } from '../contracts/Model';
+import { Lang, NarrationLength } from '../contracts/Model';
 import { PermissionPort, PermissionState, SpeechCapabilities, SpeechListener, Utterance, VoiceState } from '../contracts/Ports';
 import { UserSettings } from '../contracts/Settings';
 import { AppContainer } from '../app/AppContainer';
@@ -133,6 +133,7 @@ export class OnboardingViewModel {
   @Trace notif: NotifRow = NotifRow.ASK;
   @Trace notifBusy: boolean = false;
   @Trace preview: PreviewPoint[] = [];
+  @Trace clipsChecked: boolean = false;   // A13: the clip manifest has been read (rows can say "Studio voice")
   /** Opened from Settings (a NavDestination) instead of as the first-run root. */
   asRoute: boolean = false;
   private notifRefused: boolean = false;
@@ -244,8 +245,22 @@ export class OnboardingViewModel {
     return zhSpoken(this.capsKnown, this.caps);
   }
 
+  /** A13: stories in this language play the pre-rendered studio voice (ElevenLabs clips ship in the app). */
+  studio(lang: Lang): boolean {
+    if (!this.clipsChecked) {
+      return false;
+    }
+    try {
+      return AppContainer.voiceManager().hasClips(lang);
+    } catch (e) {
+      return false;
+    }
+  }
+
   async refreshVoices(): Promise<void> {
     const vm = AppContainer.voiceManager();
+    await withTimeout(AppContainer.narration().loadClipManifest(), VOICES_TIMEOUT_MS, undefined, 'onboarding.clips');
+    this.clipsChecked = true;
     const c = await withTimeout(vm.capabilities(), VOICES_TIMEOUT_MS, vm.lastCaps(), 'onboarding.listVoices');
     this.caps = c;
     this.capsKnown = true;
@@ -314,7 +329,7 @@ export class OnboardingViewModel {
     }
     this.stopSample();
     const lang = this.selected;
-    const text = phrase(PhraseKey.WELCOME_HINT, lang, {});
+    const text = this.studio(lang) ? this.storySample(lang) : phrase(PhraseKey.WELCOME_HINT, lang, {});
     this.sampleSeq++;
     const id = `onb-sample-${this.sampleSeq}`;
     this.sampleId = id;
@@ -342,6 +357,23 @@ export class OnboardingViewModel {
       Log.e(LogEvents.UNCAUGHT, `where=OnboardingViewModel.playSample ${Log.errKv(e as Object)}`);
       this.onSampleEnd(id, false);
     }
+  }
+
+  /** A13: with studio clips the sample is the first story sentence (it has a clip), so Polish is heard too. */
+  private storySample(lang: Lang): string {
+    try {
+      const pack = AppContainer.packRepository();
+      const tour = findTour(pack, '');
+      if (tour !== undefined && tour.stops.length > 0) {
+        const n = pack.narration(tour.stops[0].poiId, tour.personaId, lang, NarrationLength.TEASER);
+        if (n !== undefined && n.sentences.length > 0) {
+          return n.sentences[0];
+        }
+      }
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=OnboardingViewModel.storySample ${Log.errKv(e as Object)}`);
+    }
+    return phrase(PhraseKey.WELCOME_HINT, lang, {});
   }
 
   stopSample(): void {

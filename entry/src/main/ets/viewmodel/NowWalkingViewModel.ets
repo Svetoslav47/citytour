@@ -128,6 +128,11 @@ export class NowWalkingViewModel {
     return this.snap !== undefined && this.snap.voiceLabel === VoiceLabel.FALLBACK_ZH_READS_EN;
   }
 
+  /** A13: a pre-rendered studio clip is (or, between sentences, the stories are) what the listener hears. */
+  isStudioVoice(): boolean {
+    return this.snap !== undefined && this.snap.voiceLabel === VoiceLabel.PRERENDERED;
+  }
+
   weakGps(): boolean {
     return this.snap !== undefined && this.snap.signal === SignalQuality.POOR;
   }
