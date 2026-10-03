@@ -102,7 +102,6 @@ export class CourseItem {
   @Trace hasCover: boolean = false;
   /** The cover JPEG ('' = placeholder while it loads, or for good when it cannot be fetched). */
   @Trace coverPath: string = '';
-  @Trace coverCredit: string = '';
   coverBlob: string = '';
 }
 
@@ -213,7 +212,6 @@ export class CoursesViewModel {
         it.failed = this.failed.has(it.id);
         const cover = this.covers.get(it.id);
         it.coverPath = cover !== undefined ? cover.path : '';
-        it.coverCredit = cover !== undefined ? cover.credit : '';
         it.coverBlob = r.summary.coverBlob;
         // An installed course may carry its cover in its pack: look before deciding there is no banner.
         it.hasCover = rowHasCover(it.coverBlob, it.coverPath) || (r.canSelect && cover === undefined);
@@ -244,7 +242,6 @@ export class CoursesViewModel {
         const row = this.item(id);
         if (row !== undefined) {
           row.coverPath = c.path;
-          row.coverCredit = c.credit;
           // No photo: keep the placeholder only while the catalog names a cover (it may download next time).
           row.hasCover = rowHasCover(row.coverBlob, c.path);
         }

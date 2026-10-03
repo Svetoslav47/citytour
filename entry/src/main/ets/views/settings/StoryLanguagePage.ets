@@ -1,6 +1,6 @@
 /*
  * Settings > Story language (task B9, DESIGN §3.11 + Flow F): a radio list of the four narration choices and the
- * one-time footnote about Polish (studio voice with the A13 clips, else text only). Ids: radioStory<en|zh|pl|pl-listen-en>.
+ * footnote about Polish when it is text only. Ids: radioStory<en|zh|pl|pl-listen-en>.
  */
 import { StoryLang, STORY_LANGS } from '../../core/settings/SettingsRules';
 import { AppViewModel } from '../../viewmodel/AppViewModel';
@@ -34,9 +34,9 @@ export struct StoryLanguagePage {
                 })
               }, (l: StoryLang) => l)
             }
-            Footnote({
-              text: this.vm.plSpoken() ? $r('app.string.lang_pl_footnote_studio') : $r('app.string.lang_pl_footnote')
-            })
+            if (!this.vm.plSpoken()) {
+              Footnote({ text: $r('app.string.lang_pl_footnote') })
+            }
           }
           .width('100%')
           .padding({ left: Space.S4, right: Space.S4, bottom: Space.S6 + this.sa.bottom })

@@ -241,26 +241,6 @@
       "value": "站点"
     },
     {
-      "name": "tour_about_stories",
-      "value": "关于这些讲解"
-    },
-    {
-      "name": "tour_about_reviewed",
-      "value": "由 AI 起草，经人工审核。引用了 %d 个来源。"
-    },
-    {
-      "name": "tour_about_ai",
-      "value": "由 AI 根据来源起草，尚未经人工审核。引用了 %d 个来源。"
-    },
-    {
-      "name": "tour_about_extract",
-      "value": "简短介绍摘自维基百科和城市文化遗产名录。引用了 %d 个来源。"
-    },
-    {
-      "name": "tour_about_none",
-      "value": "本路线的讲解仍在准备中。"
-    },
-    {
       "name": "tour_story_min",
       "value": "%d 分钟"
     },
@@ -446,7 +426,7 @@
     },
     {
       "name": "err_voice_unavailable",
-      "value": "未安装英语语音。将由备用语音朗读英语。"
+      "value": "未安装英语语音。暂时由中文语音朗读英语。"
     },
     {
       "name": "err_tts_err",
@@ -697,24 +677,12 @@
       "value": "已游览 %1$d/%2$d 站 · 剩余 %3$s"
     },
     {
-      "name": "voice_fallback_badge",
-      "value": "备用语音"
-    },
-    {
-      "name": "voice_fallback_tooltip",
-      "value": "英语由设备上的中文语音朗读；此设备未安装英语语音。"
-    },
-    {
       "name": "voice_native",
       "value": "英语语音"
     },
     {
       "name": "voice_laura_installed",
       "value": "Laura · 已安装"
-    },
-    {
-      "name": "voice_fallback_row",
-      "value": "备用语音 · 中文语音朗读英语"
     },
     {
       "name": "voice_zh",
@@ -738,7 +706,7 @@
     },
     {
       "name": "voice_download_failed",
-      "value": "无法下载语音。暂时将由备用语音朗读英语，请稍后重试。"
+      "value": "无法下载语音，请稍后重试。"
     },
     {
       "name": "voice_ready",
@@ -750,11 +718,11 @@
     },
     {
       "name": "voice_strategy_auto",
-      "value": "自动：已安装英语语音时使用，否则使用备用语音"
+      "value": "自动：已安装英语语音时使用，否则使用中文语音"
     },
     {
       "name": "voice_strategy_zh",
-      "value": "始终使用中文语音（备用语音）"
+      "value": "始终使用中文语音"
     },
     {
       "name": "voice_strategy_text",
@@ -778,7 +746,7 @@
     },
     {
       "name": "lang_pl_footnote",
-      "value": "波兰语讲解以文字显示。HarmonyOS 设备端语音目前支持英语和中文。"
+      "value": "在此手机上，波兰语讲解以文字显示。"
     },
     {
       "name": "lang_english",
@@ -813,68 +781,20 @@
       "value": "概况"
     },
     {
-      "name": "place_sources",
-      "value": "来源"
-    },
-    {
       "name": "place_transcript",
       "value": "讲解"
     },
     {
-      "name": "place_tier_reviewed",
-      "value": "历史学家讲解稿 · 已审核 · %d 个来源"
-    },
-    {
-      "name": "place_tier_grounded",
-      "value": "由 AI 根据维基百科和城市资料起草"
-    },
-    {
-      "name": "place_tier_wikipedia",
-      "value": "摘自维基百科"
-    },
-    {
-      "name": "place_tier_register",
-      "value": "摘自城市文化遗产名录"
-    },
-    {
-      "name": "place_tier_basic",
-      "value": "基本信息"
-    },
-    {
-      "name": "place_mt_label",
-      "value": "机器翻译"
-    },
-    {
-      "name": "place_shown_in_en",
-      "value": "以英文显示"
-    },
-    {
-      "name": "place_ai_note",
-      "value": "根据以上来源由 AI 起草，已于 %s 经人工审核。"
-    },
-    {
-      "name": "place_ai_unreviewed_note",
-      "value": "由 AI 根据上述来源起草，尚未经人工审核。"
-    },
-    {
-      "name": "place_offline_link",
-      "value": "您当前处于离线状态。联网后将打开该链接。"
-    },
-    {
-      "name": "place_no_story",
-      "value": "此地点暂无讲解。以下是来源中的介绍。"
-    },
-    {
       "name": "about_title",
-      "value": "来源与许可"
+      "value": "致谢与许可"
     },
     {
       "name": "about_ai_title",
-      "value": "这些讲解是如何制作的"
+      "value": "讲解是如何制作的"
     },
     {
       "name": "about_ai_body",
-      "value": "每段游览讲解都由 AI 模型根据随附列出的来源协助起草，之后由人工核查和编辑；在此之前，讲解会标注为“由 AI 起草”。路线以外的地点使用维基百科或城市文化遗产名录中的简短介绍，按原文显示。您在应用中的任何操作都不会被发送出去。讲解、地图和语音均存储在您的手机上。"
+      "value": "游览讲解由 AI 模型（Anthropic 的 Claude）根据维基百科、维基数据和城市文化遗产记录起草，其中部分经人工审核和编辑。波兰语和中文版本为机器翻译。"
     },
     {
       "name": "about_osm",
@@ -890,15 +810,11 @@
     },
     {
       "name": "about_arcgis",
-      "value": "古迹与纪念牌：所在城市的市政开放数据（发布方见各地点的来源）"
+      "value": "古迹与纪念牌：所在城市的市政开放数据"
     },
     {
       "name": "about_osrm",
       "value": "步行路线由 OSRM 基于 OpenStreetMap 数据计算"
-    },
-    {
-      "name": "about_mt",
-      "value": "波兰语和中文讲解由 AI 起草的英文机器翻译而来，并已相应标注。"
     },
     {
       "name": "map_full",
@@ -997,12 +913,8 @@
       "value": "关于"
     },
     {
-      "name": "settings_how_made",
-      "value": "这些讲解是如何制作的"
-    },
-    {
       "name": "settings_sources",
-      "value": "来源与许可"
+      "value": "致谢与许可"
     },
     {
       "name": "settings_version",
@@ -1097,24 +1009,12 @@
       "value": "讲解语言"
     },
     {
-      "name": "onb_spoken_laura",
-      "value": "语音 · Laura"
-    },
-    {
-      "name": "onb_spoken_fallback",
-      "value": "语音 · 备用语音"
-    },
-    {
-      "name": "onb_spoken_zh",
-      "value": "语音 · 聆小珊"
+      "name": "onb_spoken",
+      "value": "语音朗读"
     },
     {
       "name": "onb_checking_voice",
       "value": "正在检查本机语音…"
-    },
-    {
-      "name": "onb_installed",
-      "value": "已安装"
     },
     {
       "name": "onb_downloading",
@@ -1157,10 +1057,6 @@
       "value": "尚未游览"
     },
     {
-      "name": "summary_sources",
-      "value": "来源与致谢"
-    },
-    {
       "name": "summary_start_again",
       "value": "重新开始"
     },
@@ -1187,10 +1083,6 @@
     {
       "name": "walk_end_a11y",
       "value": "结束游览"
-    },
-    {
-      "name": "walk_voice_info_a11y",
-      "value": "备用语音。英语由设备上的中文语音朗读。"
     },
     {
       "name": "walk_map_a11y",
@@ -1261,22 +1153,6 @@
       "value": "请向下看"
     },
     {
-      "name": "place_see_sources",
-      "value": "查看来源"
-    },
-    {
-      "name": "place_source_a11y",
-      "value": "来源 %1$d：%2$s。%3$s。在浏览器中打开。"
-    },
-    {
-      "name": "place_reviewed_on",
-      "value": "已于 %s 经人工审核。"
-    },
-    {
-      "name": "place_extract_note",
-      "value": "按原文引用，未添加任何内容。"
-    },
-    {
       "name": "place_basic_note",
       "value": "此地点暂无讲解，仅有名称。"
     },
@@ -1299,14 +1175,6 @@
     {
       "name": "about_arcgis_terms",
       "value": "许可条款未公开；仅用于位置和名称，并注明出处。"
-    },
-    {
-      "name": "about_ai_disclosure_title",
-      "value": "AI 使用说明"
-    },
-    {
-      "name": "about_ai_model",
-      "value": "讲解由 Claude (Anthropic) 根据引用的来源起草，提示词为 historian-v1。只有标注为“已审核”的讲解经过人工核查和编辑。您的手机上不运行任何 AI。"
     },
     {
       "name": "settings_a11y_back",
@@ -1478,39 +1346,11 @@
     },
     {
       "name": "settings_voice_strategy_note",
-      "value": "不影响中文和波兰语。波兰语讲解使用预先录制的录音室语音；没有录音的句子以文字显示，除非您选择“听英语，看波兰语”。"
-    },
-    {
-      "name": "settings_voice_prerendered",
-      "value": "录音室语音（预录制）"
-    },
-    {
-      "name": "voice_studio",
-      "value": "录音室语音"
-    },
-    {
-      "name": "onb_spoken_studio",
-      "value": "语音 · 录音室语音"
-    },
-    {
-      "name": "onb_studio_note_en",
-      "value": "讲解播放预先录制的录音室语音。路线指引使用设备端语音（在安装英语语音之前，由中文语音朗读英语）。"
+      "value": "仅适用于英语。"
     },
     {
       "name": "lang_pl_spoken",
-      "value": "Polski（语音 · 录音室语音）"
-    },
-    {
-      "name": "lang_pl_footnote_studio",
-      "value": "波兰语讲解由预先录制的录音室语音朗读（使用 ElevenLabs 通过 AI 生成）。路线指引和其他实时内容以文字显示：HarmonyOS 设备端语音仅支持英语和中文。"
-    },
-    {
-      "name": "voice_studio_tooltip",
-      "value": "讲解播放预先录制的录音室语音，由 ElevenLabs 通过 AI 生成。路线指引等实时内容使用设备端语音。"
-    },
-    {
-      "name": "walk_voice_studio_a11y",
-      "value": "录音室语音。预先录制的讲解，由 ElevenLabs 通过 AI 生成。"
+      "value": "Polski（语音）"
     },
     {
       "name": "about_voice_title",
@@ -1518,7 +1358,7 @@
     },
     {
       "name": "about_voice_body",
-      "value": "讲解语音由 ElevenLabs 生成（eleven_multilingual_v2，语音“George”）；讲解稿由 AI 起草，请查看审核状态。音频在构建时生成并随应用提供：运行时无需网络，也无需 API 密钥。路线指引和没有录音的内容使用 HarmonyOS 设备端语音，或以文字显示。"
+      "value": "讲解语音由 ElevenLabs 提供（AI 生成，语音“George”）。路线指引和没有录音的句子使用手机内置语音。"
     },
     {
       "name": "walk_menu_how_hide",
@@ -1714,7 +1554,7 @@
     },
     {
       "name": "home_empty_body",
-      "value": "CityTour 的路线保存在路线服务器上。只需下载一次，之后即可完全离线使用。"
+      "value": "下载一条路线即可开始，之后可离线使用。"
     },
     {
       "name": "home_empty_cta",

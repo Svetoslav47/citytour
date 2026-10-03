@@ -109,39 +109,3 @@ export function listedMetres(pack: PackRepository, poiIds: string[]): number {
   return sum;
 }
 
-/** Distinct sources behind the stops (narration sources + POI sources) and whether all stops are reviewed. */
-export class SourceSummary {
-  count: number = 0;
-  allReviewed: boolean = false;
-  /** Some story is an AI draft (reviewed or not), so "short descriptions from Wikipedia" would be wrong. */
-  aiDrafted: boolean = false;
-}
-
-export function sourceSummary(pack: PackRepository, poiIds: string[], personaId: string, lang: Lang): SourceSummary {
-  const ids = new Set<string>();
-  let reviewed = poiIds.length > 0;
-  let ai = false;
-  for (const id of poiIds) {
-    const p = safePoi(pack, id);
-    if (p !== undefined) {
-      p.sourceIds.forEach((s: string) => ids.add(s));
-    }
-    try {
-      const n = pack.narration(id, personaId, lang, NarrationLength.FULL);
-      if (n === undefined || n.tier !== ContentTier.REVIEWED_HISTORIAN) {
-        reviewed = false;
-      }
-      if (n !== undefined) {
-        n.sources.forEach((s: string) => ids.add(s));
-        ai = ai || n.tier === ContentTier.REVIEWED_HISTORIAN || n.tier === ContentTier.GROUNDED_AI;
-      }
-    } catch (e) {
-      reviewed = false;
-    }
-  }
-  const s = new SourceSummary();
-  s.count = ids.size;
-  s.allReviewed = reviewed;
-  s.aiDrafted = ai;
-  return s;
-}

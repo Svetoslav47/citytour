@@ -1,7 +1,7 @@
 /*
  * A tour cover photo (core/remote/CoverRules.ets): full-bleed Image (objectFit Cover, decoded off the UI thread),
- * a dark gradient at the bottom, an optional title on the photo, and the credit "Photo: <author>, <licence>"
- * (12 fp, white on the gradient) that must always travel with the photo (CC BY-SA). While the file loads, or when it
+ * and, with a title, a dark gradient at the bottom with the title on the photo. The photo credit (CC BY-SA:
+ * author, licence, source) lives in Settings -> About, not on the photo. While the file loads, or when it
  * cannot be decoded, a neutral placeholder fills the same box, so the layout never jumps.
  * The gradient is black in both themes: the photo is the same picture in light and dark mode, and white text on it
  * needs the same contrast either way.
@@ -28,8 +28,6 @@ function uriOf(path: string): string {
 export struct CoverPhoto {
   /** Absolute path of the JPEG; '' = placeholder only (still loading). */
   @Param path: string = '';
-  /** "<author>, <licence>" (CoverRules.creditText); shown as "Photo: …". */
-  @Param credit: string = '';
   /** Alt text: what the photo shows. */
   @Param alt: Resource = $r('app.string.about_cover_title');
   /** Optional title drawn on the photo (Tour detail hero). */
@@ -75,34 +73,24 @@ export struct CoverPhoto {
             Log.w(LogEvents.COURSE, `event=cover_decode_fail w=${e.componentWidth} msg=${e.message} fallback=placeholder`);
           })
       }
-      if (this.path !== '' && !this.failed) {
-        Column({ space: 2 }) {
-          if (this.title !== '') {
-            Text(this.title)
-              .fontSize(Type.TITLE1)
-              .lineHeight(Type.TITLE1_LH)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(Color.White)
-              .maxLines(2)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .textShadow({ radius: 6, color: '#66000000', offsetX: 0, offsetY: 1 })
-          }
-          if (this.credit !== '') {
-            Text($r('app.string.cover_photo_credit', this.credit))
-              .fontSize(Type.CAPTION)
-              .lineHeight(Type.CAPTION_LH)
-              .fontColor('#E6FFFFFF')
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
+      if (this.path !== '' && !this.failed && this.title !== '') {
+        Column() {
+          Text(this.title)
+            .fontSize(Type.TITLE1)
+            .lineHeight(Type.TITLE1_LH)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Color.White)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .textShadow({ radius: 6, color: '#66000000', offsetX: 0, offsetY: 1 })
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')
         .padding({
           left: this.textPadding,
           right: this.textPadding,
-          top: this.title !== '' ? 48 : 28,
-          bottom: this.title !== '' ? this.textPadding : Space.S2
+          top: 48,
+          bottom: this.textPadding
         })
         .linearGradient({
           direction: GradientDirection.Top,

@@ -1,11 +1,10 @@
 /*
  * Place detail view model (B8, DESIGN §3.8): the narration to read (FULL, else TEASER; the active text
- * language, else English with "Shown in English"), its tier and provenance for the trust labels, the numbered
- * sources with licences, and the reviewed "where to look" hint for tour stops. Content comes validated from
+ * language, else English), its tier (logged) and the reviewed "where to look" hint for tour stops. Content comes validated from
  * PackRepository.narration() (validator + fallback chain of B3); this class never shows unvalidated text.
  */
-import { ContentTier, Lang, LookDir, MapData, Narration, NarrationLength, Poi, PoiKind, ProvenanceKind, SourceRef, Tour,
-  TourStop } from '../contracts/Model';
+import { ContentTier, Lang, LookDir, MapData, Narration, NarrationLength, Poi, PoiKind, Tour, TourStop
+} from '../contracts/Model';
 import { TourPhase } from '../contracts/EngineTypes';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
@@ -14,24 +13,6 @@ import { MapOverlay } from '../views/map/MapRenderer';
 import { localName } from './Format';
 import { MapCache, placeBounds, placeOverlay } from './MapViewModel';
 import { safePoi } from './PackView';
-
-export class SourceRow {
-  n: number;
-  id: string;
-  title: string;
-  publisher: string;
-  license: string;
-  url: string;
-
-  constructor(n: number, s: SourceRef) {
-    this.n = n;
-    this.id = s.id;
-    this.title = s.title;
-    this.publisher = s.publisher;
-    this.license = s.license;
-    this.url = s.url;
-  }
-}
 
 const HISTORIAN: string = 'historian';
 
@@ -50,13 +31,8 @@ export class PlaceViewModel {
   @Trace stopNumber: number = 0;
   @Trace paragraphs: string[] = [];
   @Trace tier: ContentTier = ContentTier.NAME_ONLY;
-  @Trace machineTranslated: boolean = false;
-  @Trace shownInEnglish: boolean = false;
-  @Trace reviewedAt: string = '';
-  @Trace sources: SourceRow[] = [];
   @Trace look: LookDir | undefined = undefined;
   @Trace lookFeature: string = '';
-  @Trace fromWikipedia: boolean = false;
   @Trace currentStop: boolean = false;
   @Trace map: MapData | undefined = undefined;
   @Trace scene: MapOverlay = new MapOverlay();
@@ -84,22 +60,16 @@ export class PlaceViewModel {
     }
 
     let n = this.narration(poiId, lang);
-    this.shownInEnglish = false;
     if (n === undefined && lang !== Lang.EN) {
       n = this.narration(poiId, Lang.EN);
-      this.shownInEnglish = n !== undefined;
     }
     if (n !== undefined) {
       this.paragraphs = n.sentences.map((s: string) => readable(s)).filter((s: string) => s.length > 0);
       this.tier = n.tier;
-      this.machineTranslated = n.generatedBy.kind === ProvenanceKind.MACHINE_TRANSLATION;
-      this.reviewedAt = n.reviewedBy !== undefined ? n.reviewedBy.at : '';
     } else {
       this.paragraphs = [];
       this.tier = ContentTier.NAME_ONLY;
     }
-    this.sources = this.collectSources(poi, n);
-    this.fromWikipedia = this.sources.some((s: SourceRow) => s.publisher.toLowerCase().indexOf('wikipedia') >= 0);
     try {
       const snap = AppContainer.tourControl().current();
       const idx = snap.currentStopIdx;
@@ -109,8 +79,7 @@ export class PlaceViewModel {
       this.currentStop = false;
     }
     this.found = true;
-    Log.i(LogEvents.NARR_SOURCE, `where=placeDetail poi=${poiId} tier=${this.tier} lang=${lang} ` +
-      `sources=${this.sources.length} mt=${this.machineTranslated}`);
+    Log.i(LogEvents.NARR_SOURCE, `where=placeDetail poi=${poiId} tier=${this.tier} lang=${lang}`);
   }
 
   /** "Tell me more" at the stop being visited: the engine queues the deep layer (TourControl.more). */
@@ -146,28 +115,5 @@ export class PlaceViewModel {
       return 0;
     }
     return 0;
-  }
-
-  private collectSources(poi: Poi, n: Narration | undefined): SourceRow[] {
-    const pack = AppContainer.packRepository();
-    const ids: string[] = [];
-    const add = (id: string): void => {
-      if (id !== '' && ids.indexOf(id) < 0) {
-        ids.push(id);
-      }
-    };
-    if (n !== undefined) {
-      n.sources.forEach((s: string) => add(s));
-      n.claims.forEach((c) => add(c.sourceId));
-    }
-    poi.sourceIds.forEach((s: string) => add(s));
-    const rows: SourceRow[] = [];
-    for (const id of ids) {
-      const ref = pack.source(id);
-      if (ref !== undefined) {
-        rows.push(new SourceRow(rows.length + 1, ref));
-      }
-    }
-    return rows;
   }
 }

@@ -285,43 +285,28 @@ export struct OnboardingPage {
           .lineHeight(Type.CALLOUT_LH)
           .fontColor($r('app.color.text_secondary'))
       }
-    } else if (this.vm.enRow() === EnVoiceRow.NATIVE) {
-      Row({ space: Space.S2 }) {
-        Text($r('app.string.onb_spoken_laura'))
-          .fontSize(Type.CALLOUT)
-          .lineHeight(Type.CALLOUT_LH)
-          .fontColor($r('app.color.text_secondary'))
-        this.chip($r('app.string.onb_installed'))
-      }
     } else if (this.vm.enRow() === EnVoiceRow.DOWNLOADING) {
       Row({ space: Space.S2 }) {
-        Text($r('app.string.onb_spoken_laura'))
-          .fontSize(Type.CALLOUT)
-          .lineHeight(Type.CALLOUT_LH)
-          .fontColor($r('app.color.text_secondary'))
+        this.spoken()
         this.chip($r('app.string.onb_downloading'))
       }
-    } else if (this.vm.studio(Lang.EN)) {
-      // A13: stories play the pre-rendered studio voice whatever the on-device voice state
-      Text($r('app.string.onb_spoken_studio'))
-        .id('txtOnbEnStudio')
-        .fontSize(Type.CALLOUT)
-        .lineHeight(Type.CALLOUT_LH)
-        .fontColor($r('app.color.text_secondary'))
-    } else if (this.vm.enRow() === EnVoiceRow.TEXT_ONLY) {
+    } else if (this.vm.enRow() === EnVoiceRow.TEXT_ONLY && !this.vm.studio(Lang.EN)) {
       Text($r('app.string.voice_text_only_platform'))
         .fontSize(Type.CALLOUT)
         .lineHeight(Type.CALLOUT_LH)
         .fontColor($r('app.color.text_secondary'))
     } else {
-      // FALLBACK and DOWNLOAD_FAILED: the zh-CN voice reads English (binding decision, PLAN §0.4)
-      Row({ space: Space.S2 }) {
-        Text($r('app.string.onb_spoken_fallback'))
-          .fontSize(Type.CALLOUT)
-          .lineHeight(Type.CALLOUT_LH)
-          .fontColor($r('app.color.text_secondary'))
-      }
+      // Which voice speaks (installed, pre-recorded or the Chinese voice) is not labelled here; see Settings > About.
+      this.spoken()
     }
+  }
+
+  @Builder
+  spoken() {
+    Text($r('app.string.onb_spoken'))
+      .fontSize(Type.CALLOUT)
+      .lineHeight(Type.CALLOUT_LH)
+      .fontColor($r('app.color.text_secondary'))
   }
 
   @Builder
@@ -342,12 +327,6 @@ export struct OnboardingPage {
       }
       .width('100%')
       .margin({ top: 10 })
-    } else if (this.vm.enRow() === EnVoiceRow.FALLBACK) {
-      Text(this.vm.studio(Lang.EN) ? $r('app.string.onb_studio_note_en') : $r('app.string.onb_fallback_note'))
-        .fontSize(Type.FOOTNOTE)
-        .lineHeight(Type.FOOTNOTE_LH)
-        .fontColor($r('app.color.text_secondary'))
-        .margin({ top: Space.S1 })
     } else if (this.vm.enRow() === EnVoiceRow.DOWNLOAD_FAILED) {
       Text($r('app.string.voice_download_failed'))
         .id('txtOnbDownloadFailed')
@@ -422,8 +401,8 @@ export struct OnboardingPage {
             .lineHeight(Type.BODY_LH)
             .fontWeight(FontWeight.Medium)
             .fontColor($r('app.color.text_primary'))
-          Text(this.vm.studio(Lang.ZH) ? $r('app.string.onb_spoken_studio') :
-            this.vm.zhSpoken() ? $r('app.string.onb_spoken_zh') : $r('app.string.voice_text_only_platform'))
+          Text(this.vm.studio(Lang.ZH) || this.vm.zhSpoken() ? $r('app.string.onb_spoken') :
+            $r('app.string.voice_text_only_platform'))
             .fontSize(Type.CALLOUT)
             .lineHeight(Type.CALLOUT_LH)
             .fontColor($r('app.color.text_secondary'))
@@ -443,7 +422,7 @@ export struct OnboardingPage {
 
       this.divider(Space.S4)
 
-      // Polski: spoken by the A13 studio clips when they ship, else text only (no Polish voice in Core Speech Kit)
+      // Polski: spoken when the A13 clips ship, else text only (no Polish voice in Core Speech Kit)
       Row({ space: Space.S3 }) {
         Column() {
           Text($r('app.string.lang_polish'))
@@ -452,8 +431,7 @@ export struct OnboardingPage {
             .fontWeight(FontWeight.Medium)
             .fontColor($r('app.color.text_primary'))
           if (this.vm.studio(Lang.PL)) {
-            Text($r('app.string.onb_spoken_studio'))
-              .id('txtOnbPlStudio')
+            Text($r('app.string.onb_spoken'))
               .fontSize(Type.CALLOUT)
               .lineHeight(Type.CALLOUT_LH)
               .fontColor($r('app.color.text_secondary'))
@@ -507,22 +485,24 @@ export struct OnboardingPage {
         .padding({ left: Space.S4, right: Space.S4 })
         .margin({ top: Space.S5 })
 
-        Row({ space: Space.S2 }) {
-          SymbolGlyph($r('sys.symbol.info_circle'))
-            .fontSize(16)
-            .fontColor([$r('app.color.text_secondary')])
-            .margin({ top: 1 })
-            .accessibilityLevel('no')
-          Text(this.vm.studio(Lang.PL) ? $r('app.string.lang_pl_footnote_studio') : $r('app.string.lang_pl_footnote'))
-            .fontSize(Type.FOOTNOTE)
-            .lineHeight(Type.FOOTNOTE_LH)
-            .fontColor($r('app.color.text_secondary'))
-            .layoutWeight(1)
+        if (!this.vm.studio(Lang.PL)) {
+          Row({ space: Space.S2 }) {
+            SymbolGlyph($r('sys.symbol.info_circle'))
+              .fontSize(16)
+              .fontColor([$r('app.color.text_secondary')])
+              .margin({ top: 1 })
+              .accessibilityLevel('no')
+            Text($r('app.string.lang_pl_footnote'))
+              .fontSize(Type.FOOTNOTE)
+              .lineHeight(Type.FOOTNOTE_LH)
+              .fontColor($r('app.color.text_secondary'))
+              .layoutWeight(1)
+          }
+          .alignItems(VerticalAlign.Top)
+          .width('100%')
+          .padding({ left: 20, right: 20 })
+          .margin({ top: Space.S3 })
         }
-        .alignItems(VerticalAlign.Top)
-        .width('100%')
-        .padding({ left: 20, right: 20 })
-        .margin({ top: Space.S3 })
 
         Column({ space: Space.S2 }) {
           Button({ type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.NORMAL }) {

@@ -1,12 +1,11 @@
 /*
- * Place detail (B8, DESIGN §3.8): "why should I trust this?" answered on screen. A 4:3 offline map snippet
- * centred on the place (the pack has no photos), overline (stop number + kind),
- * name (+ Polish name), the provenance chips (TierLabel), the reviewed "where to look" box for tour stops, the
- * transcript (selectable), numbered sources with licences, and the AI / extract note. Missing narration never
- * gives an empty screen: the fallback tier label and a plain note show instead. "Tell me more" only at the stop
- * being visited (TourControl.more).
+ * Place detail (B8, DESIGN §3.8): a 4:3 offline map snippet centred on the place (the pack has no photos),
+ * overline (stop number + kind), name (+ Polish name), the reviewed "where to look" box for tour stops and the
+ * story (selectable). Sources, licences and the AI note live in Settings -> About, not here. Missing narration
+ * never gives an empty screen: a plain line shows instead. "Tell me more" only at the stop being visited
+ * (TourControl.more).
  */
-import { ContentTier, PoiKind } from '../contracts/Model';
+import { PoiKind } from '../contracts/Model';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { AppViewModel } from '../viewmodel/AppViewModel';
@@ -14,10 +13,8 @@ import { PlaceViewModel } from '../viewmodel/PlaceViewModel';
 import { SafeArea } from '../viewmodel/SafeArea';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { MapCanvas } from '../views/map/MapCanvas';
-import { Radius, Size, Space, Type } from '../views/common/Tokens';
+import { Size, Space, Type } from '../views/common/Tokens';
 import { LookBox } from '../views/place/LookBox';
-import { SourcesList } from '../views/place/SourcesList';
-import { TierLabel } from '../views/place/TierLabel';
 
 export function kindLabel(kind: PoiKind): Resource {
   switch (kind) {
@@ -73,39 +70,6 @@ export struct PlaceDetailPage {
   }
 
   @Builder
-  note() {
-    Row({ space: Space.S2 }) {
-      SymbolGlyph($r('sys.symbol.info_circle'))
-        .fontSize(14)
-        .fontColor([$r('app.color.text_secondary')])
-      if (this.vm.tier === ContentTier.REVIEWED_HISTORIAN || this.vm.tier === ContentTier.GROUNDED_AI) {
-        // Only a narration with a human reviewedBy may say "reviewed by a person" (ARCHITECTURE §7.4).
-        Text(this.vm.reviewedAt !== '' ? $r('app.string.place_ai_note', this.vm.reviewedAt) :
-          $r('app.string.place_ai_unreviewed_note'))
-          .fontSize(Type.FOOTNOTE)
-          .lineHeight(Type.FOOTNOTE_LH)
-          .fontColor($r('app.color.text_secondary'))
-          .layoutWeight(1)
-      } else if (this.vm.tier === ContentTier.SOURCE_EXTRACT) {
-        Text($r('app.string.place_extract_note'))
-          .fontSize(Type.FOOTNOTE)
-          .lineHeight(Type.FOOTNOTE_LH)
-          .fontColor($r('app.color.text_secondary'))
-          .layoutWeight(1)
-      } else {
-        Text($r('app.string.place_basic_note'))
-          .fontSize(Type.FOOTNOTE)
-          .lineHeight(Type.FOOTNOTE_LH)
-          .fontColor($r('app.color.text_secondary'))
-          .layoutWeight(1)
-      }
-    }
-    .alignItems(VerticalAlign.Top)
-    .width('100%')
-    .padding({ left: Space.S1, right: Space.S1 })
-  }
-
-  @Builder
   content() {
     Column({ space: 20 }) {
       Column({ space: 2 }) {
@@ -139,14 +103,6 @@ export struct PlaceDetailPage {
       .alignItems(HorizontalAlign.Start)
       .width('100%')
 
-      TierLabel({
-        tier: this.vm.tier,
-        sources: this.vm.sources.length,
-        fromWikipedia: this.vm.fromWikipedia,
-        machineTranslated: this.vm.machineTranslated,
-        shownInEnglish: this.vm.shownInEnglish
-      })
-
       if (this.vm.currentStop) {
         Button($r('app.string.cta_tell_more'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.NORMAL })
           .id('btnTellMore')
@@ -174,26 +130,12 @@ export struct PlaceDetailPage {
         .id('placeTranscript')
         .alignItems(HorizontalAlign.Start)
         .width('100%')
+      } else {
+        Text($r('app.string.place_basic_note'))
+          .fontSize(Type.CALLOUT)
+          .lineHeight(Type.CALLOUT_LH)
+          .fontColor($r('app.color.text_secondary'))
       }
-
-      if (this.vm.sources.length > 0) {
-        Column({ space: Space.S2 }) {
-          this.sectionHeader($r('app.string.place_sources'))
-          SourcesList({ rows: this.vm.sources })
-        }
-        .alignItems(HorizontalAlign.Start)
-        .width('100%')
-      }
-
-      this.note()
-
-      Text($r('app.string.place_see_sources'))
-        .id('btnAboutSources')
-        .fontSize(Type.CALLOUT)
-        .fontWeight(FontWeight.Medium)
-        .fontColor($r('app.color.accent'))
-        .padding({ left: Space.S1, top: Space.S2, bottom: Space.S2 })
-        .onClick(() => this.app.openAbout())
 
       Column().height(Space.S6)
     }

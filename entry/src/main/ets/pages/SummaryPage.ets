@@ -2,10 +2,10 @@
  * Tour summary (B11, DESIGN §3.10): closes the loop after a tour. Header "Tour complete" / "Tour ended" with Done
  * (-> Home), the walked route on the offline map, tour title and date, the amber SIMULATED pill and note for the Demo
  * walk, the stat trio (stops heard, walked, total), "You heard" (tap -> Place detail), "Still to see" with the
- * distance from where the walk ended, Sources and credits, and Start again (-> Tour detail).
+ * distance from where the walk ended, and Start again (-> Tour detail).
  * No confetti, no rating prompt, no share push. Opened by Now Walking when the tour ends (SummaryViewModel.pending).
  * Ids: pageSummary, btnSummaryDone, mapSummary, badgeSimulated, txtSummarySimulated, statStops, statWalked, statTotal,
- * listHeard, listStillToSee, btnSummarySources, btnStartAgain.
+ * listHeard, listStillToSee, btnStartAgain.
  */
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
@@ -197,24 +197,6 @@ export struct SummaryPage {
         this.sectionHeader($r('app.string.summary_still_to_see'))
         this.stillList()
       }
-
-      Row() {
-        Text($r('app.string.summary_sources'))
-          .fontSize(Type.BODY)
-          .fontColor($r('app.color.text_primary'))
-          .layoutWeight(1)
-        SymbolGlyph($r('sys.symbol.chevron_right'))
-          .fontSize(16)
-          .fontColor([$r('app.color.text_tertiary')])
-      }
-      .id('btnSummarySources')
-      .width('100%')
-      .height(Size.TOUCH)
-      .padding({ left: Space.S4, right: 12 })
-      .margin({ top: Space.S5 })
-      .borderRadius(Radius.LG)
-      .backgroundColor($r('app.color.bg_surface'))
-      .onClick(() => this.app.openAbout())
 
       if (this.vm.data !== undefined && this.vm.data.tourId !== '') {
         Button($r('app.string.summary_start_again'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.NORMAL })

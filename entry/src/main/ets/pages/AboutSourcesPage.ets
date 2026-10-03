@@ -1,8 +1,9 @@
 /*
- * About & licences (B8, DESIGN §3.15, ARCHITECTURE §7.1 licences, RISKS T14): how the stories are made (AI
- * disclosure), every data source with its licence and attribution, the machine-translation note, and the offline
- * pack's version from its manifest, and the full credit of each downloaded course's cover photo (author, licence +
- * link, Commons page, our changes; data/ATTRIBUTION.md). Offline.
+ * About & licences (B8, DESIGN §3.15, ARCHITECTURE §7.1 licences, RISKS T14): the ONLY screen with attribution and
+ * disclosure (the everyday screens stay clean; AI and sources are also presented in the pitch). In order: the full
+ * credit of each downloaded course's cover photo (author, licence + link, Commons page, our changes;
+ * data/ATTRIBUTION.md), map and data licences, the narration voice credit (ElevenLabs), one short paragraph on how
+ * the stories are made (AI, machine translation), and the offline pack's version. Offline.
  */
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
@@ -141,12 +142,19 @@ export struct AboutSourcesPage {
 
         Scroll() {
           Column() {
-            this.header($r('app.string.about_ai_title'))
-            this.card($r('app.string.about_ai_body'), 'aboutAi')
-            this.header($r('app.string.about_ai_disclosure_title'))
-            this.card($r('app.string.about_ai_model'), 'aboutModel')
-            this.header($r('app.string.about_voice_title'))
-            this.card($r('app.string.about_voice_body'), 'aboutVoice')
+            if (this.covers.length > 0) {
+              this.header($r('app.string.about_cover_title'))
+              Column() {
+                ForEach(this.covers, (c: CourseCoverCredit, idx: number) => {
+                  this.coverRow(c, idx)
+                }, (c: CourseCoverCredit) => c.id)
+              }
+              .id('aboutCovers')
+              .width('100%')
+              .padding({ left: Space.S4, right: Space.S4 })
+              .borderRadius(Radius.LG)
+              .backgroundColor($r('app.color.bg_surface'))
+            }
 
             this.header($r('app.string.about_data_title'))
             Column() {
@@ -175,25 +183,11 @@ export struct AboutSourcesPage {
             .borderRadius(Radius.LG)
             .backgroundColor($r('app.color.bg_surface'))
 
-            Column() {
-              this.card($r('app.string.about_mt'), 'aboutMt')
-            }
-            .width('100%')
-            .margin({ top: Space.S3 })
+            this.header($r('app.string.about_voice_title'))
+            this.card($r('app.string.about_voice_body'), 'aboutVoice')
 
-            if (this.covers.length > 0) {
-              this.header($r('app.string.about_cover_title'))
-              Column() {
-                ForEach(this.covers, (c: CourseCoverCredit, idx: number) => {
-                  this.coverRow(c, idx)
-                }, (c: CourseCoverCredit) => c.id)
-              }
-              .id('aboutCovers')
-              .width('100%')
-              .padding({ left: Space.S4, right: Space.S4 })
-              .borderRadius(Radius.LG)
-              .backgroundColor($r('app.color.bg_surface'))
-            }
+            this.header($r('app.string.about_ai_title'))
+            this.card($r('app.string.about_ai_body'), 'aboutAi')
 
             if (this.app.packVersion !== '') {
               this.header($r('app.string.about_pack_title'))

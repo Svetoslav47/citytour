@@ -1529,9 +1529,9 @@ export class TourController implements TourControl {
   }
 
   /**
-   * Artist = "CityTour · <persona>" (the service appends " · Fallback voice" / " · Studio voice" / " · DEMO"); the
-   * engine puts the tour title there, which the card already shows as the album. The voice part is the label heard
-   * last (heardLabel), not the tour plan: a welcome line read by native TTS must not say "Studio voice".
+   * Artist = "CityTour · <persona>" (the service appends " · DEMO" for the Demo walk); the engine puts the tour
+   * title there, which the card already shows as the album. voiceLabel is the label heard last (heardLabel), not
+   * the tour plan; it is logged, not shown.
    */
   private sendMeta(meta: MediaMeta): void {
     const media: MediaSessionPort | undefined = this.safeGet(this.deps.media, 'media');

@@ -6,7 +6,6 @@
 import { TourPlan } from '../contracts/EngineTypes';
 import { Lang } from '../contracts/Model';
 import { FixSource, PermissionState } from '../contracts/Ports';
-import { VoiceLabel } from '../contracts/Settings';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
@@ -20,7 +19,7 @@ import { CoverModel } from './CoverModel';
 import { SettingsViewModel } from './SettingsViewModel';
 import { localName } from './Format';
 import {
-  findTour, legMetres, listedMetres, personaName, poiName, previewPoints, safeRoutes, sourceSummary, stopRows
+  findTour, legMetres, listedMetres, personaName, poiName, previewPoints, safeRoutes, stopRows
 } from './PackView';
 
 /** Flow D banners on Tour detail. */
@@ -66,10 +65,6 @@ export class TourPlanViewModel {
   @Trace orderBounds: number[] = [];
   @Trace listedM: number = 0;
   @Trace estMinutes: number = 0;
-  @Trace sourcesCount: number = 0;
-  @Trace allReviewed: boolean = false;
-  @Trace aiDrafted: boolean = false;
-  @Trace voiceLabel: VoiceLabel = VoiceLabel.TEXT_ONLY_PLATFORM;
   /** Tour detail hero: the active course's cover photo (the map preview stays as the hero when it has none). */
   @Trace cover: CoverModel = new CoverModel();
 
@@ -121,16 +116,6 @@ export class TourPlanViewModel {
     this.sceneBounds = overlayBounds(this.scene) ?? [];
     this.listedM = listedMetres(pack, ids);
     this.estMinutes = tour.estMinutes;
-    const src = sourceSummary(pack, ids, tour.personaId, lang);
-    this.sourcesCount = src.count;
-    this.allReviewed = src.allReviewed;
-    this.aiDrafted = src.aiDrafted;
-    try {
-      this.voiceLabel = AppContainer.voiceManager().storyPlan(lang).label;   // A13: "Studio voice" with clips
-    } catch (e) {
-      this.voiceLabel = VoiceLabel.TEXT_ONLY_PLATFORM;
-      Log.e(LogEvents.UNCAUGHT, `where=TourPlanViewModel.voicePlan ${Log.errKv(e as Object)}`);
-    }
     this.found = true;
     let courseId = '';
     try {
