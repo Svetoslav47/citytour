@@ -706,6 +706,26 @@ Loading:
 - Read with `context.resourceManager.getRawFileContent('packs/krakow/pois.json')` (VERIFIED) and decode with `util.TextDecoder` (ASSUMPTION: exact method `decodeToString`).
 - Parse in `RawfilePackRepository` → `PackParser`. The load happens once at splash, asynchronously, and is logged as `PACK_LOAD ms=…`.
 
+### 7.2a City packs and course overlays (data split, server side)
+
+The full course pack above carries the whole city; courses of one city differ only in their own stops. So the
+published data is split (`scripts/pack/split-city.mjs`, deterministic, re-run by `build-pack.sh`; `--check` and
+`split-city.test.mjs` assert the committed outputs equal a fresh split):
+
+- **City pack** `data/city/<cityId>/` (meta: hand-written `data/city/<cityId>.json`): `pois.json`,
+  `narrations/{en,pl,zh}.json`, `sources.json`, `map-detail.json` byte-identical to the full pack of the city's
+  `sourceCourse` (krakow), plus `city.json` (`{schemaVersion, cityId, names, origin, bbox, defaultBounds,
+  properNouns?}`) and a `manifest.json` in the pack format with `cityId`. Published with `npm run publish-city`.
+- **Course overlay** `data/course/<courseId>/tour/`: `tours.json`, `routes.json`, `personas.json`; the full pack's
+  POI records, narrations (all lengths, en/pl/zh) and referenced sources of the tour's stops only;
+  `map-detail.json` only when it differs from the city's (krakow-kazimierz); `demo-walk.json`; the cover; a
+  `manifest.json` (packId = courseId, version `<full pack version>-t<8 hex>`, `cityId`). Published with
+  `publish-course --pack data/course/<id>/tour --city-id <cityId>`.
+- Which city a course belongs to: `COURSE_CITY` in `scripts/pack/lib/course.mjs`. The full packs
+  (`packs/<id>/`) stay the pipeline's output and test reference; they are no longer what new publishes ship.
+- Server: `GET /v1/cities/:cityId/manifest` (signed), `cities` in the catalog, `cityId` in the course manifest and
+  summary; the course's TTS allowed set also covers the city's narrations (docs/SERVER.md §3.1 "City packs").
+
 ### 7.3 Schemas (ArkTS, in `contracts/Model.ets`; the pipeline mirrors them in `scripts/pack/schema.mjs`)
 
 ```ts
