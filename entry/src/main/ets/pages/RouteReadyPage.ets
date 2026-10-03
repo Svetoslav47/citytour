@@ -10,7 +10,7 @@ import { IssueCode } from '../contracts/EngineTypes';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { AppViewModel } from '../viewmodel/AppViewModel';
-import { distanceRes, durationRes, savingRes } from '../viewmodel/Format';
+import { distanceRes, durationRes } from '../viewmodel/Format';
 import { BUDGET_OPTIONS_MIN, OrderRow, TourPlanViewModel } from '../viewmodel/TourPlanViewModel';
 import { SegmentOption, SegmentRow } from '../views/settings/SettingsRows';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
@@ -135,47 +135,6 @@ export struct RouteReadyPage {
       .lineHeight(Type.BODY_LH)
       .fontFeature(TABULAR)
       .fontColor($r('app.color.text_secondary'))
-
-      if (this.vm.showSaving()) {
-        Row({ space: Space.S2 }) {
-          SymbolGlyph($r('sys.symbol.checkmark'))
-            .fontSize(16)
-            .fontColor([$r('app.color.accent')])
-          Text(savingRes(this.vm.plan.savedM))
-            .fontSize(Type.CALLOUT)
-            .lineHeight(Type.CALLOUT_LH)
-            .fontColor($r('app.color.text_primary'))
-            .layoutWeight(1)
-        }
-        .alignItems(VerticalAlign.Top)
-        .margin({ top: 10 })
-      } else if (this.vm.showListedOptimal()) {
-        Text($r('app.string.route_listed_optimal'))
-          .fontSize(Type.CALLOUT)
-          .fontColor($r('app.color.text_secondary'))
-          .margin({ top: 10 })
-      }
-      if (this.vm.showBudgetResult()) {
-        Text() {
-          Span($r('app.string.route_budget_best', this.vm.chosenStops(), this.vm.stops.length))
-          if (this.vm.plan.exact) {
-            Span(' · ')
-            Span($r('app.string.route_budget_exact'))
-          }
-        }
-        .id('txtBudgetResult')
-        .fontSize(Type.CALLOUT)
-        .lineHeight(Type.CALLOUT_LH)
-        .fontFeature(TABULAR)
-        .fontColor($r('app.color.text_primary'))
-        .margin({ top: 10 })
-      }
-      if (this.vm.isRealPlanner()) {
-        Text($r('app.string.route_computed', this.vm.plan.ms, this.vm.plan.algo))
-          .fontSize(Type.FOOTNOTE)
-          .fontColor($r('app.color.text_secondary'))
-          .margin({ top: Space.S1 })
-      }
     }
   }
 
