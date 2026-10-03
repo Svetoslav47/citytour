@@ -117,6 +117,7 @@ export class DataStore {
       throw new Error('bad blob id');
     }
     if (!existsSync(p)) {
+      await mkdir(this.blobsDir, { recursive: true });
       await writeFileAtomic(p, data);
     }
   }
@@ -168,6 +169,7 @@ export class DataStore {
 
   addUsage(day: string, chars: number): Promise<void> {
     const run = async (): Promise<void> => {
+      await mkdir(join(this.dataDir, 'usage'), { recursive: true });
       const prev = await this.usage(day);
       const now = { day, chars: prev + chars, updatedAt: new Date().toISOString() };
       await writeFileAtomic(this.usagePath(day), JSON.stringify(now));
