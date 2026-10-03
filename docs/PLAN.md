@@ -873,6 +873,47 @@ You are a Claude Code agent in the git worktree ../citytour-wt/onboarding (branc
 Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in your task card; contracts/ is read-only (if a contract must change, stop and tell the human). Verify every Kit/API with `devecocli docs search <keywords>` / `devecocli docs read <id>` before using it and cite the doc id in the commit message; guard anything whose 起始版本 is above API 20 (compatibleSdkVersion is 6.0.0(20)). core/ stays pure (no @kit imports); State Management V2 only (no V1 decorators). Log only through app/Log.ets (domain 0xC17A, tag CityTour, `EVENT k=v`). Anything simulated shows SIMULATED on screen and src=demo in logs. Never crash: try/catch + Promise.catch at every platform call, explicit timeouts, a visible state for each failure. Run `devecocli check arkts` before each build. Commit after every small working step with a descriptive message, push every 2-3 commits. Add or extend unit tests and keep `scripts/test.sh` green. Append one row to AI_WORKFLOW.md (task, what you generated, how it was verified). Only one agent per Mac drives the emulator at a time: tell the human before `devecocli run`. When done: `git fetch && git rebase origin/main`, run every command in the card's Verify block, open a PR with `gh pr create --base main` (title = task id + title, body = 'Closes #<issue>' + verified vs unverified list) and stop. Never merge to main.
 ```
 
+<a id="a13"></a>
+
+### A13 · ElevenLabs pre-rendered stories (hybrid voice) with native-TTS fallback
+
+| Owner | Branch | Priority | Estimate | Depends on | Lane | When |
+|---|---|---|---|---|---|---|
+| A | `cap/elevenlabs-voice` | P2 (one of A's last tasks; user decision 2026-10-03) | 2.5 h | A4, A7, B7 (reviewed EN scripts + zh/pl MT), B2/B3 (pack format) | headless pipeline + emulator | Player part can start any time after A7. Rendering starts after the B7 review (~22:30). Gate **G-EL at 01:00**: if it isn't working end to end, drop it. Native TTS stays as is, with nothing to undo. |
+
+**Goal.** The 11 Historian stop stories play in a studio-quality ElevenLabs voice, pre-rendered at build time, in **EN, PL and ZH**. This also gives Polish real audio. Dynamic lines (directions, "look up on your left", welcome, GPS lost) stay on **native on-device TTS** (Core Speech Kit). Whenever a clip is missing, mismatched or fails, the app falls back to native TTS, then to text.
+
+**Why pre-render, not live.** It needs no API key in the app and no network at runtime, so the tour still works offline. The demo is deterministic. A key in the `.hap` would be a committed secret, which breaks the challenge rules and the automated pre-review.
+
+**Files (exclusive to this task).**
+- `scripts/voice/render-elevenlabs.mjs`. Node 22, stdlib `fetch` only.
+  - Reads `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` **from the environment only**. Never prints the key or writes it to disk.
+  - Renders one clip per sentence (sentence = utterance, so captions and "never cut mid-sentence" keep working), per language, with the multilingual model.
+  - Writes `entry/src/main/resources/rawfile/audio/<lang>/<poiId>/<n>.mp3` plus `rawfile/audio/manifest.json` (`{lang, poiId, n, textSha256, durationMs, voiceId, model, renderedAt}`).
+  - Idempotent: it skips clips whose `textSha256` is unchanged. It has a `--dry-run` that prints the character count and cost estimate.
+- `entry/src/main/ets/services/audio/ClipPlayer.ets`: plays rawfile mp3 with AVPlayer (fd from the resource manager); end-of-clip callback; pause/resume/stop.
+- `entry/src/main/ets/services/speech/NarrationPlayer.ets` (extend A4's file): for each SPEAK of a stop-story sentence, play the clip when the manifest has a matching `textSha256` for that lang/poi/n; otherwise use native TTS (current behaviour). Log `NARR_AUDIO src=prerendered|tts|text reason=…`.
+- `entry/src/test/ClipSelection.test.ets` (pure selection logic: hash match / missing / language / persona).
+- `scripts/git-hooks/pre-commit`: add a check that rejects `ELEVENLABS_API_KEY=` and `xi-api-key` values.
+- `data/ATTRIBUTION.md` and `AI_WORKFLOW.md`: disclose the AI voice (ElevenLabs, model, voice, plan/licence terms).
+
+**Scope / rules.**
+- AVSession, lock-screen controls and the continuous task work exactly as before. The clip path goes through the same sentence queue (pause, replay and skip all work).
+- UI voice label: stop stories show **"Studio voice (pre-recorded)"**; dynamic lines keep "Fallback voice"/native labels. If the contract's `VoiceLabel` needs a new value, make it a tiny separate contracts commit flagged for B's review.
+- Size budget: mono, about 48–64 kbps. Report the total MB in the PR (target under 45 MB).
+- The user supplies the key at run time (`export ELEVENLABS_API_KEY=…` in their own shell). Agents never ask for it in chat and never write it to a file.
+
+**Definition of Done.**
+- [ ] `node scripts/voice/render-elevenlabs.mjs --dry-run` prints the clip count and characters per language.
+- [ ] After rendering: in a demo tour on the emulator, stop stories log `NARR_AUDIO src=prerendered` and dynamic lines log `src=tts`.
+- [ ] Deleting one clip makes that sentence fall back to `src=tts` with no crash.
+- [ ] Polish stop stories are now spoken; the Polish "text only" label is updated where it applies.
+- [ ] `git log -p | grep -i -E "xi-api-key|ELEVENLABS_API_KEY="` finds no key; the pre-commit hook blocks a fake key.
+- [ ] README (voice section), ATTRIBUTION and AI_WORKFLOW (AI feature disclosure) are updated.
+- [ ] Rebased on `origin/main`, PR opened listing verified and unverified items, and an `AI_WORKFLOW.md` row added.
+
+**Fallback (gate G-EL, 01:00).** If ElevenLabs fails (no key, quota, quality, size, time), close the task as "dropped". The app already runs fully on native TTS.
+
 <a id="b1"></a>
 
 ### B1 · Raw data snapshots committed (ArcGIS, Wikidata, Wikipedia, OSM tiles, OSRM) + curated tour

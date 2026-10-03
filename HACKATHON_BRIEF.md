@@ -38,7 +38,8 @@ The user owns the decisions recorded here. Unresolved fields may remain blank; d
   - **Guided tour first**: one curated Kraków tour for now.
   - **All Kraków locations installed** in the offline data (not only the tour stops).
   - Languages: **English, Polish, Chinese**.
-  - Voice: **on-device text-to-speech only**.
+  - Voice: **on-device text-to-speech** (Core Speech Kit) for all dynamic guidance and as the universal fallback.
+  - Voice upgrade (user decision 2026-10-03, task A13, one of Person A's last tasks): stop stories pre-rendered with **ElevenLabs** at build time (EN/PL/ZH, which also gives spoken Polish). Dynamic guidance stays on native TTS. If ElevenLabs doesn't work by gate G-EL (01:00), we stay on native TTS. No API key ever ships in the app or the repo.
   - One guide persona, **"Historian"**. The design must allow a second persona to be added later.
   - Map: **not** Huawei Map Kit (user decision 2026-10-03); use the best alternative chosen in the architecture (see docs/ARCHITECTURE.md).
   - Polish: UI and full narration **text** in Polish; **spoken** narration in English and Chinese only (Core Speech Kit TTS supports only zh-CN and en-US). Documented as a platform limitation.
