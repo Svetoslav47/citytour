@@ -1,5 +1,5 @@
-// Watch pack (docs/research/WATCH.md, task W3): a small offline pack for the watch HAP, cut from the downloaded
-// Kraków course pack. Same schema as the phone pack (PackParser reads it unchanged), but only one tour, its stops'
+// Watch pack (docs/research/WATCH.md, task W3): a small offline pack for the watch HAP, cut from the Kraków
+// Royal Route course (data/course/krakow/tour). Same schema as the phone pack (PackParser reads it unchanged), but only one tour, its stops'
 // POIs, its route legs and the personas. No narrations and no audio clips (the watch has no TTS and the first
 // watch slice plays no audio). Deterministic: the same input gives the same bytes.
 // Usage: node scripts/pack/watch-pack.mjs            (writes wearable/src/main/resources/rawfile/watch/<tour>/)
@@ -10,12 +10,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-export const SRC_DIR = join(REPO_ROOT, 'data/course/krakow/packs/krakow');
+// The course's own overlay (data/course/<id>/tour/, city packs since PR #89): its tour, stop records, routes, personas.
+export const SRC_DIR = join(REPO_ROOT, 'data/course/krakow/tour');
 export const TOUR_ID = 'royal-route';
 export const OUT_DIR = join(REPO_ROOT, 'wearable/src/main/resources/rawfile/watch', TOUR_ID);
 export const FILES = ['tours.json', 'pois.json', 'routes.json', 'personas.json'];
-// The SIMULATED Demo walk track is the phone's (scripts/demo/make-demo-walk.mjs); the watch gets a byte copy.
-export const DEMO_SRC = join(REPO_ROOT, 'entry/src/main/resources/rawfile/demo/royal-route-walk.json');
+// The SIMULATED Demo walk track is the course's (scripts/demo/make-demo-walk.mjs); the watch gets a byte copy.
+export const DEMO_SRC = join(SRC_DIR, 'demo-walk.json');
 export const DEMO_OUT = join(REPO_ROOT, 'wearable/src/main/resources/rawfile/demo/royal-route-walk.json');
 
 const readJson = (dir, f) => JSON.parse(readFileSync(join(dir, f), 'utf8'));

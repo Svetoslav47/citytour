@@ -39,6 +39,6 @@ test('the watch pack stays small (< 300 KB in total)', () => {
   assert.ok(bytes < 300 * 1024, `bytes=${bytes}`);
 });
 
-test('the watch Demo walk track is a byte copy of the phone track (SIMULATED, same route)', () => {
+test('the watch Demo walk track is a byte copy of the course track (SIMULATED, same route)', () => {
   assert.ok(readFileSync(DEMO_OUT).equals(readFileSync(DEMO_SRC)));
 });
