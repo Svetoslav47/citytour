@@ -1,5 +1,5 @@
 {
-  "$comment": "Human-curated source for the Kazimierz tour (course krakow-kazimierz, docs/research/new-tours.md §2). Same format as royal-route.json: tour-level id, personaId, titles, summaries, fixedStartPoiId, fixedEndPoiId, estMinutes and per-stop poiId, dwellS, prize, triggerRadiusM, approachRadiusM mirror contracts/Model.ets Tour/TourStop; per-stop wikidataId, kind, names, lat, lng and view {look, feature} feed the Poi records. Review-only keys (not emitted): $comment, courseId, mapArea, sourceQids, summariesReview, namesSource, estMinutesBasis, coordinatesConfirmedBy, coordinateMethod, radiiNote, toneNote, n, coordinateSource, coordinateCheck, view.basis, view.review. Coordinates, radii, dwell times, prizes and view hints are agent drafts until a human confirms them.",
+  "$comment": "Human-curated source for the Kazimierz tour (course krakow-kazimierz, docs/research/new-tours.md §2). Same format as royal-route.json: tour-level id, personaId, titles, summaries, fixedStartPoiId, fixedEndPoiId, estMinutes and per-stop poiId, dwellS, prize, triggerRadiusM, approachRadiusM mirror contracts/Model.ets Tour/TourStop; per-stop wikidataId, kind, names, lat, lng and view {look, feature} feed the Poi records. Review-only keys (not emitted): $comment, courseId, mapArea, sourceQids, summariesReview, namesSource, estMinutesBasis, coordinatesConfirmedBy, coordinateMethod, radiiNote, toneNote, n, sensitive, coordinateSource, coordinateCheck, view.basis, view.review. Coordinates, radii, dwell times, prizes and view hints are agent drafts until a human confirms them.",
   "id": "kazimierz",
   "courseId": "krakow-kazimierz",
   "mapArea": "kazimierz",
@@ -250,6 +250,7 @@
       "poiId": "poi_wd_Q3354482",
       "wikidataId": "Q3354482",
       "kind": "synagogue",
+      "sensitive": true,
       "names": {
         "en": "Tempel Synagogue",
         "pl": "Synagoga Tempel",
@@ -293,6 +294,7 @@
       "poiId": "poi_wd_Q3507991",
       "wikidataId": "Q3507991",
       "kind": "synagogue",
+      "sensitive": true,
       "names": {
         "en": "Kupa Synagogue",
         "pl": "Synagoga Kupa",
@@ -336,6 +338,7 @@
       "poiId": "poi_wd_Q3109262",
       "wikidataId": "Q3109262",
       "kind": "synagogue",
+      "sensitive": true,
       "names": {
         "en": "Izaak Synagogue",
         "pl": "Synagoga Izaaka",
@@ -379,6 +382,7 @@
       "poiId": "poi_wd_Q3618",
       "wikidataId": "Q3618",
       "kind": "synagogue",
+      "sensitive": true,
       "names": {
         "en": "Remuh Synagogue",
         "pl": "Synagoga Remu",
@@ -422,6 +426,7 @@
       "poiId": "poi_wd_Q3511288",
       "wikidataId": "Q3511288",
       "kind": "synagogue",
+      "sensitive": true,
       "names": {
         "en": "Popper Synagogue",
         "pl": "Synagoga Poppera",
@@ -465,6 +470,7 @@
       "poiId": "poi_wd_Q3502453",
       "wikidataId": "Q3502453",
       "kind": "synagogue",
+      "sensitive": true,
       "names": {
         "en": "Old Synagogue",
         "pl": "Synagoga Stara",

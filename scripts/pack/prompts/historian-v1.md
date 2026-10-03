@@ -72,6 +72,8 @@ Validator spec v1 rejects a section that contains any of:
 
 The persona also avoids, without a validator rule: "supposedly", "some say", "perhaps", superlatives the source does not make, exclamation marks, and talking about itself or about AI.
 
+**Sensitive stops** (tour stops marked `"sensitive": true`, e.g. the Kazimierz synagogues: Holocaust history, the post-war Kraków pogrom, places of worship and remembrance; docs/research/new-tours.md §2.2). The Historian stays warm but becomes plainly factual: name what happened and to whom, in the source's words, without adjectives, jokes, "fun facts", speculation or superlatives about suffering, and never use prize or game language. Present the place as living heritage as well as a place of loss when the source supports it (an active congregation, a festival). `check-drafts.mjs` adds a `tone` check for these stops: no exclamation mark and none of its `SENSITIVE_FORBIDDEN` words (en/pl/zh; also applied to the translations).
+
 ## 8. Length and language checks (validator spec v1)
 
 - teaser 15–60 words, full 120–420, deep ≤ 900; every sentence ≤ 45 words; under 10,000 characters in total.

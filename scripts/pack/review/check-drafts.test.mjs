@@ -11,7 +11,10 @@ import {
   parseReviewFile,
   properNounCandidates,
   reviewFiles,
+  loadStops,
+  toneHits,
 } from './check-drafts.mjs';
+import { resolveCourse } from '../lib/course.mjs';
 
 // A self-contained fixture: one fake stop, one fake source text.
 const SOURCE_ID = 'wp:en:Test Gate@123';
@@ -266,4 +269,27 @@ test('translations: EN claims inherited, translation meta required, STALE warnin
   assert.notEqual(scriptHash(parseReviewFile(fixture({ teaser: ['This is the Test Gate, built of red brick in 1400, by the road.'] }))), scriptHash(en));
   assert.deepEqual(reviewState({ reviewed: 'MS 2026-10-03', status: 'edited' }), { reviewed: true, review: { reviewer: 'MS', at: '2026-10-03', status: 'edited' } });
   assert.ok(reviewState({ reviewed: '', status: 'approved' }).error);
+});
+
+test('tone: a sensitive stop rejects exclamation marks and trivia or prize words; other stops are not affected', () => {
+  assert.deepEqual(toneHits('He refused, and he was shot dead.'), []);
+  assert.deepEqual(toneHits('A funeral was held, and the fund paid for it.'), []);          // "fun" is not a hit
+  assert.ok(toneHits('Fun fact: the doors were moved!').includes('exclamation mark'));
+  assert.ok(toneHits('Did you know the synagogue had a prize?').includes('"did you know"'));
+  assert.ok(toneHits('Ciekawostka: synagoga.').includes('"ciekawostk"'));
+  assert.ok(toneHits('这是一个有趣的故事。').includes('"有趣"'));
+  const teaser = ['This is the Test Gate, built of red brick in 1400!', 'Look for the stone eagle that sits above its arch, carved by Jan Kowalski.'];
+  const sensitive = { ...STOP, sensitive: true };
+  const r = checkReview(parseReviewFile(fixture({ teaser })), { ...ctx, stops: new Map([[STOP.poiId, sensitive]]) });
+  assert.ok(r.failures.some((f) => f.check === 'tone' && f.where === 'teaser'), JSON.stringify(r.failures));
+  assert.ok(!checksOf(run({ teaser })).includes('tone'));
+});
+
+test('the Kazimierz review files pass, synagogue stops (6-11) are marked sensitive', () => {
+  const { ok, output, results } = main(['--course', 'krakow-kazimierz']);
+  assert.ok(ok, output);
+  assert.equal(results.filter((r) => r.lang === 'en').length, 11);
+  const stops = [...loadStops(undefined, resolveCourse({ course: 'krakow-kazimierz' })).values()];
+  assert.deepEqual(stops.map((s) => s.sensitive === true), stops.map((s) => s.kind === 'synagogue'));
+  assert.equal(stops.filter((s) => s.sensitive).length, 6);
 });
