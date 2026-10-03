@@ -22,12 +22,18 @@
  *   play -> resume, pause/stop -> pause, playNext -> skip the sentence, playPrevious -> replay the sample,
  *   toggleFavorite ("Tell me more") -> the "more" sample. The card text is DEV TEST DATA, so the artist line
  *   carries " · DEMO".
+ * A7 "Demo tour" section (DemoTourSection, first on the page): the real TourController via
+ * AppContainer.tourControl(): "Start demo tour" = setSource(DEMO) -> plan(first tour) -> start(); "End tour";
+ * "Demo xN (cycle)" and "Jump to next stop" (Demo assist). A status line shows phase, SIMULATED, next stop,
+ * voice label and platform flags; the caption line shows the sentence being said.
  * Developer page: literal strings on purpose (resource strings are B-owned and this page is not user-facing).
  */
-import { Lang } from '../contracts/Model';
+import { Lang, Tour } from '../contracts/Model';
 import { EnVoiceStrategy, VoiceLabel } from '../contracts/Settings';
-import { BackgroundListener, MediaCommand, SpeechCapabilities, SpeechListener, Utterance, VoicePlan } from '../contracts/Ports';
-import { MediaMeta, MediaPlayState } from '../contracts/EngineTypes';
+import {
+  BackgroundListener, FixSource, MediaCommand, SpeechCapabilities, SpeechListener, TourControl, Utterance, VoicePlan
+} from '../contracts/Ports';
+import { EngineSnapshot, MediaMeta, MediaPlayState, NextInfo, TourPlan } from '../contracts/EngineTypes';
 import { stripPauseMarkup } from '../core/speech/VoicePolicy';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
@@ -204,6 +210,77 @@ class DevBgListener implements BackgroundListener {
 
   onSuspended(reason: string): void {
     this.suspended();
+  }
+}
+
+const DEMO_SPEED_CYCLE: number[] = [8, 4, 2, 1];
+
+/** A7: drives the real TourController with the Demo walk (SIMULATED). */
+@ComponentV2
+struct DemoTourSection {
+  @Local line: string = 'tour: idle';
+  @Local caption: string = '';
+  @Local speed: number = 8;
+  private unsub: (() => void) | undefined = undefined;
+
+  aboutToAppear(): void {
+    try {
+      this.unsub = AppContainer.tourControl().subscribe((s: EngineSnapshot) => this.render(s));
+    } catch (e) {
+      this.line = `tour: subscribe failed ${Log.errKv(e as Object)}`;
+    }
+  }
+
+  aboutToDisappear(): void {
+    if (this.unsub !== undefined) {
+      this.unsub();
+      this.unsub = undefined;
+    }
+  }
+
+  private render(s: EngineSnapshot): void {
+    const n: NextInfo | undefined = s.next;
+    const next: string = n === undefined ? '-' :
+      `${n.poiId} ${Number.isFinite(n.distanceM) ? Math.round(n.distanceM) + ' m' : '?'}`;
+    this.line = `${s.phase}${s.paused ? ' (paused)' : ''} | ${s.source === FixSource.DEMO ? 'SIMULATED demo walk' : 'real GPS'}` +
+      ` | next ${next} | voice ${s.voiceLabel} | bg=${s.platform.bgRunning ? 1 : 0} avs=${s.platform.avsActive ? 1 : 0}` +
+      `${s.platform.demoHold ? ' | Demo assist: holding' : ''} | issues ${s.issues.map((i) => i.code).join(',')}`;
+    this.caption = s.nowPlaying !== undefined ? s.nowPlaying.caption : '';
+  }
+
+  private startDemo(): void {
+    const tc: TourControl = AppContainer.tourControl();
+    const tours: Tour[] = AppContainer.packRepository().tours();
+    const tourId: string = tours.length > 0 ? tours[0].id : '';
+    this.line = 'tour: planning...';
+    tc.setSource(FixSource.DEMO).then(() => tc.plan(tourId, 0)).then((p: TourPlan) => {
+      tc.setDemoSpeed(this.speed);
+      return tc.start();
+    }).catch((e: Object) => {
+      this.line = `tour: start failed ${Log.errKv(e)}`;
+    });
+  }
+
+  private cycleSpeed(): void {
+    const i: number = DEMO_SPEED_CYCLE.indexOf(this.speed);
+    this.speed = DEMO_SPEED_CYCLE[(i + 1) % DEMO_SPEED_CYCLE.length];
+    AppContainer.tourControl().setDemoSpeed(this.speed);
+  }
+
+  build() {
+    Column({ space: 8 }) {
+      Text('Demo tour (A7)').fontSize(18).fontWeight(FontWeight.Medium)
+      Text(this.line).id('tourStatus').fontSize(12)
+      Text(this.caption).id('tourCaption').fontSize(15).fontStyle(FontStyle.Italic)
+      Button('Start demo tour').id('btnDevDemoTour').width('100%').onClick(() => this.startDemo())
+      Row({ space: 8 }) {
+        Button(`Demo x${this.speed}`).id('btnDevDemoSpeed').layoutWeight(1).onClick(() => this.cycleSpeed())
+        Button('Jump to next stop').id('btnDevDemoJump').layoutWeight(1)
+          .onClick(() => AppContainer.tourControl().demoJumpToNext())
+        Button('End tour').id('btnDevEndTour').layoutWeight(1).onClick(() => AppContainer.tourControl().end())
+      }.width('100%')
+    }
+    .width('100%')
   }
 }
 
@@ -457,6 +534,7 @@ struct DevPanel {
           .fontSize(24)
           .fontWeight(FontWeight.Bold)
           .margin({ top: 48 })
+        DemoTourSection()
         LocationDevSection()
         Text('Speech (A4)').fontSize(18).fontWeight(FontWeight.Medium)
         Text(this.chip)
