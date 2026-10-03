@@ -163,6 +163,8 @@ node scripts/voice/render-elevenlabs.mjs                 # the rest; reruns skip
 node scripts/voice/render-elevenlabs.mjs --dry-run --system-only   # only the system/arrival/nav lines
 ```
 
+Another course: add `--course <courseId>` (e.g. `--course krakow-scholars`); it reads that course's pack and tour and writes `data/course/<courseId>/audio/` with its own `manifest.json`.
+
 System lines are included by default (`--no-system` skips them, `--system-only` renders only them, `--system-groups system,arrival,nav`, `--nav-legs all|tour`). A run re-plans and prunes only the clips in its scope (languages x stories/system groups). After a template change in `core/content/Phrases.ets`, run `node scripts/voice/system-lines.mjs --write-golden` and re-render; `scripts/test.sh` fails while the golden is stale or the Node port differs from the ArkTS output.
 
 Model `eleven_multilingual_v2`, mono `mp3_44100_64` by default (`--output-format mp3_22050_32` halves the size). Input is the pack's `narrations/<lang>.json`; `--narrations-dir`, `--langs`, `--lengths`, `--fixture` and `--help` change that. The pre-commit hook rejects ElevenLabs key values.

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  FIXTURE_NARRATIONS_DIR, buildManifest, clipKey, clipRelPath, collectClips, isSystemGroup, main, manifestEntry,
+  DEFAULT_OUT, FIXTURE_NARRATIONS_DIR, ROOT, buildManifest, clipKey, clipRelPath, collectClips, isSystemGroup, main, manifestEntry,
   parseArgs, parseOutputFormat, planRender, sha256Hex, stripPauseMarkup, summarize, systemClipRelPath, systemClips,
   toElevenLabsText
 } from './render-elevenlabs.mjs';
@@ -185,4 +185,20 @@ test('dry run with system lines on the real pack needs no key', async () => {
   }
   assert.ok(out.some((l) => /system=system,arrival,nav navLegs=all lines=\d+/.test(l)));
   assert.ok(out.some((l) => /credits to spend per language: en=\d+ pl=\d+ zh=\d+/.test(l)));
+});
+
+test('--course sets the pack, narrations, tour and output of that course; explicit flags still win', () => {
+  const k = parseArgs([]);
+  assert.equal(k.out, DEFAULT_OUT);
+  const o = parseArgs(['--course', 'krakow-scholars']);
+  assert.equal(o.out, join(ROOT, 'data/course/krakow-scholars'));
+  assert.equal(o.narrationsDir, join(ROOT, 'data/course/krakow-scholars/packs/krakow-scholars/narrations'));
+  assert.equal(o.pack, join(ROOT, 'data/course/krakow-scholars/packs/krakow-scholars'));
+  assert.equal(o.tour, join(ROOT, 'data/tours/scholars-saints.json'));
+  assert.equal(o.tourId, 'scholars-saints');
+  const d = parseArgs(['--course', 'krakow']);
+  assert.equal(d.out, DEFAULT_OUT);
+  assert.equal(d.tourId, 'royal-route');
+  assert.equal(parseArgs(['--course', 'krakow-scholars', '--out', '/tmp/x']).out, '/tmp/x');
+  assert.throws(() => parseArgs(['--course', 'nope']), /unknown course/);
 });

@@ -520,6 +520,7 @@ export async function main(argv) {
     ` tourFilter=${poiIds ? `${poiIds.size} stops` : 'off'}` +
     ` system=${withSystem ? `${o.systemGroups.join(',')} navLegs=${o.navLegs} lines=${systemCount}` : 'off'}` +
     `${withStories ? '' : ' stories=off'}`);
+  console.log(`render-elevenlabs: output ${relative(ROOT, manifestPath)} (pack ${relative(ROOT, o.pack)}, tour ${o.tourId})`);
 
   if (o.dryRun) {
     const dryCfg = { ...cfg, voiceId: voiceIdEnv || (oldManifest && oldManifest.voiceId) || '' };
