@@ -18,6 +18,7 @@ import packParserTest from './PackParser.test';
 import narrationValidatorTest from './NarrationValidator.test';
 import mapCameraTest from './MapCamera.test';
 import tourControllerTest from './TourController.test';
+import walkDisplayTest from './WalkDisplay.test';
 
 export default function testsuite() {
   harnessTest();
@@ -37,4 +38,5 @@ export default function testsuite() {
   narrationValidatorTest();
   mapCameraTest();
   tourControllerTest();
+  walkDisplayTest();
 }
