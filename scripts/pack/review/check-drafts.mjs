@@ -548,7 +548,7 @@ export function main(argv = process.argv.slice(2), repo = REPO) {
   for (const r of results) for (const f of r.failures) lines.push(`  ${r.file}  [${f.where}] ${f.check}: ${f.detail}`);
   for (const r of results) for (const w of r.warnings ?? []) lines.push(`  ${r.file}  warning: ${w}`);
   if (results.some((r) => String(r.status).endsWith('*'))) lines.push('* translation: review state of its EN source (the pack tier follows it)');
-  const notes = results.filter((r) => (r.words.full ?? 0) > 200).map((r) => `${r.file} full=${r.words.full}`);
+  const notes = results.filter((r) => r.lang !== 'zh' && (r.words.full ?? 0) > 200).map((r) => `${r.file} full=${r.words.full}`);
   if (notes.length) lines.push(`note: full above the ~200-word demo target (REVIEW rec. 4, not a failure): ${notes.join(', ')}`);
   const coverage = all ? LANGS.flatMap((l) => (l === 'en' || results.some((r) => r.lang === l) ? checkCoverage(results, ctx.stops, l) : [])) : [];
   for (const c of coverage) lines.push(`  coverage: ${c}`);
