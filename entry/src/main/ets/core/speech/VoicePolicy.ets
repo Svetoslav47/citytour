@@ -29,6 +29,8 @@ export const EN_PERSON: number = 8;    // Laura, needs a download (RISKS a4/a5)
 export const ZH_PERSON: number = 13;   // 聆小珊, built in
 export const SPEECH_MODE_VOICE: string = 'voice';
 export const SPEECH_MODE_TEXT: string = 'text';
+/** Reason prefix of a cross-language "listen in English/Chinese, read in Polish" plan (the user's explicit choice). */
+export const LISTEN_REASON_PREFIX: string = 'pl_listen_';
 
 /** Default languageContext when the zh voice reads English. The DevPanel can A/B it against 'zh-CN' (gate G1). */
 export const DEFAULT_FALLBACK_EN_CONTEXT: string = EN_LOCALE;
@@ -110,12 +112,17 @@ export function resolveVoicePlan(textLang: Lang, strategy: EnVoiceStrategy, caps
   }
   // Polish (or anything else): no Polish voice in Core Speech Kit.
   if (voiceLang === VoiceLang.EN) {
-    return enPlan(textLang, strategy, caps, ctx, 'pl_listen_en ');
+    return enPlan(textLang, strategy, caps, ctx, `${LISTEN_REASON_PREFIX}en `);
   }
   if (voiceLang === VoiceLang.ZH) {
-    return zhPlan(textLang, caps, 'pl_listen_zh ');
+    return zhPlan(textLang, caps, `${LISTEN_REASON_PREFIX}zh `);
   }
   return textOnly(textLang, VoiceLabel.TEXT_ONLY_PLATFORM, `no_voice_for_lang=${textLang}`);
+}
+
+/** True for the user's cross-language choice (voice language != text language), e.g. Polish text, English voice. */
+export function isListenChoice(p: VoicePlan): boolean {
+  return p.reason.startsWith(LISTEN_REASON_PREFIX);
 }
 
 /** The VOICE_PLAN log line body (ARCHITECTURE §10). */

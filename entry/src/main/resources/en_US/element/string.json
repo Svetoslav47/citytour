@@ -1462,11 +1462,47 @@
     },
     {
       "name": "settings_voice_strategy_note",
-      "value": "Chinese and Polish are not affected. Polish stories are always shown as text unless you choose Listen in English."
+      "value": "Chinese and Polish are not affected. Polish stories use the pre-recorded studio voice; a sentence without a recording is shown as text unless you choose Listen in English."
     },
     {
       "name": "settings_voice_prerendered",
       "value": "Studio voice (pre-recorded)"
+    },
+    {
+      "name": "voice_studio",
+      "value": "Studio voice"
+    },
+    {
+      "name": "onb_spoken_studio",
+      "value": "Spoken · Studio voice"
+    },
+    {
+      "name": "onb_studio_note_en",
+      "value": "Stories play a pre-recorded studio voice. Directions use the on-device voice (the Chinese voice reads English until the English voice is installed)."
+    },
+    {
+      "name": "lang_pl_spoken",
+      "value": "Polski (spoken · studio voice)"
+    },
+    {
+      "name": "lang_pl_footnote_studio",
+      "value": "Polish stories are spoken by a pre-recorded studio voice (AI-generated with ElevenLabs). Directions and other live lines are shown as text: HarmonyOS on-device speech speaks only English and Chinese."
+    },
+    {
+      "name": "voice_studio_tooltip",
+      "value": "Stories play a pre-recorded studio voice, AI-generated with ElevenLabs. Live lines such as directions use the on-device voice."
+    },
+    {
+      "name": "walk_voice_studio_a11y",
+      "value": "Studio voice. Pre-recorded narration, AI-generated with ElevenLabs."
+    },
+    {
+      "name": "about_voice_title",
+      "value": "Narration voice"
+    },
+    {
+      "name": "about_voice_body",
+      "value": "Narration voice generated with ElevenLabs (eleven_multilingual_v2, voice 'George'); scripts AI-drafted, see review status. The clips are rendered at build time and ship inside the app: no network and no API key at runtime. Directions and anything without a clip use the on-device HarmonyOS voice, or text."
     }
   ]
 }

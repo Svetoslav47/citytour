@@ -57,7 +57,8 @@ export default function onboardingTest() {
     it('voice_lang_for_plan_follows_text_unless_cross_language_or_off', 0, () => {
       expect(voiceLangForPlan('en', 'en') === undefined).assertTrue();
       expect(voiceLangForPlan('zh', 'zh') === undefined).assertTrue();
-      expect(voiceLangForPlan('pl', 'off') as string).assertEqual(VoiceLang.OFF);
+      expect(voiceLangForPlan('pl', 'off') === undefined).assertTrue();   // A13: Polish follows the text language
+      expect(voiceLangForPlan('en', 'off') as string).assertEqual(VoiceLang.OFF);
       expect(voiceLangForPlan('pl', 'en') as string).assertEqual(VoiceLang.EN);
       expect(voiceLangForPlan('pl', 'zh') as string).assertEqual(VoiceLang.ZH);
     });

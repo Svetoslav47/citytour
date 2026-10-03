@@ -12,6 +12,9 @@
 // out-of-area on the first real fix (rows 2/8), voice plan issues (rows 9/10), audio interrupt / route loss from
 // the speech service (rows 12/13), background failure keeps the screen on (row 14), notifications refused
 // (row 16), pack failures (row 17).
+// A13 phase 2: clips for the story language turn a platform text-only plan into a spoken PRERENDERED tour (SPEAK
+// effects, "Studio voice" label), partly covered stories are excluded where the fallback is text, and the
+// snapshot label follows what is audible (live label from the speech service).
 import { describe, it, expect } from '@ohos/hypium';
 import {
   DemoControls, TourController, TourControllerDeps, enStatusOf, kmOutsideBbox, locationErrorIssue,
@@ -32,6 +35,8 @@ import {
   Lang, MapData, Narration, NarrationLength, PackManifest, Persona, Poi, RouteData, SourceRef, Tour
 } from '../main/ets/contracts/Model';
 import { EnVoiceStrategy, VoiceLabel } from '../main/ets/contracts/Settings';
+import { ClipEntry, ClipIndex } from '../main/ets/core/speech/ClipSelection';
+import { sha256Hex } from '../main/ets/core/speech/Sha256';
 import {
   MINI_BARBICAN, MINI_CLOTH_HALL, MINI_ST_MARYS, MINI_TOUR_ID, miniNarrations, miniPersona, miniPois, miniRoutes,
   miniTour
@@ -514,6 +519,8 @@ class Harness {
   perms: FakePerms = new FakePerms(PermissionState.UNKNOWN);
   voice: FakeVoice;
   notifier: FakeNotifier | undefined = undefined;
+  clips: ClipIndex | undefined = undefined;
+  live: VoiceLabel | undefined = undefined;
   screen: boolean[] = [];
   withSources: boolean = true;
   withPlatform: boolean = true;
@@ -541,7 +548,9 @@ class Harness {
       permissions: (): PermissionPort | undefined => this.perms,
       keepScreenOn: (on: boolean) => {
         this.screen.push(on);
-      }
+      },
+      clips: (): ClipIndex | undefined => this.clips,
+      liveVoiceLabel: (): VoiceLabel | undefined => this.live
     };
     this.ctrl = new TourController(deps);
   }
@@ -608,6 +617,23 @@ class Harness {
 }
 
 /** Asserts the log events appear in this order (each `[prefix, part]` after the previous match). */
+function clip(poiId: string, len: string, n: number, text: string): ClipEntry {
+  const e: ClipEntry = {
+    lang: 'en', poiId: poiId, personaId: 'historian', length: len, n: n,
+    file: `audio/en/${poiId}/${len}_${n}.mp3`, textSha256: sha256Hex(text), durationMs: 1000
+  };
+  return e;
+}
+
+/** St Mary's teaser fully covered, Cloth Hall full story only partly (sentence one). */
+function miniClips(): ClipIndex {
+  return new ClipIndex([
+    clip(MINI_ST_MARYS, 'teaser', 0, 'Fixture teaser sentence one.'),
+    clip(MINI_ST_MARYS, 'teaser', 1, 'Fixture teaser sentence two.'),
+    clip(MINI_CLOTH_HALL, 'full', 0, 'Fixture full sentence one.')
+  ]);
+}
+
 function inOrder(log: FakeLog, steps: string[][]): number {
   let at: number = -1;
   for (const s of steps) {
@@ -769,6 +795,55 @@ export default function tourControllerTest() {
         expect(h.log.find('POI_ENTER', `id=${MINI_BARBICAN}`, 0) >= 0).assertTrue();
         expect(h.log.find('STORY_START', 'mode=text', 0) >= 0).assertTrue();
         expect(h.ctrl.current().platform.ttsEngine).assertEqual('none');
+        h.ctrl.end();
+        done();
+      });
+
+    it('A13: clips turn a platform text-only plan into a spoken studio-voice tour; partial stories excluded', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(true, true, true);
+        const base: VoicePlan = {
+          textLang: Lang.EN, speechMode: 'text', engineLocale: '', person: 0, languageContext: '',
+          label: VoiceLabel.TEXT_ONLY_PLATFORM, reason: 'no_voice_for_lang=en'
+        };
+        h.voice.override = base;
+        const ix: ClipIndex = miniClips();
+        h.clips = ix;
+        await h.ctrl.setSource(FixSource.DEMO);
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.PRERENDERED);
+        expect(h.ctrl.current().speechText).assertFalse();
+        expect(h.log.find('NARR_AUDIO', 'event=story_voice lang=en clips=yes', 0) >= 0).assertTrue();
+        expect(h.log.find('NARR_AUDIO', `event=story_incomplete poi=${MINI_CLOTH_HALL}`, 0) >= 0).assertTrue();
+        expect(ix.isExcluded(sha256Hex('Fixture full sentence one.'))).assertTrue();
+        expect(ix.isExcluded(sha256Hex('Fixture teaser sentence one.'))).assertFalse();
+        h.placeNear(MINI_BARBICAN, 60, 0);
+        await h.ctrl.start();
+        h.walkTo(MINI_BARBICAN, 1.3);
+        h.dwellUntilQuiet(120);
+        expect(h.speech.spoken.length > 0).assertTrue();        // SPEAK effects: the speech service decides clip/text
+        expect(h.log.find('STORY_START', 'mode=voice', 0) >= 0).assertTrue();
+        h.ctrl.end();
+        done();
+      });
+
+    it('A13: no clips for the language keeps the plan; the live label wins while a sentence is audible', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        h.clips = new ClipIndex([]);
+        await h.ctrl.setSource(FixSource.DEMO);
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.FALLBACK_ZH_READS_EN);
+        h.clips = miniClips();
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.PRERENDERED);
+        expect(h.log.find('NARR_AUDIO', 'action=tts_per_sentence', 0) >= 0).assertTrue(); // en/zh: no exclusion
+        h.placeNear(MINI_BARBICAN, 60, 0);
+        await h.ctrl.start();
+        h.live = VoiceLabel.FALLBACK_ZH_READS_EN;          // an arrival line read by the zh voice
+        expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.FALLBACK_ZH_READS_EN);
+        h.live = VoiceLabel.TEXT_ONLY_PLATFORM;            // a silent text sentence keeps the tour label
+        expect(h.ctrl.current().voiceLabel).assertEqual(VoiceLabel.PRERENDERED);
         h.ctrl.end();
         done();
       });

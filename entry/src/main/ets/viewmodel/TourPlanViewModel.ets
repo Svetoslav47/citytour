@@ -114,7 +114,7 @@ export class TourPlanViewModel {
     this.sourcesCount = src.count;
     this.allReviewed = src.allReviewed;
     try {
-      this.voiceLabel = AppContainer.voice().plan(lang).label;
+      this.voiceLabel = AppContainer.voiceManager().storyPlan(lang).label;   // A13: "Studio voice" with clips
     } catch (e) {
       this.voiceLabel = VoiceLabel.TEXT_ONLY_PLATFORM;
       Log.e(LogEvents.UNCAUGHT, `where=TourPlanViewModel.voicePlan ${Log.errKv(e as Object)}`);

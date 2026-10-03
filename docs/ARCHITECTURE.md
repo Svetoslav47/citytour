@@ -865,10 +865,11 @@ There is **no code change**:
   |---|---|---|
   | en | en (Laura if `INSTALLED`, else the zh-CN voice reading English, labelled "Fallback voice") / off | en |
   | zh | zh (聆小珊) / off | zh |
-  | pl | **off (text only)** / en / zh | **off**, with a visible note: "Polish voice isn't available on this device's speech engine; narration is shown as text. You can choose English or Chinese voice." |
+  | pl | **off (no on-device voice)** / en / zh | **off**, with a visible note: "Polish voice isn't available on this device's speech engine; narration is shown as text. You can choose English or Chinese voice." |
 
   This is the brief's decision "A". It is documented as a platform limitation in the README, backed by the doc fact that TTS supports only zh/en (VERIFIED).
-- **Polish text-only and a locked phone.** On arrival we fire a haptic and update the AVSession title and the notification ("Now: Kościół Mariacki · open to read"). The engine advances captions on a reading timer (§4.4).
+  **A13 update (studio clips).** When `rawfile/audio/manifest.json` has clips for the story language, `ClipSelection.storyVoicePlan` turns the plan into voice mode labelled `PRERENDERED` ("Studio voice"): the engine emits SPEAK and NarrationPlayer plays each sentence from its clip (hash of the exact sentence) or falls back to the base plan: native TTS for en/zh, text for pl (pl "off" now means "no on-device voice", not "never speak"). Where the fallback is text, `TourController` excludes the clips of a story that is only partly covered, so a Polish story is either fully spoken or fully text. The user's text-only choice and the cross-language listen choice get no clips. The snapshot's `voiceLabel` follows the sentence in flight (clip / native / fallback TTS).
+- **Polish text-only and a locked phone** (without clips). On arrival we fire a haptic and update the AVSession title and the notification ("Now: Kościół Mariacki · open to read"). The engine advances captions on a reading timer (§4.4).
 - **Spoken system phrases** (turn cues, directions, arrival lines, GPS-lost) live in `core/content/Phrases.ets` for en/zh/pl. They are pure code and unit-tested for every `Maneuver × modifier × lang`, not resource strings: the engine composes them in pure code.
 - **Dynamic content** (POI names, narrations) uses `LocalizedText` with the fallback order `textLang → en → pl`. When a fallback language is shown, the UI tags it (for example "(PL)").
 

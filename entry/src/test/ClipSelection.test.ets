@@ -3,13 +3,26 @@
 // manifest parsing (malformed JSON / entries dropped, path safety); selection: hash match, missing clip,
 // changed text, language, persona, failed (deleted) clip, the user's text-only choice, no manifest, and Polish
 // (platform text-only) getting a clip.
+// Phase 2: storyVoicePlan (studio upgrade only with clips, never over the user's text-only or cross-language
+// choice), hasLang per persona, storyClipCoverage all/partial/none, exclusion of partly covered stories, and the
+// cross-language listen choice getting no clip.
 import { describe, it, expect } from '@ohos/hypium';
+import { Lang } from '../main/ets/contracts/Model';
+import { VoicePlan } from '../main/ets/contracts/Ports';
 import { VoiceLabel } from '../main/ets/contracts/Settings';
 import { sha256Hex, utf8Bytes } from '../main/ets/core/speech/Sha256';
 import {
   AUDIO_SRC_PRERENDERED, AUDIO_SRC_TEXT, AUDIO_SRC_TTS, ClipEntry, ClipIndex, ClipQuery, ClipReason,
-  parseClipManifest, selectAudio, shortSha
+  parseClipManifest, selectAudio, shortSha, storiesAllOrNothing, StoryClips, storyClipCoverage, storyVoicePlan
 } from '../main/ets/core/speech/ClipSelection';
+
+function vplan(lang: Lang, mode: string, label: VoiceLabel, reason: string, engine: string = ''): VoicePlan {
+  const p: VoicePlan = {
+    textLang: lang, speechMode: mode, engineLocale: engine, person: engine === '' ? 0 : 13, languageContext: engine,
+    label: label, reason: reason
+  };
+  return p;
+}
 
 // Vectors from Node: crypto.createHash('sha256').update(s, 'utf8').digest('hex') (= render-elevenlabs.mjs).
 const VECTORS: string[][] = [
@@ -139,6 +152,74 @@ export default function clipSelectionTest() {
       expect(none.src).assertEqual(AUDIO_SRC_TEXT);
       expect(index().hasLang('pl')).assertTrue();
       expect(index().hasLang('zh')).assertFalse();
+    });
+
+    it('story_plan_polish_becomes_studio_voice_with_clips', 0, () => {
+      const base = vplan(Lang.PL, 'text', VoiceLabel.TEXT_ONLY_PLATFORM, 'no_voice_for_lang=pl');
+      const p = storyVoicePlan(base, true);
+      expect(p.label).assertEqual(VoiceLabel.PRERENDERED);
+      expect(p.speechMode).assertEqual('voice');
+      expect(p.engineLocale).assertEqual('');          // no TTS engine behind it: the rest stays text
+      expect(p.reason.indexOf('fallback=text-only-platform') >= 0).assertTrue();
+      expect(storiesAllOrNothing(base)).assertTrue();
+      const without = storyVoicePlan(base, false);
+      expect(without.label).assertEqual(VoiceLabel.TEXT_ONLY_PLATFORM);
+      expect(without.speechMode).assertEqual('text');
+    });
+
+    it('story_plan_english_keeps_the_fallback_engine_for_other_lines', 0, () => {
+      const base = vplan(Lang.EN, 'voice', VoiceLabel.FALLBACK_ZH_READS_EN, 'en_status=DOWNLOADABLE', 'zh-CN');
+      const p = storyVoicePlan(base, true);
+      expect(p.label).assertEqual(VoiceLabel.PRERENDERED);
+      expect(p.engineLocale).assertEqual('zh-CN');
+      expect(p.person).assertEqual(13);
+      expect(storiesAllOrNothing(base)).assertFalse();  // en/zh fall back per sentence
+    });
+
+    it('story_plan_respects_text_only_and_listen_choices', 0, () => {
+      const user = vplan(Lang.EN, 'text', VoiceLabel.TEXT_ONLY_USER, 'strategy=text-only');
+      expect(storyVoicePlan(user, true).label).assertEqual(VoiceLabel.TEXT_ONLY_USER);
+      const listen = vplan(Lang.PL, 'voice', VoiceLabel.NATIVE, 'pl_listen_en en_status=INSTALLED', 'en-US');
+      expect(storyVoicePlan(listen, true).label).assertEqual(VoiceLabel.NATIVE);
+      const q: ClipQuery = {
+        text: 'To jest Barbakan.', lang: 'pl', personaId: 'historian', planSpeechMode: 'voice',
+        planLabel: VoiceLabel.NATIVE, planReason: listen.reason
+      };
+      const d = selectAudio(index(), q);
+      expect(d.src).assertEqual(AUDIO_SRC_TTS);
+      expect(d.reason).assertEqual(ClipReason.LISTEN_CHOICE);
+    });
+
+    it('has_lang_per_persona', 0, () => {
+      expect(index().hasLang('en', 'historian')).assertTrue();
+      expect(index().hasLang('en', 'kids-legends')).assertFalse();
+      expect(index().hasLang('en', '')).assertTrue();
+    });
+
+    it('story_coverage_all_partial_none', 0, () => {
+      const ix = index();
+      const all = storyClipCoverage(ix, ['This is Barbican.'], 'en', 'historian');
+      expect(all.state).assertEqual(StoryClips.ALL);
+      const part = storyClipCoverage(ix, ['This is Barbican.', 'Not rendered.'], 'en', 'historian');
+      expect(part.state).assertEqual(StoryClips.PARTIAL);
+      expect(part.matched).assertEqual(1);
+      expect(part.total).assertEqual(2);
+      expect(part.shas[0]).assertEqual(SHA_BARBICAN);
+      expect(storyClipCoverage(ix, ['Nope.'], 'en', 'historian').state).assertEqual(StoryClips.NONE);
+      expect(storyClipCoverage(ix, [], 'en', 'historian').state).assertEqual(StoryClips.NONE);
+      expect(storyClipCoverage(undefined, ['This is Barbican.'], 'en', 'historian').state).assertEqual(StoryClips.NONE);
+    });
+
+    it('excluded_story_sentence_gets_no_clip_until_cleared', 0, () => {
+      const ix = index();
+      ix.exclude(SHA_PL);
+      const d = selectAudio(ix, query('To jest Barbakan.', 'pl', 'text', VoiceLabel.TEXT_ONLY_PLATFORM));
+      expect(d.src).assertEqual(AUDIO_SRC_TEXT);
+      expect(d.reason).assertEqual(ClipReason.STORY_INCOMPLETE);
+      expect(ix.isExcluded(SHA_PL)).assertTrue();
+      ix.clearExclusions();
+      const again = selectAudio(ix, query('To jest Barbakan.', 'pl', 'text', VoiceLabel.TEXT_ONLY_PLATFORM));
+      expect(again.src).assertEqual(AUDIO_SRC_PRERENDERED);
     });
 
     it('no_manifest_keeps_current_behaviour', 0, () => {

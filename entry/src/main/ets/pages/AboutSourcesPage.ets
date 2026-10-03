@@ -82,6 +82,8 @@ export struct AboutSourcesPage {
             this.card($r('app.string.about_ai_body'), 'aboutAi')
             this.header($r('app.string.about_ai_disclosure_title'))
             this.card($r('app.string.about_ai_model'), 'aboutModel')
+            this.header($r('app.string.about_voice_title'))
+            this.card($r('app.string.about_voice_body'), 'aboutVoice')
 
             this.header($r('app.string.about_data_title'))
             Column() {

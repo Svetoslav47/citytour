@@ -300,6 +300,13 @@ export struct OnboardingPage {
           .fontColor($r('app.color.text_secondary'))
         this.chip($r('app.string.onb_downloading'))
       }
+    } else if (this.vm.studio(Lang.EN)) {
+      // A13: stories play the pre-rendered studio voice whatever the on-device voice state
+      Text($r('app.string.onb_spoken_studio'))
+        .id('txtOnbEnStudio')
+        .fontSize(Type.CALLOUT)
+        .lineHeight(Type.CALLOUT_LH)
+        .fontColor($r('app.color.text_secondary'))
     } else if (this.vm.enRow() === EnVoiceRow.TEXT_ONLY) {
       Text($r('app.string.voice_text_only_platform'))
         .fontSize(Type.CALLOUT)
@@ -335,7 +342,7 @@ export struct OnboardingPage {
       .width('100%')
       .margin({ top: 10 })
     } else if (this.vm.enRow() === EnVoiceRow.FALLBACK) {
-      Text($r('app.string.onb_fallback_note'))
+      Text(this.vm.studio(Lang.EN) ? $r('app.string.onb_studio_note_en') : $r('app.string.onb_fallback_note'))
         .fontSize(Type.FOOTNOTE)
         .lineHeight(Type.FOOTNOTE_LH)
         .fontColor($r('app.color.text_secondary'))
@@ -414,7 +421,8 @@ export struct OnboardingPage {
             .lineHeight(Type.BODY_LH)
             .fontWeight(FontWeight.Medium)
             .fontColor($r('app.color.text_primary'))
-          Text(this.vm.zhSpoken() ? $r('app.string.onb_spoken_zh') : $r('app.string.voice_text_only_platform'))
+          Text(this.vm.studio(Lang.ZH) ? $r('app.string.onb_spoken_studio') :
+            this.vm.zhSpoken() ? $r('app.string.onb_spoken_zh') : $r('app.string.voice_text_only_platform'))
             .fontSize(Type.CALLOUT)
             .lineHeight(Type.CALLOUT_LH)
             .fontColor($r('app.color.text_secondary'))
@@ -434,7 +442,7 @@ export struct OnboardingPage {
 
       this.divider(Space.S4)
 
-      // Polski: text only (no Polish voice in Core Speech Kit)
+      // Polski: spoken by the A13 studio clips when they ship, else text only (no Polish voice in Core Speech Kit)
       Row({ space: Space.S3 }) {
         Column() {
           Text($r('app.string.lang_polish'))
@@ -442,22 +450,31 @@ export struct OnboardingPage {
             .lineHeight(Type.BODY_LH)
             .fontWeight(FontWeight.Medium)
             .fontColor($r('app.color.text_primary'))
-          Row({ space: 6 }) {
-            Text($r('app.string.voice_text_only'))
+          if (this.vm.studio(Lang.PL)) {
+            Text($r('app.string.onb_spoken_studio'))
+              .id('txtOnbPlStudio')
               .fontSize(Type.CALLOUT)
               .lineHeight(Type.CALLOUT_LH)
               .fontColor($r('app.color.text_secondary'))
-            SymbolGlyph($r('sys.symbol.info_circle'))
-              .fontSize(16)
-              .fontColor([$r('app.color.text_secondary')])
-              .accessibilityLevel('no')
+              .margin({ top: 2 })
+          } else {
+            Row({ space: 6 }) {
+              Text($r('app.string.voice_text_only'))
+                .fontSize(Type.CALLOUT)
+                .lineHeight(Type.CALLOUT_LH)
+                .fontColor($r('app.color.text_secondary'))
+              SymbolGlyph($r('sys.symbol.info_circle'))
+                .fontSize(16)
+                .fontColor([$r('app.color.text_secondary')])
+                .accessibilityLevel('no')
+            }
+            .margin({ top: 2 })
           }
-          .margin({ top: 2 })
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
 
-        this.radio(Lang.PL, $r('app.string.lang_pl_text'))
+        this.radio(Lang.PL, this.vm.studio(Lang.PL) ? $r('app.string.lang_pl_spoken') : $r('app.string.lang_pl_text'))
       }
       .id('rowOnbLangPl')
       .alignItems(VerticalAlign.Top)
@@ -495,7 +512,7 @@ export struct OnboardingPage {
             .fontColor([$r('app.color.text_secondary')])
             .margin({ top: 1 })
             .accessibilityLevel('no')
-          Text($r('app.string.lang_pl_footnote'))
+          Text(this.vm.studio(Lang.PL) ? $r('app.string.lang_pl_footnote_studio') : $r('app.string.lang_pl_footnote'))
             .fontSize(Type.FOOTNOTE)
             .lineHeight(Type.FOOTNOTE_LH)
             .fontColor($r('app.color.text_secondary'))

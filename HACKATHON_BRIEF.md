@@ -42,7 +42,7 @@ The user owns the decisions recorded here. Unresolved fields may remain blank; d
   - Voice upgrade (user decision 2026-10-03, task A13, one of Person A's last tasks): stop stories pre-rendered with **ElevenLabs** at build time (EN/PL/ZH, which also gives spoken Polish). Dynamic guidance stays on native TTS. If ElevenLabs doesn't work by gate G-EL (01:00), we stay on native TTS. No API key ever ships in the app or the repo.
   - One guide persona, **"Historian"**. The design must allow a second persona to be added later.
   - Map: **not** Huawei Map Kit (user decision 2026-10-03); use the best alternative chosen in the architecture (see docs/ARCHITECTURE.md).
-  - Polish: UI and full narration **text** in Polish; **spoken** narration in English and Chinese only (Core Speech Kit TTS supports only zh-CN and en-US). Documented as a platform limitation.
+  - Polish: UI and full narration **text** in Polish. On-device TTS (Core Speech Kit) speaks only zh-CN and en-US, documented as a platform limitation; since A13 the Polish **stop stories** are spoken by the pre-rendered ElevenLabs clips, and everything without a clip (directions, arrival lines, deep stories) stays text in Polish.
 - Out of scope (for now): a second guide persona (planned for if time allows).
 - Mocked or simulated behavior: a "Demo walk" location source for the emulator, clearly labelled in the UI (planned).
 

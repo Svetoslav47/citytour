@@ -71,6 +71,9 @@ export function voiceLabelRes(label: VoiceLabel): Resource {
   if (label === VoiceLabel.FALLBACK_ZH_READS_EN) {
     return $r('app.string.voice_fallback_badge');
   }
+  if (label === VoiceLabel.PRERENDERED) {
+    return $r('app.string.voice_studio');
+  }
   return $r('app.string.voice_text_only');
 }
 

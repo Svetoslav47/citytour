@@ -21,6 +21,7 @@ import {
   capsFromVoices, DEFAULT_FALLBACK_EN_CONTEXT, EN_LOCALE, EN_PERSON, planLogKv, resolveVoicePlan, stateTag,
   VoiceEntry, VoicePolicyOptions, ZH_LOCALE
 } from '../../core/speech/VoicePolicy';
+import { storyVoicePlan } from '../../core/speech/ClipSelection';
 import { AppConfig } from '../../app/AppConfig';
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
@@ -38,6 +39,7 @@ export class VoiceManager implements VoicePort {
   private zhEngineFail: number = 0;
   private downloading: boolean = false;
   private lastDlCode: number = 0;
+  private clipLangs: ((lang: string) => boolean) | undefined = undefined;
 
   constructor(engines: TtsEngines) {
     this.engines = engines;
@@ -67,6 +69,34 @@ export class VoiceManager implements VoicePort {
       p = t;
     }
     Log.i(LogEvents.VOICE_PLAN, `${planLogKv(p)} caps_known=${this.capsKnown}`);
+    return p;
+  }
+
+  /** A13: who knows which story languages have pre-rendered clips (NarrationPlayer's manifest). */
+  setClipSource(f: (lang: string) => boolean): void {
+    this.clipLangs = f;
+  }
+
+  /** A13: true when the clip manifest covers this story language. Never throws. */
+  hasClips(textLang: Lang): boolean {
+    try {
+      return this.clipLangs !== undefined && this.clipLangs(textLang);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * The plan for stop stories, i.e. what the UI labels and the tour engine runs on: plan() upgraded to the studio
+   * clips (PRERENDERED, 'voice') when the manifest covers the language (ClipSelection.storyVoicePlan).
+   * plan() stays the per-sentence fallback for dynamic lines and sentences without a clip.
+   */
+  storyPlan(textLang: Lang): VoicePlan {
+    const base = this.plan(textLang);
+    const p = storyVoicePlan(base, this.hasClips(textLang));
+    if (p !== base) {
+      Log.i(LogEvents.VOICE_PLAN, `event=story_plan ${planLogKv(p)}`);
+    }
     return p;
   }
 

@@ -30,7 +30,7 @@
 import { i18n } from '@kit.LocalizationKit';
 import { PersistenceV2 } from '@kit.ArkUI';
 import { notificationManager } from '@kit.NotificationKit';
-import { Tour } from '../contracts/Model';
+import { Lang, Tour } from '../contracts/Model';
 import {
   FixSource, PackLoadResult, PermissionPort, PermissionState, SpeechCapabilities, VoicePlan, VoiceState
 } from '../contracts/Ports';
@@ -204,7 +204,7 @@ export class SettingsViewModel {
     const s = SettingsViewModel.settings();
     let label = '';
     try {
-      label = AppContainer.voiceManager().plan(storyLangPair(storyLangOf(s.textLang, s.voiceLang)).textLang).label;
+      label = AppContainer.voiceManager().storyPlan(storyLangPair(storyLangOf(s.textLang, s.voiceLang)).textLang).label;
     } catch (e) {
       label = 'unknown';
     }
@@ -242,6 +242,15 @@ export class SettingsViewModel {
     this.refreshVoice();
     this.refreshPermissions();
     this.refreshPack();
+  }
+
+  /** A13: Polish stories are spoken by the pre-rendered studio clips. */
+  plSpoken(): boolean {
+    try {
+      return AppContainer.voiceManager().hasClips(Lang.PL);
+    } catch (e) {
+      return false;
+    }
   }
 
   storyLang(): StoryLang {
@@ -451,7 +460,7 @@ export class SettingsViewModel {
   private updateVoiceRow(): void {
     try {
       const lang = storyLangPair(this.storyLang()).textLang;
-      const p: VoicePlan = AppContainer.voiceManager().plan(lang);   // logs VOICE_PLAN
+      const p: VoicePlan = AppContainer.voiceManager().storyPlan(lang);   // logs VOICE_PLAN; A13 studio clips
       this.voiceRow = voiceRowFor(p.label, p.engineLocale);
     } catch (e) {
       this.voiceRow = voiceRowFor(VoiceLabel.TEXT_ONLY_PLATFORM, '');

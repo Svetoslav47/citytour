@@ -20,7 +20,7 @@ _Updated as each capability lands. Every entry links to the code that uses it._
 | --- | --- | --- | --- |
 | — | — | — | planned |
 | Next-stop notification (glanceable with the screen off; text-only arrival line) | Notification Kit `notificationManager` (`requestEnableNotification`, `publish` id 1001 `isAlertOnce` SERVICE_INFORMATION slot, `cancel`) | [`services/notify/TourNotifier.ets`](entry/src/main/ets/services/notify/TourNotifier.ets), text rules in [`core/notify/NotifyText.ets`](entry/src/main/ets/core/notify/NotifyText.ets) | verified on emulator (sdk24) |
-| Pre-rendered stop-story clips (studio voice, offline) with native-TTS fallback per sentence | Media Kit `AVPlayer` (`fdSrc` from Localization Kit `resourceManager.getRawFd`, `STREAM_USAGE_AUDIOBOOK`) | [`services/audio/ClipPlayer.ets`](entry/src/main/ets/services/audio/ClipPlayer.ets), selection in [`core/speech/ClipSelection.ets`](entry/src/main/ets/core/speech/ClipSelection.ets), used by [`services/speech/NarrationPlayer.ets`](entry/src/main/ets/services/speech/NarrationPlayer.ets) | code path only: **no clips ship yet** (the ElevenLabs render has not run), so every sentence uses native TTS; logged as `NARR_AUDIO src=tts reason=no_manifest` |
+| Pre-rendered stop-story clips (studio voice, offline) with native-TTS fallback per sentence | Media Kit `AVPlayer` (`fdSrc` from Localization Kit `resourceManager.getRawFd`, `STREAM_USAGE_AUDIOBOOK`) | [`services/audio/ClipPlayer.ets`](entry/src/main/ets/services/audio/ClipPlayer.ets), selection in [`core/speech/ClipSelection.ets`](entry/src/main/ets/core/speech/ClipSelection.ets), used by [`services/speech/NarrationPlayer.ets`](entry/src/main/ets/services/speech/NarrationPlayer.ets) | **489 clips ship** (Historian, teaser + full, en/pl/zh, 22.4 MB, voice "George", `eleven_multilingual_v2`). A tour whose story language has clips runs on them (`NARR_AUDIO event=story_voice clips=yes`, then `src=prerendered reason=hash_match` per sentence); deep stories and dynamic lines stay native TTS (en/zh) or text (pl). Unit-tested; emulator run of the phase 2 tour path not yet verified |
 | Arrival haptic | Sensor Service Kit `vibrator` (`isSupportEffectSync` preset, timed fallback; `ohos.permission.VIBRATE`) | [`services/haptics/Haptics.ets`](entry/src/main/ets/services/haptics/Haptics.ets) | called and logged; the emulator has no motor (`14600101`, logged, no crash) |
 
 ## Mocked or simulated behavior
@@ -70,9 +70,19 @@ devecocli build
 
 The debug `.hap` is written to `entry/build/default/outputs/default/`.
 
-### Optional: pre-rendered stop-story voice (ElevenLabs, build time)
+### Pre-rendered stop-story voice (ElevenLabs, build time)
 
-The app never calls ElevenLabs and ships no key. A build-time script can render one mp3 per story sentence into `entry/src/main/resources/rawfile/audio/` plus `audio/manifest.json`; at runtime a sentence plays from its clip only when the manifest's `textSha256` equals the SHA-256 of the exact sentence text (same language and persona), otherwise native TTS speaks it (`NARR_AUDIO src=prerendered|tts|text`). Without the folder the app behaves exactly as before.
+The app never calls ElevenLabs and ships no key. Narration voice generated with ElevenLabs (eleven_multilingual_v2, voice 'George'); scripts AI-drafted, see review status. The build-time script rendered one mp3 per story sentence into `entry/src/main/resources/rawfile/audio/` plus `audio/manifest.json` (committed: 489 clips, teaser + full, en/pl/zh, 22.4 MB; deep stories have none). At runtime a sentence plays from its clip only when the manifest's `textSha256` equals the SHA-256 of the exact sentence text (same language and persona), otherwise native TTS speaks it (`NARR_AUDIO src=prerendered|tts|text`). Without the folder the app behaves exactly as before.
+
+How the voice is chosen (`core/speech/ClipSelection.ets`, `storyVoicePlan`):
+
+- **Studio voice.** When the manifest has clips for the story language, the tour runs in voice mode labelled **Studio voice** (Now Walking chip, Tour detail, Settings voice row, onboarding, lock-screen artist line `· Studio voice`). The label follows what is audible: while the on-device voice reads a line, Now Walking shows that voice's label (e.g. **Fallback voice**).
+- **Polish is spoken.** Polish stories play from the clips. Lines without a clip (directions, arrival lines, deep stories) stay on-screen text: Core Speech Kit has no Polish voice, and no Chinese or English voice is mixed in. A Polish story only partly covered by clips is read as text from start to end (`NARR_AUDIO event=story_incomplete action=text_whole_story`).
+- **English and Chinese** fall back per sentence to native TTS.
+- The user's "Text only" choice and "Listen in English, read in Polish" get no clips.
+- Pause, resume (from the sentence start), skip, replay, lock-screen (AVSession) controls, audio interrupts and the background continuous task use the same sentence queue for clips and TTS.
+
+Re-rendering needs your own key (never needed to build or run the app):
 
 ```bash
 node scripts/voice/render-elevenlabs.mjs --dry-run       # clips, characters and credits per language; no key needed
@@ -195,4 +205,5 @@ Content: 4,290 Wikidata places, the Royal Route, 110 OSRM walking legs, the Old 
 ## Pre-existing and third-party components
 
 - Project scaffold: DevEco CLI `devecocli create` (Empty Ability template).
+- Narration voice generated with ElevenLabs (`eleven_multilingual_v2`, premade voice "George"); scripts AI-drafted, see review status. Rendered at build time, shipped as mp3 clips in `rawfile/audio/`; see [`data/ATTRIBUTION.md`](data/ATTRIBUTION.md).
 - Hackathon starter files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `AI_WORKFLOW.md`, `HACKATHON_BRIEF.md`, `hackathon-resources/`) come from https://github.com/onirodeveloper/hackyeah2026-challenge (`default_template/`).

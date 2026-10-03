@@ -30,8 +30,10 @@ import { common } from '@kit.AbilityKit';
 import { window } from '@kit.ArkUI';
 import {
   BackgroundPort, Clock, FixSource, HapticsPort, LocationSource, LoggerPort, MediaSessionPort, NotifierPort,
-  PackRepository, PermissionPort, PermissionState, SpeechPort, TourControl, VoicePort
+  PackRepository, PermissionPort, PermissionState, SpeechPort, TourControl, VoicePlan, VoicePort
 } from '../contracts/Ports';
+import { VoiceLabel } from '../contracts/Settings';
+import { ClipIndex } from '../core/speech/ClipSelection';
 import { PcmPlayer } from '../services/audio/PcmPlayer';
 import { ClipPlayer } from '../services/audio/ClipPlayer';
 import { BackgroundRunner } from '../services/background/BackgroundRunner';
@@ -137,6 +139,7 @@ export class AppContainer {
     try {
       AppContainer.packImpl = AppContainer.makePack();
       AppContainer.buildSpeech();
+      AppContainer.narration().loadClipManifest();   // A13: early, so Settings/onboarding know Polish is spoken
       AppContainer.permImpl = new PermissionService(ctx);
       AppContainer.realLocImpl = new RealLocationSource(AppContainer.permImpl);
       AppContainer.demoImpl = new DemoWalkSource(ctx);
@@ -277,7 +280,12 @@ export class AppContainer {
       notifier: (): NotifierPort | undefined => AppContainer.notifier(),
       haptics: (): HapticsPort | undefined => AppContainer.haptics(),
       permissions: (): PermissionPort | undefined => AppContainer.permissions(),
-      keepScreenOn: (on: boolean) => AppContainer.keepScreenOn(on)
+      keepScreenOn: (on: boolean) => AppContainer.keepScreenOn(on),
+      clips: (): ClipIndex | undefined => AppContainer.narration().loadedClips(),
+      liveVoiceLabel: (): VoiceLabel | undefined => {
+        const p: VoicePlan | undefined = AppContainer.narration().currentPlan();
+        return p !== undefined ? p.label : undefined;
+      }
     };
     const ctrl: TourController = new TourController(deps);
     AppContainer.tourNotifier().attach(ctrl, (): Lang => ctrl.options().lang);
@@ -379,8 +387,10 @@ export class AppContainer {
     const vm = new VoiceManager(engines);
     AppContainer.voiceImpl = vm;
     // A13: ClipPlayer plays pre-rendered sentence clips (rawfile/audio, AVPlayer) when the manifest matches.
-    AppContainer.speechImpl = new NarrationPlayer(vm, engines, new PcmPlayer(), AppConfig.USE_SYSTEM_PLAYBACK,
+    const np = new NarrationPlayer(vm, engines, new PcmPlayer(), AppConfig.USE_SYSTEM_PLAYBACK,
       new ClipPlayer(() => AppContainer.context()));
+    AppContainer.speechImpl = np;
+    vm.setClipSource((lang: string): boolean => np.hasClips(lang));
   }
 
   static permissions(): PermissionPort {
