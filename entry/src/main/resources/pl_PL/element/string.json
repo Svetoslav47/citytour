@@ -11,6 +11,22 @@
     {
       "name": "perm_vibrate_reason",
       "value": "Krótka wibracja informuje, że dotarłeś do przystanku."
+    },
+    {
+      "name": "walk_menu_how",
+      "value": "Jak to działa"
+    },
+    {
+      "name": "walk_menu_how_hide",
+      "value": "Ukryj Jak to działa"
+    },
+    {
+      "name": "hud_title",
+      "value": "JAK TO DZIAŁA"
+    },
+    {
+      "name": "hud_live",
+      "value": "wartości na żywo"
     }
   ]
 }
