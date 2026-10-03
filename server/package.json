@@ -16,7 +16,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
     "keygen": "npm run build && node dist/cli/keygen.js",
-    "publish-course": "npm run build && node dist/cli/publish-course.js"
+    "publish-course": "npm run build && node dist/cli/publish-course.js",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "express": "5.2.1",
