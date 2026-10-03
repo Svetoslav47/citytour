@@ -1,7 +1,11 @@
 // Tests for 20-fetch-osm-tiles.mjs: the tiling must reproduce the lead's committed tiles exactly.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseBounds, sameBbox, osmStats, tileUrl, tiles } from './20-fetch-osm-tiles.mjs';
+import { allTiles, kazimierzTiles, parseBounds, sameBbox, osmStats, tileUrl, tiles } from './20-fetch-osm-tiles.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
+import { MAP_AREAS } from './60-mapdata.mjs';
+import { rawPath } from './lib/http.mjs';
 
 test('tiles(): 3x3 grid, row-major from the south-west, existing file names', () => {
   const t = tiles();
@@ -25,4 +29,27 @@ test('parseBounds / sameBbox / osmStats', () => {
   assert.ok(!sameBbox(b, tiles()[1].bbox));
   assert.equal(parseBounds('<osm/>'), null);
   assert.deepEqual(osmStats(xml), { nodes: 2, ways: 1, relations: 0, newestEdit: '2026-10-02T21:09:38Z' });
+});
+
+test('kazimierzTiles(): the row south of the Old Town plus one tile east of tile 3, on the same grid', () => {
+  const k = kazimierzTiles();
+  assert.equal(k.length, 5);
+  assert.deepEqual(k[0], { n: 1, rel: 'osm/kazimierz-tile1.osm.gz', bbox: [19.929, 50.0475, 19.935, 50.0525] });
+  assert.deepEqual(k[3].bbox, [19.947, 50.0475, 19.953, 50.0525]);
+  assert.deepEqual(k[4], { n: 5, rel: 'osm/kazimierz-tile5.osm.gz', bbox: [19.947, 50.0525, 19.953, 50.0575] });
+  assert.equal(allTiles().length, 14);
+  assert.equal(new Set(allTiles().map((t) => t.rel)).size, 14);
+});
+
+test('committed tiles: every map area file exists and its <bounds> match the tiling', () => {
+  const byRel = new Map(allTiles().map((t) => [t.rel, t]));
+  for (const [area, rels] of Object.entries(MAP_AREAS)) {
+    for (const rel of rels) {
+      assert.ok(byRel.has(rel), `${area}: ${rel} is not a tile of 20-fetch-osm-tiles.mjs`);
+      const p = rawPath(rel);
+      assert.ok(existsSync(p), `missing data/raw/${rel}`);
+      const head = gunzipSync(readFileSync(p)).toString('utf8', 0, 600);
+      assert.ok(sameBbox(parseBounds(head), byRel.get(rel).bbox), `${rel} bounds`);
+    }
+  }
 });

@@ -191,6 +191,24 @@ export function lineFeature(c, name) {
   return f;
 }
 
+/**
+ * OSM tile files (relative to data/raw/) of each map area. `oldtown` is the Royal Route (`krakow`) map; `kazimierz`
+ * (course krakow-kazimierz) is the Old Town's southern row (tiles 1-3, Wawel) plus the five Kazimierz tiles of
+ * 20-fetch-osm-tiles.mjs: lon 19.929-19.953, lat 50.0475-50.0575.
+ */
+export const MAP_AREAS = Object.freeze({
+  oldtown: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9].map((k) => `osm/oldtown-tile${k}.osm.gz`)),
+  kazimierz: Object.freeze([
+    ...[1, 2, 3].map((k) => `osm/oldtown-tile${k}.osm.gz`),
+    ...[1, 2, 3, 4, 5].map((k) => `osm/kazimierz-tile${k}.osm.gz`),
+  ]),
+});
+
+/** Reads gzipped OSM XML files (paths relative to rawDir) as strings. */
+export function readOsmFiles(rawDir, rels) {
+  return rels.map((rel) => gunzipSync(readFileSync(`${rawDir}/${rel}`)).toString('utf8'));
+}
+
 export function readOsmTiles(rawDir, n = 9) {
   const xmls = [];
   for (let k = 1; k <= n; k++) xmls.push(gunzipSync(readFileSync(`${rawDir}/osm/oldtown-tile${k}.osm.gz`)).toString('utf8'));
