@@ -9,7 +9,7 @@ The exact, public instruction set used to translate the English Historian script
 ## Inputs (nothing else)
 
 1. `scripts/pack/review/<courseId>/<poiId>.en.md`: the teaser, full and deep sections, the claims and the view hint.
-2. The stop names in `data/tours/royal-route.json` (pl, zh).
+2. The stop names in the course's tour file (`data/tours/royal-route.json`, or `data/tours/<tourId>.json` for another course) (pl, zh).
 3. For established local name forms only: the Polish and Chinese source texts in `data/raw/wiki/stops-text-{pl,zh}.json` and `summaries-{pl,zh}.json`.
 
 Translate what the English says, sentence by sentence. Add no fact, number, name or nuance that is not in the English script. Drop nothing.
