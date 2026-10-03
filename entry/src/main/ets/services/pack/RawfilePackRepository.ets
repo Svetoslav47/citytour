@@ -5,6 +5,8 @@
  *   a mismatch, invalid JSON or another schema major is blocking (PACK_ERR, ARCHITECTURE §9 row 17).
  * - Records are re-validated by core/content/PackParser; invalid ones are dropped (PACK_DROP).
  * - Narrations load lazily per language (NarrationRepository), the map lazily per level.
+ * Remote courses (docs/SERVER.md §6): the same parsing and integrity checks also serve a downloaded course; only the
+ * byte source differs (PackSource: rawfile here, files under filesDir/courses/<id>/<version>/ in FilePackRepository).
  * APIs (all <= API 20): application.getApplicationContext (14+, doc js-apis-app-ability-application),
  * ResourceManager.getRawFileContent / getRawFileContentSync (9+/10+, js-apis-resource-manager),
  * util.TextDecoder.create + decodeToString (12+, js-apis-util), cryptoFramework.createMd SHA256 +
@@ -38,9 +40,40 @@ function hex(bytes: Uint8Array): string {
   return s;
 }
 
+/** Where a pack's files come from (pack-relative paths such as 'pois.json', 'narrations/en.json'). Both throw on error. */
+export interface PackSource {
+  label(): string;
+  read(file: string): Promise<Uint8Array>;
+  readSync(file: string): Uint8Array;
+}
+
+/** The bundled pack in rawfile/packs/krakow/. */
+export class RawfilePackSource implements PackSource {
+  private rm: resourceManager.ResourceManager | undefined = undefined;
+
+  label(): string {
+    return 'rawfile';
+  }
+
+  read(file: string): Promise<Uint8Array> {
+    return this.resources().getRawFileContent(`${PACK_DIR}${file}`);
+  }
+
+  readSync(file: string): Uint8Array {
+    return this.resources().getRawFileContentSync(`${PACK_DIR}${file}`);
+  }
+
+  private resources(): resourceManager.ResourceManager {
+    if (this.rm === undefined) {
+      this.rm = application.getApplicationContext().resourceManager;
+    }
+    return this.rm;
+  }
+}
+
 export class RawfilePackRepository implements PackRepository {
   private loading: Promise<PackLoadResult> | undefined = undefined;
-  private rm: resourceManager.ResourceManager | undefined = undefined;
+  private readonly src: PackSource;
   private manifestData: PackManifest | undefined = undefined;
   private fileIndex: Map<string, PackFile> = new Map<string, PackFile>();
   private poiList: Poi[] = [];
@@ -52,7 +85,8 @@ export class RawfilePackRepository implements PackRepository {
   private maps: Map<string, MapData> = new Map<string, MapData>();
   private narr: NarrationRepository;
 
-  constructor() {
+  constructor(src?: PackSource) {
+    this.src = src !== undefined ? src : new RawfilePackSource();
     this.narr = new NarrationRepository((lang: Lang) => this.readTextSync(`narrations/${lang}.json`),
       (id: string) => this.poiById.get(id), (id: string) => this.sourceById.has(id));
   }
@@ -209,7 +243,7 @@ export class RawfilePackRepository implements PackRepository {
       }
 
       const narrEn = this.narr.ensure(Lang.EN);
-      Log.i(LogEvents.PACK_LOAD, `where=repo ms=${Date.now() - t0} pack=${mr.manifest.packId} ` +
+      Log.i(LogEvents.PACK_LOAD, `where=repo src=${this.src.label()} ms=${Date.now() - t0} pack=${mr.manifest.packId} ` +
         `version=${mr.manifest.version} pois=${this.poiList.length} tours=${this.tourList.length} ` +
         `narr=${narrEn} legs=${this.routeData.legs.length} sources=${this.sourceById.size}`);
       const ok: PackLoadResult = { ok: true, manifest: mr.manifest, issues: issues };
@@ -226,17 +260,10 @@ export class RawfilePackRepository implements PackRepository {
     return r;
   }
 
-  private resources(): resourceManager.ResourceManager {
-    if (this.rm === undefined) {
-      this.rm = application.getApplicationContext().resourceManager;
-    }
-    return this.rm;
-  }
-
   /** Reads a pack file; when `verify`, checks it against the manifest (bytes + SHA-256). */
   private async readText(file: string, verify: boolean): Promise<string | undefined> {
     try {
-      const bytes = await this.resources().getRawFileContent(`${PACK_DIR}${file}`);
+      const bytes = await this.src.read(file);
       return this.decodeChecked(file, bytes, verify);
     } catch (e) {
       Log.e(LogEvents.PACK_ERR, `file=${file} reason=read ${Log.errKv(e as Object)}`);
@@ -246,7 +273,7 @@ export class RawfilePackRepository implements PackRepository {
 
   private readTextSync(file: string): string | undefined {
     try {
-      const bytes = this.resources().getRawFileContentSync(`${PACK_DIR}${file}`);
+      const bytes = this.src.readSync(file);
       return this.decodeChecked(file, bytes, true);
     } catch (e) {
       Log.w(LogEvents.PACK_ERR, `file=${file} reason=read ${Log.errKv(e as Object)} blocking=false`);

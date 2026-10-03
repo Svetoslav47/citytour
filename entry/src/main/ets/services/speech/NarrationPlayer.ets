@@ -33,13 +33,19 @@
  * ClipSelection.storyVoicePlan (voice mode + PRERENDERED when the story language has clips, so Polish is spoken);
  * text sentences of such a tour (Polish lines without a clip) use the reading timer below. currentPlan() feeds the
  * live "Studio voice" / "Fallback voice" label.
+ *
+ * Remote courses (docs/SERVER.md §2, §6): the clip index is the bundled manifest PLUS the active downloaded course's
+ * manifest (setCourseClips; absolute file paths, the course's entries first). A RuntimeClipSource (RemoteVoice) may
+ * supply a studio line rendered by the server for a sentence without a clip (filesDir/tts/<sha>.mp3); it plays
+ * through the same ClipPlayer and is logged NARR_AUDIO src=remote|remote_cache. The user's text-only and
+ * cross-language choices never get one (same rule as clips).
  */
 import { Lang } from '../../contracts/Model';
 import { SpeechCapabilities, SpeechListener, SpeechPort, Utterance, VoicePlan } from '../../contracts/Ports';
 import { estimateReadingMs, pcmDurationMs, SPEECH_MODE_TEXT } from '../../core/speech/VoicePolicy';
 import {
   AUDIO_SRC_PRERENDERED, AUDIO_SRC_TEXT, AUDIO_SRC_TTS, AudioDecision, CLIP_MANIFEST_RAWFILE, ClipEntry, ClipIndex,
-  ClipQuery, parseClipManifest, selectAudio, shortSha
+  ClipQuery, ClipReason, parseClipManifest, selectAudio, shortSha
 } from '../../core/speech/ClipSelection';
 import { VoiceLabel } from '../../contracts/Settings';
 import { AppConfig } from '../../app/AppConfig';
@@ -48,7 +54,29 @@ import { LogEvents } from '../../app/LogEvents';
 import { PcmPlayer, PcmPlayerListener } from '../audio/PcmPlayer';
 import { ClipPlayer, ClipPlayerListener } from '../audio/ClipPlayer';
 import { TtsEngines, TtsErr, TtsRequestHandler } from './TtsEngines';
+import { sha256Hex } from '../../core/speech/Sha256';
 import { VoiceManager } from './VoiceManager';
+
+/** A server-rendered studio line for one sentence (RemoteVoice). */
+export class RuntimeClip {
+  file: string = '';     // absolute sandbox path, '' = none
+  src: string = '';      // 'remote' | 'remote_cache'
+  reason: string = '';   // why (or why not), for NARR_AUDIO
+}
+
+/** Supplies runtime studio lines (docs/SERVER.md §2 step 2). Synchronous: RemoteVoice fetches before speak(). */
+export interface RuntimeClipSource {
+  lookup(u: Utterance, sha: string): RuntimeClip | undefined;
+  onClipFailed(sha: string, file: string): void;
+}
+
+/** What the clip index alone decides for an utterance (RemoteVoice asks before going to the server). */
+export class LocalAudio {
+  clip: boolean = false;
+  optOut: boolean = false;        // the user's text-only or cross-language choice
+  platformText: boolean = false;  // the plan's own fallback is text (Polish)
+  sha: string = '';
+}
 
 export const SYNTH_TIMEOUT_MS: number = 15000;
 export const WATCHDOG_MARGIN_MS: number = 4000;
@@ -110,6 +138,7 @@ class Job {
   sha: string = '';
   audioLogged: boolean = false;
   pendingFallback: boolean = false;          // the clip failed while paused: resume() starts the TTS/text path
+  srcOverride: string = '';                  // 'remote' | 'remote_cache' for a runtime studio line
 
   constructor(u: Utterance, plan: VoicePlan, segId: string) {
     this.u = u;
@@ -126,7 +155,10 @@ class Job {
   }
 
   src(): string {
-    return this.clip !== undefined ? AUDIO_SRC_PRERENDERED : this.isText() ? AUDIO_SRC_TEXT : AUDIO_SRC_TTS;
+    if (this.clip !== undefined) {
+      return this.srcOverride !== '' ? this.srcOverride : AUDIO_SRC_PRERENDERED;
+    }
+    return this.isText() ? AUDIO_SRC_TEXT : AUDIO_SRC_TTS;
   }
 
   label(): VoiceLabel {
@@ -140,6 +172,9 @@ export class NarrationPlayer implements SpeechPort {
   private pcm: PcmPlayer;
   private clips: ClipPlayer | undefined;
   private clipIndex: ClipIndex | undefined = undefined;
+  private bundledEntries: ClipEntry[] = [];
+  private courseEntries: ClipEntry[] = [];
+  private runtime: RuntimeClipSource | undefined = undefined;
   private clipLoad: Promise<void> | undefined = undefined;
   private systemPlayback: boolean;
   private listener: SpeechListener | undefined = undefined;
@@ -237,7 +272,8 @@ export class NarrationPlayer implements SpeechPort {
         return;
       }
       const m = parseClipManifest(text);
-      this.clipIndex = new ClipIndex(m.entries);
+      this.bundledEntries = m.entries;
+      this.rebuildIndex();
       Log.i(LogEvents.NARR_AUDIO, `event=manifest clips=${m.entries.length} dropped=${m.dropped}` +
         ` error=${m.error === '' ? 'none' : m.error} model=${m.model || 'none'} voice=${m.voiceId || 'none'}` +
         ` ms=${Date.now() - t0}`);
@@ -245,6 +281,49 @@ export class NarrationPlayer implements SpeechPort {
       Log.e(LogEvents.NARR_AUDIO, `event=manifest_fail ${Log.errKv(e)}`);
     });
     return this.clipLoad;
+  }
+
+  /** The active downloaded course's clips (absolute paths), [] for the bundled course. Rebuilds the index. */
+  setCourseClips(entries: ClipEntry[]): void {
+    this.courseEntries = entries;
+    this.rebuildIndex();
+    Log.i(LogEvents.NARR_AUDIO, `event=course_clips clips=${entries.length} total=${this.clipCount()}`);
+  }
+
+  setRuntimeClipSource(src: RuntimeClipSource | undefined): void {
+    this.runtime = src;
+  }
+
+  /** What the local clips decide for `u` (no side effects, no log). */
+  localAudio(u: Utterance): LocalAudio {
+    const out = new LocalAudio();
+    try {
+      const plan = this.voice.plan(u.lang, true);
+      out.platformText = plan.speechMode === SPEECH_MODE_TEXT;
+      const q: ClipQuery = {
+        text: u.text, lang: u.lang, personaId: u.personaId, planSpeechMode: plan.speechMode, planLabel: plan.label,
+        planReason: plan.reason
+      };
+      const d = selectAudio(this.clipIndex, q);
+      out.clip = d.clip !== undefined;
+      out.optOut = d.reason === ClipReason.USER_TEXT_ONLY || d.reason === ClipReason.LISTEN_CHOICE;
+      out.sha = d.sha !== '' ? d.sha : sha256Hex(u.text);
+    } catch (e) {
+      out.optOut = true;
+      Log.e(LogEvents.UNCAUGHT, `where=NarrationPlayer.localAudio ${Log.errKv(e as Object)}`);
+    }
+    return out;
+  }
+
+  private rebuildIndex(): void {
+    const all: ClipEntry[] = [];
+    for (const e of this.courseEntries) {
+      all.push(e);
+    }
+    for (const e of this.bundledEntries) {
+      all.push(e);
+    }
+    this.clipIndex = all.length > 0 ? new ClipIndex(all) : undefined;
   }
 
   /** The loaded clip index (undefined until the manifest is read, or when there is none). */
@@ -447,10 +526,39 @@ export class NarrationPlayer implements SpeechPort {
       job.clip = d.clip;
       job.audioReason = d.reason;
       job.sha = d.sha;
+      if (d.clip === undefined && this.runtime !== undefined && d.reason !== ClipReason.USER_TEXT_ONLY &&
+        d.reason !== ClipReason.LISTEN_CHOICE) {
+        this.attachRuntimeClip(job);
+      }
     } else {
       job.audioReason = 'no_clip_player';
     }
     return job;
+  }
+
+  /** A server-rendered studio line for a sentence without a clip (RemoteVoice already fetched it). */
+  private attachRuntimeClip(job: Job): void {
+    try {
+      const sha = job.sha !== '' ? job.sha : sha256Hex(job.u.text);
+      job.sha = sha;
+      const rc = this.runtime?.lookup(job.u, sha);
+      if (rc === undefined) {
+        return;
+      }
+      if (rc.file === '') {
+        job.audioReason = `${job.audioReason} remote=${rc.reason}`;
+        return;
+      }
+      const e: ClipEntry = {
+        lang: job.u.lang, poiId: '', personaId: job.u.personaId, length: 'runtime', n: -1, file: rc.file,
+        textSha256: sha, durationMs: 0
+      };
+      job.clip = e;
+      job.srcOverride = rc.src;
+      job.audioReason = rc.reason;
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=NarrationPlayer.attachRuntimeClip ${Log.errKv(e as Object)}`);
+    }
   }
 
   /** One NARR_AUDIO line per utterance, when it starts (prefetch does not count). */
@@ -833,7 +941,10 @@ export class NarrationPlayer implements SpeechPort {
       return;
     }
     const file = job.clip.file;
-    if (this.clipIndex !== undefined) {
+    if (job.srcOverride !== '') {
+      this.runtime?.onClipFailed(job.sha, file);   // a bad cached mp3 is deleted, the next time asks the server
+      job.srcOverride = '';
+    } else if (this.clipIndex !== undefined) {
       this.clipIndex.markFailed(file);
     }
     this.clearWatchdog(job);
