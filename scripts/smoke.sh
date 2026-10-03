@@ -29,8 +29,9 @@ SERIAL="$(devecocli device list 2>/dev/null | awk -v d="$DEVICE" 'index($0,d)==1
 if [ -n "${HDC:-}" ] && [ -n "$SERIAL" ]; then "$HDC" -t "$SERIAL" shell hilog -r >/dev/null 2>&1 || true; fi
 
 # 1. Build + install + launch. devecocli's own check prints "Smoke: PASS" (no crash, not blank).
-echo "smoke.sh: devecocli run --device \"$DEVICE\""
-RUN_ARGS=(--device "$DEVICE")
+echo "smoke.sh: devecocli run --module entry --device \"$DEVICE\""
+# Two entry modules (entry = phone, wearable = watch): devecocli run needs --module.
+RUN_ARGS=(--module entry --device "$DEVICE")
 [ "${SMOKE_FRESH:-0}" = "1" ] && RUN_ARGS+=(--uninstall)
 devecocli run "${RUN_ARGS[@]}" 2>&1 | tee "$OUT/run.log"
 RUN_EXIT=${PIPESTATUS[0]}

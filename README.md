@@ -130,10 +130,10 @@ API levels in `build-profile.json5`: `compatibleSdkVersion` **6.0.0(20)** (chall
 ```bash
 devecocli emulator list                 # find your phone emulator
 devecocli emulator start "Pura 90"      # or the name of your phone emulator
-devecocli run --device "Pura 90"        # builds the .hap, installs it and launches EntryAbility
+devecocli run --module entry --device "Pura 90"   # builds the phone .hap, installs it and launches EntryAbility
 ```
 
-`devecocli run` ends with `Smoke: PASS` once the app has started on the device. To build without deploying:
+`devecocli run` ends with `Smoke: PASS` once the app has started on the device. The project has two entry modules (`entry` for the phone, `wearable` for the watch), so `--module` is required. To build without deploying:
 
 ```bash
 devecocli build
@@ -307,7 +307,7 @@ REPLAY_SUMMARY run=controller-voice-x8 enter=[7@8s,8@608s,9@736s,10@848s,11@1192
 
 **Walking pace (issue #60).** At x1 the arrival zone (35 m + up to 15 m accuracy allowance) is entered 25-50 s before the walker reaches a stop, so the teaser ends while they are still approaching. The engine then holds silence (`STORY_LINGER action=wait`) and decides on a later fix: the full story once the speed median has stayed below 0.6 m/s for 4 s (dwell stops 8, 10, 11, a few seconds after the walker stops), the teaser only once they have walked 15 m past their closest point, got no closer for 20 s (pass-by stop 9, which has a 3 s slow-down at the corner) or left the exit radius; at most 90 s. The bounds are in `core/tour/TourConfig.ets` and logged in `TOUR_CONFIG`. Before this fix the x1 runs gave `full=[7] teaserOnly=[8,9,10,11]`, and x4 `full=[7,8] teaserOnly=[9,10,11]`.
 
-**`scripts/smoke.sh`** runs `devecocli run --device "$DEVICE"` (default `Pura 90`), requires its `Smoke: PASS` (launched, no crash, not blank), then reads the app log (`devecocli log --keyword CityTour`) and requires the `APP_START` event. Then the Demo walk (ARCHITECTURE §11.2): it opens the developer page (`hdc shell aa start -a EntryAbility -b com.hackyeah.citytour --ps page dev`), taps **Start demo tour** (`devecocli ui click --id btnDevDemoTour`, x8 by default), follows the log until `STATE ... to=finished` (at most `SMOKE_DEMO_TIMEOUT` s, default 1500) and requires `PACK_LOAD`, `ROUTE_PLAN algo=heldkarp`, `LOC_SOURCE kind=demo`, `POI_ENTER`, `STORY_START`, `UTT_DONE` and `STATE to=finished`. It prints one line per event and `SMOKE+DEMO: PASS`, or `SMOKE+DEMO: FAIL` with the missing events. Logs and two screenshots (`devecocli ui screenshot --path`) go to `$SMOKE_OUT` (a temp dir by default). `SMOKE_FRESH=1` uninstalls first (fresh install); the onboarding (A12) is then skipped with `btnOnbSkip`.
+**`scripts/smoke.sh`** runs `devecocli run --module entry --device "$DEVICE"` (default `Pura 90`), requires its `Smoke: PASS` (launched, no crash, not blank), then reads the app log (`devecocli log --keyword CityTour`) and requires the `APP_START` event. Then the Demo walk (ARCHITECTURE §11.2): it opens the developer page (`hdc shell aa start -a EntryAbility -b com.hackyeah.citytour --ps page dev`), taps **Start demo tour** (`devecocli ui click --id btnDevDemoTour`, x8 by default), follows the log until `STATE ... to=finished` (at most `SMOKE_DEMO_TIMEOUT` s, default 1500) and requires `PACK_LOAD`, `ROUTE_PLAN algo=heldkarp`, `LOC_SOURCE kind=demo`, `POI_ENTER`, `STORY_START`, `UTT_DONE` and `STATE to=finished`. It prints one line per event and `SMOKE+DEMO: PASS`, or `SMOKE+DEMO: FAIL` with the missing events. Logs and two screenshots (`devecocli ui screenshot --path`) go to `$SMOKE_OUT` (a temp dir by default). `SMOKE_FRESH=1` uninstalls first (fresh install); the onboarding (A12) is then skipped with `btnOnbSkip`.
 
 **Pre-commit hook.** `scripts/git-hooks/pre-commit` blocks a commit that stages signing material (`*.p12`, `*.p7b`, `*.cer`, `*.csr`, `*.keystore`), a `build-profile.json5` whose `signingConfigs` is not `[]` (DevEco signing writes real configs there; keep them local), or a private key or Anthropic API key in the added lines. It reports file names only, never the matched text. Enable it once per clone (the setting is shared by all worktrees):
 
@@ -341,7 +341,7 @@ Every failure a user (or the jury) can hit ends in a visible state and one log l
 | 16 | Notifications refused | `NOTIF_DENIED` (INFO). No next-stop notification. Nothing else changes. | `I NOTIF_DENIED where=controller action=no_next_notice` | Unit test. The notifier service (task A8) is not wired yet. |
 | 17 | Pack missing or corrupt | Home: "Tour data couldn't be loaded. Reinstall the app." `PACK_ERR` (BLOCKING). No tour can be planned. | `E PACK_ERR file=pois.json reason=parse src=debug` | Emulator (`DEBUG_CORRUPT_PACK`) + unit test |
 
-**Simulating failures.** `entry/src/main/ets/app/AppConfig.ets` has three debug flags. They are `false` in git; set one to `true` and rebuild (`devecocli run --device "Pura 90"`):
+**Simulating failures.** `entry/src/main/ets/app/AppConfig.ets` has three debug flags. They are `false` in git; set one to `true` and rebuild (`devecocli run --module entry --device "Pura 90"`):
 
 - `DEBUG_FAIL_TTS_INIT` makes every `createEngine` reject with `1002300005` (row 9);
 - `DEBUG_CORRUPT_PACK` makes the pack report `pois.json` as unparseable (row 17);
