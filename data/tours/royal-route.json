@@ -1,5 +1,5 @@
 {
-  "$comment": "Human-curated source for the Royal Route tour (task B1). Mirrors contracts/Model.ets Tour/TourStop; per-stop names, kind, lat/lng and view feed the Poi records in the pack build (B2), which drops the review-only fields (coordinateCheck, coordinateSource, review, $comment). Coordinates, radii, dwell times, prizes and view hints are agent drafts until a human confirms them: see coordinatesConfirmedBy and each view.review.",
+  "$comment": "Human-curated source for the Royal Route tour (task B1). Tour-level id, personaId, titles, summaries, fixedStartPoiId, fixedEndPoiId, estMinutes and per-stop poiId, dwellS, prize, triggerRadiusM, approachRadiusM mirror contracts/Model.ets Tour/TourStop; per-stop wikidataId, kind, names, lat, lng and view {look, feature} feed the Poi records in the pack build (B2). Every other key is review metadata for humans and is not emitted: $comment, summariesReview, namesSource, estMinutesBasis, coordinatesConfirmedBy, coordinateMethod, radiiNote, n, coordinateSource, coordinateCheck, view.basis, view.review. Coordinates, radii, dwell times, prizes and view hints are agent drafts until a human confirms them (coordinatesConfirmedBy, view.review).",
   "id": "royal-route",
   "personaId": "historian",
   "titles": {
@@ -59,7 +59,14 @@
       "view": {
         "look": "up",
         "feature": {
-          "en": "the seven small turrets that crown the round brick walls"
+          "en": "the seven turrets that crown the round brick walls"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "Kraków Barbican",
+          "revid": 1364368996,
+          "quote": "seven turrets",
+          "file": "data/raw/wiki/stops-text-en.json"
         },
         "review": "to review"
       }
@@ -103,6 +110,13 @@
         "feature": {
           "en": "the stone relief of St Florian on the gate tower"
         },
+        "basis": {
+          "lang": "en",
+          "article": "St. Florian's Gate",
+          "revid": 1348551661,
+          "quote": "adorned with an 18th-century bas-relief of St. Florian",
+          "file": "data/raw/wiki/stops-text-en.json"
+        },
         "review": "to review"
       }
     },
@@ -144,6 +158,13 @@
         "look": "up",
         "feature": {
           "en": "the taller of the two towers, where the bugle call (hejnał) is played every hour"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "Church of the Assumption of the Blessed Virgin Mary, Kraków",
+          "revid": 1364219132,
+          "quote": "is played from the top of the taller of Saint Mary",
+          "file": "data/raw/wiki/stops-text-en.json"
         },
         "review": "to review"
       }
@@ -187,6 +208,13 @@
         "feature": {
           "en": "the Renaissance parapet with carved masks along the roof line"
         },
+        "basis": {
+          "lang": "pl",
+          "article": "Sukiennice w Krakowie",
+          "revid": 80078627,
+          "quote": "attyką o podziałach arkadowych i grzebieniu z maszkaronami projektu Santi Gucciego",
+          "file": "data/raw/wiki/stops-text-pl.json"
+        },
         "review": "to review"
       }
     },
@@ -229,6 +257,13 @@
         "feature": {
           "en": "the poet's statue on top, above the four allegorical groups around the base"
         },
+        "basis": {
+          "lang": "en",
+          "article": "Adam Mickiewicz Monument, Kraków",
+          "revid": 1361283219,
+          "quote": "At the poet's feet are four allegoric groups",
+          "file": "data/raw/wiki/stops-text-en.json"
+        },
         "review": "to review"
       }
     },
@@ -269,7 +304,14 @@
       "view": {
         "look": "up",
         "feature": {
-          "en": "the clock and the spire at the top of the tower"
+          "en": "the tower's slight lean, about 55 cm"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "Town Hall Tower",
+          "revid": 1342970609,
+          "quote": "leans just 55 centimetres, the result of a storm in 1703",
+          "file": "data/raw/wiki/stops-text-en.json"
         },
         "review": "to review"
       }
@@ -311,7 +353,14 @@
       "view": {
         "look": "down",
         "feature": {
-          "en": "the church's base, which sits below the level of today's square"
+          "en": "the church's floor, which lies below the level of today's square"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "Church of St. Adalbert, Kraków",
+          "revid": 1354363686,
+          "quote": "The floor level is situated under the present level of the Square",
+          "file": "data/raw/wiki/stops-text-en.json"
         },
         "review": "to review"
       }
@@ -353,7 +402,14 @@
       "view": {
         "look": "up",
         "feature": {
-          "en": "the statues of the Twelve Apostles on the fence in front of the church"
+          "en": "the sculptures of the apostles on their plinths in front of the church"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "Church of Saints Apostles Peter and Paul, Kraków",
+          "revid": 1362854449,
+          "quote": "several plinths with raised sculptures of apostles",
+          "file": "data/raw/wiki/stops-text-en.json"
         },
         "review": "to review"
       }
@@ -395,7 +451,14 @@
       "view": {
         "look": "up",
         "feature": {
-          "en": "the two slender octagonal towers above the Romanesque stone walls"
+          "en": "the two octagonal towers with their Baroque domes"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "St. Andrew's Church, Kraków",
+          "revid": 1354773237,
+          "quote": "The Baroque domes atop the octagonal towers were added in 1639",
+          "file": "data/raw/wiki/stops-text-en.json"
         },
         "review": "to review"
       }
@@ -437,7 +500,14 @@
       "view": {
         "look": "level",
         "feature": {
-          "en": "the carved stone portals and coats of arms above the canons' house doors"
+          "en": "the decorated stone portals of the Renaissance and Baroque houses"
+        },
+        "basis": {
+          "lang": "pl",
+          "article": "Ulica Kanonicza w Krakowie",
+          "revid": 80292430,
+          "quote": "wiele renesansowych i barokowych kamienic z ozdobnymi portalami",
+          "file": "data/raw/wiki/stops-text-pl.json"
         },
         "review": "to review"
       }
@@ -479,7 +549,14 @@
       "view": {
         "look": "up",
         "feature": {
-          "en": "the gilded dome of the Sigismund Chapel on the cathedral's south side"
+          "en": "the cathedral, where Polish monarchs were crowned and buried"
+        },
+        "basis": {
+          "lang": "en",
+          "article": "Wawel Castle",
+          "revid": 1377861787,
+          "quote": "the Wawel Cathedral where Polish monarchs were crowned and buried",
+          "file": "data/raw/wiki/stops-text-en.json"
         },
         "review": "to review"
       }
