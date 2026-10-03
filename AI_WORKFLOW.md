@@ -6,7 +6,10 @@ This project uses AI-assisted development. Keep this document current and public
 
 | Model, agent, MCP server, or Agent Skill | Version or source | Role in the project |
 | --- | --- | --- |
-| [Tool name] | [Version/source] | [Ideation, implementation, review, testing, debugging, etc.] |
+| Claude Code (Claude Opus 5.5, `claude-opus-5-5`) | Anthropic, Claude Code desktop app | Research, environment setup, project scaffolding, workflow documentation, implementation |
+| DevEco CLI `devecocli` | `@deveco/deveco-cli` 1.3.4, patched with the challenge repo's `scripts/apply-devecocli-patches.mjs` | Project creation, build, install, launch, emulator control, logs |
+| `deveco-cli` Agent Skill | installed by `devecocli init --skill` | Teaches the agent how to use `devecocli` |
+| Hackathon Agent Skills: `ohos-app-scaffold`, `ohos-app-dev`, `ohos-system-app-dev`, `ohos-system-dev`, `conductor-dev`, `hmos-arkts-knowledge-retriever`, `hmos-arkui-scenario-development`, `hmos-arkui-develop-skill`, `hmos-arkui-mvvm-pattern` | https://github.com/onirodeveloper/hackyeah2026-challenge/tree/main/skills, installed with `npx skills add -g` | ArkTS/ArkUI grounding, dev loop, UI development (`conductor-dev` installed but not used, per `AGENTS.md`) |
 
 ## Important prompts and instructions
 
@@ -17,7 +20,9 @@ This project uses AI-assisted development. Keep this document current and public
 
 | Date | Tool/model | Request or task | Generated or changed | Human review and validation |
 | --- | --- | --- | --- | --- |
-| [YYYY-MM-DD] | [Tool/model] | [Prompt summary] | [Files/design/code] | [How it was checked] |
+| 2026-10-03 | Claude Code (Opus 5.5) | Set up the macOS toolchain following the challenge README/FAQ: DevEco region switch, DevEco CLI install and patches, Agent Skills | Local environment only (no repo files) | `devecocli -V` = 1.3.4, the patch script reports "already applied" on its second run, phone emulator profiles visible after the region switch |
+| 2026-10-03 | Claude Code (Opus 5.5) + `devecocli create` | Scaffold the app and add the hackathon starter files | Project skeleton, `AGENTS.md`/`CLAUDE.md`/`AI_WORKFLOW.md`/`HACKATHON_BRIEF.md`, API levels (compatible 20, compile/target 24), hardened `.gitignore` | `devecocli run --device "Pura 90"` → build successful, installed, `Smoke: PASS` on the HarmonyOS 6.1.1(24) emulator |
+| 2026-10-03 | Claude Code (Opus 5.5) | Write the team workflow: branches and worktrees, jury-facing runtime rules, README with reproducible setup | `AGENTS.md` "Team Flow" section, `scripts/wt.sh`, `README.md` | Reviewed by the team; `scripts/wt.sh list` runs |
 
 ## Workflow
 
@@ -35,7 +40,7 @@ This project uses AI-assisted development. Keep this document current and public
 
 ## Unsuccessful approaches
 
-- [What was tried, why it failed, and what changed afterward.]
+- `devecocli emulator geolocation` (inject GPS location and heading from the CLI) fails with "Emulator scene control commands require Emulator 7.0 or later". The newest emulator available to us is 6.1.1.200, so location simulation has to come from the emulator UI or an in-app, clearly labelled demo source.
 
 ## Known limitations
 

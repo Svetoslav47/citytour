@@ -23,3 +23,9 @@
 .env
 .env.*
 local.properties
+
+# local-only agent config (not published)
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/worktrees/
+.claude/skills/commit-cadence/

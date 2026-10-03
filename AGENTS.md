@@ -79,3 +79,38 @@ Update the work log after a coherent piece of material work and before handover.
 - README/setup/architecture notes reflect any changed command or design.
 - `AI_WORKFLOW.md` records material AI-assisted work and how it was reviewed.
 - No secret, generated build output, or unrelated change was added.
+
+## Team Flow (project-specific additions)
+
+These rules add to the template guidance above. Where they overlap, the stricter rule wins. The authoritative challenge statement remains https://github.com/onirodeveloper/hackyeah2026-challenge/blob/main/hackathon_challenge.md.
+
+### Branches and worktrees
+
+- `main` is the **demo/judging branch**. It must build and pass the emulator smoke run (`devecocli run --device "Pura 90"` → `Smoke: PASS`) at every commit.
+- All feature, capability-integration and experiment work happens on a branch, each checked out in **its own git worktree** so parallel agents and teammates never share a working directory:
+  - `feat/<slug>` for user-facing features, `cap/<slug>` for platform-capability integrations (location, sensors, widgets, TTS, wearable), `exp/<slug>` for throwaway spikes, `fix/<slug>` for bug fixes, `docs/<slug>` for larger documentation changes.
+  - Create: `scripts/wt.sh new feat/<slug>`. It creates the worktree at `../citytour-wt/<slug>` from the latest `main`. List: `scripts/wt.sh list`. Remove after merge: `scripts/wt.sh rm <slug>`.
+  - One agent session per worktree. Do not edit the same files from two worktrees at once. Shared hotspots (`entry/src/main/module.json5`, `build-profile.json5`, `oh-package.json5`, resource string files) are changed in small, separate commits and merged first.
+- Push every branch to `origin` regularly (at least after every few commits) so history is backed up and visible.
+- Merging into `main` is the user's call, as the template says. Before telling the user a branch is ready, rebase it on `main`, rebuild, run the tests and the emulator smoke run, and list what was verified.
+- Small docs, README or config tweaks may go straight to `main`.
+
+### What the jury checks at runtime (design every change for this)
+
+The jury scores originality, usefulness, technical execution, platform capabilities (20% each), demo quality and reproducibility/transparency (10% each). They watch the app **running on the emulator**, read the code and logs, and may run an automated pre-review of the repository. Every change must keep these true:
+
+1. **It runs as described.** Each claim in README, demo or pitch is backed by code you can run, a log line or a test. Nothing is "added for show".
+2. **Simulated data is visible as simulated.** Any mocked service or simulated sensor, location or heading input (e.g. a "Demo walk" route) shows a clear on-screen label and is listed in README under *Mocked or simulated behavior*. Real platform paths (Location Kit, sensors, etc.) stay wired in and are selectable.
+3. **It fails gracefully, never crashes.** Handle and show a sensible state for:
+   - permission denied
+   - no location fix
+   - offline/network error
+   - API timeout (explicit timeouts on every network call)
+   - empty or malformed data
+   - **incorrect AI output**: validate structure, length and language, keep facts grounded in the source data, and fall back to the source text
+4. **It is observable.** Use `hilog` with one consistent domain/tag for key events (location update, POI match, story source, fallback taken, errors), so a logs view during the demo backs up the behaviour.
+5. **It is tested.** Core logic (geo/bearing matching, geofences, data parsing, AI-output validation) has unit tests that run from the command line. Add or extend a test with every logic change. Full coverage isn't expected, but evidence that we checked our work is.
+6. **It is hygienic.** Request only the permissions you need, with reason strings, at the point of use. No secrets, keys, signing material or personal data in the repo. The app works without any private key (offline/fallback path). Pin dependencies.
+7. **It uses the platform for real.** Prefer real OpenHarmony/HarmonyOS system capabilities over generic code that would run unchanged elsewhere, and name each capability used in README.
+8. **It is reproducible.** Any change to a command, version, SDK, permission or setup step updates README in the same commit.
+9. **It is transparent.** `AI_WORKFLOW.md` is updated after each coherent piece of AI-assisted work, as described above. Commit messages say what changed and why, so `git log` tells the story of what was built during the hackathon.
