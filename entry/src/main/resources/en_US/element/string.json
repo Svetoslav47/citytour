@@ -1,6 +1,18 @@
 {
   "string": [
     {
+      "name": "module_desc",
+      "value": "CityTour app module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Audio walking tours of Kraków"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "CityTour"
+    },
+    {
       "name": "perm_location_reason",
       "value": "CityTour uses your precise location to start a story when you reach a monument and to guide you to the next stop."
     },
@@ -11,6 +23,1102 @@
     {
       "name": "perm_vibrate_reason",
       "value": "A short vibration tells you that you have arrived at a stop."
+    },
+    {
+      "name": "label_simulated",
+      "value": "SIMULATED"
+    },
+    {
+      "name": "label_simulated_a11y",
+      "value": "Simulated location. Demo walk is on."
+    },
+    {
+      "name": "label_demo_walk_a11y",
+      "value": "Simulated location. Demo walk is on. Opens demo controls."
+    },
+    {
+      "name": "label_demo_assist",
+      "value": "Demo assist"
+    },
+    {
+      "name": "a11y_back",
+      "value": "Back"
+    },
+    {
+      "name": "a11y_close",
+      "value": "Close"
+    },
+    {
+      "name": "a11y_settings",
+      "value": "Settings"
+    },
+    {
+      "name": "a11y_map_attribution",
+      "value": "Map attribution"
+    },
+    {
+      "name": "map_attribution",
+      "value": "© OpenStreetMap contributors"
+    },
+    {
+      "name": "fmt_km",
+      "value": "%s km"
+    },
+    {
+      "name": "fmt_m",
+      "value": "%d m"
+    },
+    {
+      "name": "fmt_min",
+      "value": "%d min"
+    },
+    {
+      "name": "fmt_h_min",
+      "value": "%1$d h %2$d min"
+    },
+    {
+      "name": "fmt_approx",
+      "value": "~%s"
+    },
+    {
+      "name": "fmt_stop_of",
+      "value": "Stop %1$d of %2$d"
+    },
+    {
+      "name": "fmt_list_sep",
+      "value": "%1$s · %2$s"
+    },
+    {
+      "name": "cta_continue",
+      "value": "Continue"
+    },
+    {
+      "name": "cta_start_tour",
+      "value": "Start tour"
+    },
+    {
+      "name": "cta_begin",
+      "value": "Begin"
+    },
+    {
+      "name": "cta_start_walking",
+      "value": "Start walking"
+    },
+    {
+      "name": "cta_tell_more",
+      "value": "Tell me more"
+    },
+    {
+      "name": "cta_end_tour",
+      "value": "End tour"
+    },
+    {
+      "name": "cta_keep_walking",
+      "value": "Keep walking"
+    },
+    {
+      "name": "label_next",
+      "value": "Next"
+    },
+    {
+      "name": "label_here",
+      "value": "You're here"
+    },
+    {
+      "name": "look_left_up",
+      "value": "Look left and up"
+    },
+    {
+      "name": "offline_ready",
+      "value": "Kraków · offline ready"
+    },
+    {
+      "name": "home_title",
+      "value": "CityTour"
+    },
+    {
+      "name": "home_now_walking",
+      "value": "Now walking"
+    },
+    {
+      "name": "home_live",
+      "value": "Live"
+    },
+    {
+      "name": "home_paused",
+      "value": "Paused"
+    },
+    {
+      "name": "home_continue_line",
+      "value": "Stop %1$d of %2$d · %3$s"
+    },
+    {
+      "name": "home_open",
+      "value": "Open"
+    },
+    {
+      "name": "home_open_a11y",
+      "value": "Open Now Walking"
+    },
+    {
+      "name": "home_guided_tours",
+      "value": "Guided tours"
+    },
+    {
+      "name": "home_tour_meta",
+      "value": "%1$d stops · %2$s · %3$s"
+    },
+    {
+      "name": "home_tour_from_to",
+      "value": "From %1$s to %2$s"
+    },
+    {
+      "name": "home_stops_n",
+      "value": "%d stops"
+    },
+    {
+      "name": "home_tour_a11y",
+      "value": "%1$s. %2$s. %3$d stops, %4$s, about %5$s. Guide: %6$s."
+    },
+    {
+      "name": "home_explore",
+      "value": "Explore"
+    },
+    {
+      "name": "home_all_places",
+      "value": "All places in Kraków"
+    },
+    {
+      "name": "home_places_count",
+      "value": "%d places stored offline"
+    },
+    {
+      "name": "home_demo_walk",
+      "value": "Try a demo walk"
+    },
+    {
+      "name": "home_demo_walk_hint",
+      "value": "Replays a recorded walk along the route instead of GPS. Labelled SIMULATED."
+    },
+    {
+      "name": "home_loading",
+      "value": "Loading tour data…"
+    },
+    {
+      "name": "home_pack_error_title",
+      "value": "Tour data couldn't be loaded"
+    },
+    {
+      "name": "home_pack_error_body",
+      "value": "Reinstall the app. The tour data ships with it and needs no internet."
+    },
+    {
+      "name": "home_progress_a11y",
+      "value": "Tour progress, stop %1$d of %2$d"
+    },
+    {
+      "name": "tour_stat_walk",
+      "value": "walk"
+    },
+    {
+      "name": "tour_stat_with_stories",
+      "value": "with stories"
+    },
+    {
+      "name": "tour_stat_stops",
+      "value": "stops"
+    },
+    {
+      "name": "tour_guide_a11y",
+      "value": "Guide: %1$s. %2$s, %3$s."
+    },
+    {
+      "name": "tour_your_guide",
+      "value": "Your guide"
+    },
+    {
+      "name": "tour_stops_header",
+      "value": "Stops"
+    },
+    {
+      "name": "tour_about_stories",
+      "value": "About these stories"
+    },
+    {
+      "name": "tour_about_reviewed",
+      "value": "Drafted with AI, reviewed by a person. %d sources cited."
+    },
+    {
+      "name": "tour_about_extract",
+      "value": "Short descriptions from Wikipedia and the city register. %d sources cited."
+    },
+    {
+      "name": "tour_about_none",
+      "value": "The stories for this tour are still being prepared."
+    },
+    {
+      "name": "tour_story_min",
+      "value": "%d min"
+    },
+    {
+      "name": "tour_stop_a11y",
+      "value": "Stop %1$d, %2$s."
+    },
+    {
+      "name": "tour_map_a11y",
+      "value": "Map of %1$s with %2$d stops"
+    },
+    {
+      "name": "tour_not_found",
+      "value": "This tour isn't in the offline data."
+    },
+    {
+      "name": "route_title",
+      "value": "Your route"
+    },
+    {
+      "name": "route_first_stop",
+      "value": "First stop"
+    },
+    {
+      "name": "route_starting_near",
+      "value": "Starting near you"
+    },
+    {
+      "name": "route_walking",
+      "value": "walking"
+    },
+    {
+      "name": "route_optimised_prefix",
+      "value": "Optimised order:"
+    },
+    {
+      "name": "route_optimised_suffix",
+      "value": "shorter than the listed order"
+    },
+    {
+      "name": "route_start_failed",
+      "value": "The tour couldn't start. Try again."
+    },
+    {
+      "name": "route_listed_optimal",
+      "value": "The listed order is already the shortest walk."
+    },
+    {
+      "name": "route_estimate",
+      "value": "Distances are estimates."
+    },
+    {
+      "name": "route_computed",
+      "value": "Order computed on this phone in %1$d ms (%2$s)."
+    },
+    {
+      "name": "route_show_order",
+      "value": "Show order"
+    },
+    {
+      "name": "route_hide_order",
+      "value": "Hide order"
+    },
+    {
+      "name": "route_leg",
+      "value": "%s to the next stop"
+    },
+    {
+      "name": "route_planning",
+      "value": "Planning your route…"
+    },
+    {
+      "name": "route_numbered",
+      "value": "Numbered in walking order"
+    },
+    {
+      "name": "route_demo_note",
+      "value": "Demo walk: your location is simulated along the recorded route."
+    },
+    {
+      "name": "byg_title",
+      "value": "Before you go"
+    },
+    {
+      "name": "byg_headphones_title",
+      "value": "Headphones in."
+    },
+    {
+      "name": "byg_headphones_body",
+      "value": "The guide talks as you walk."
+    },
+    {
+      "name": "byg_volume_title",
+      "value": "Check the volume."
+    },
+    {
+      "name": "byg_volume_body",
+      "value": "Turn it up enough to hear the guide over the street."
+    },
+    {
+      "name": "byg_test_line",
+      "value": "Play a test line"
+    },
+    {
+      "name": "byg_test_line_text",
+      "value": "Hello, I'm your guide. If you can hear me clearly, we're ready."
+    },
+    {
+      "name": "byg_lock_title",
+      "value": "Lock your phone."
+    },
+    {
+      "name": "byg_lock_body",
+      "value": "I'll keep talking and tell you where to look."
+    },
+    {
+      "name": "byg_text_notif_title",
+      "value": "Notifications on."
+    },
+    {
+      "name": "byg_text_notif_body",
+      "value": "You'll feel a vibration and see a note at each stop."
+    },
+    {
+      "name": "byg_footnote",
+      "value": "While the tour runs, CityTour uses your location with the screen locked. You'll see a system notification. Stop any time from the app or the notification."
+    },
+    {
+      "name": "err_perm_denied",
+      "value": "CityTour needs your location to know when you reach each stop."
+    },
+    {
+      "name": "err_perm_allow",
+      "value": "Allow location"
+    },
+    {
+      "name": "err_perm_approx",
+      "value": "Turn on precise location. Approximate location is accurate only to about 5 km, which isn't enough to find a doorway."
+    },
+    {
+      "name": "err_perm_turn_on",
+      "value": "Turn on"
+    },
+    {
+      "name": "err_loc_switch_off",
+      "value": "Location is off for this phone."
+    },
+    {
+      "name": "err_try_demo",
+      "value": "Try a demo walk instead"
+    },
+    {
+      "name": "err_loc_nofix",
+      "value": "Waiting for GPS… Step into the open sky."
+    },
+    {
+      "name": "err_loc_lost",
+      "value": "GPS lost for a moment. Keep going towards the next stop."
+    },
+    {
+      "name": "err_loc_poor",
+      "value": "Weak GPS: distances may jump."
+    },
+    {
+      "name": "err_loc_unavailable",
+      "value": "Location isn't available right now."
+    },
+    {
+      "name": "err_loc_out_of_area",
+      "value": "You're far from Kraków. Start from the first stop, or try a demo walk."
+    },
+    {
+      "name": "err_tts_init",
+      "value": "Voice isn't available on this device. Stories appear as text."
+    },
+    {
+      "name": "err_voice_unavailable",
+      "value": "The English voice isn't installed. The Fallback voice reads English."
+    },
+    {
+      "name": "err_tts_err",
+      "value": "A sentence couldn't be spoken. It's shown as text."
+    },
+    {
+      "name": "err_audio_interrupt",
+      "value": "Paused: another app is using audio."
+    },
+    {
+      "name": "err_audio_route_lost",
+      "value": "Paused: headphones disconnected."
+    },
+    {
+      "name": "err_bg_fail",
+      "value": "Guiding with the screen locked couldn't start. Keep the app open while walking."
+    },
+    {
+      "name": "err_bg_cancelled",
+      "value": "Tour paused: background location stopped when the notification was dismissed."
+    },
+    {
+      "name": "err_avs_fail",
+      "value": "Lock-screen controls aren't available. The tour still works."
+    },
+    {
+      "name": "err_notif_denied",
+      "value": "Notifications are off."
+    },
+    {
+      "name": "err_pack",
+      "value": "Tour data couldn't be loaded. Reinstall the app."
+    },
+    {
+      "name": "err_narr_fallback",
+      "value": "Showing a shorter description for this place."
+    },
+    {
+      "name": "err_route_fallback",
+      "value": "Using estimated walking distances."
+    },
+    {
+      "name": "err_plan_failed",
+      "value": "The route couldn't be planned. Try again."
+    },
+    {
+      "name": "err_uncaught",
+      "value": "Something went wrong, but the tour keeps going."
+    },
+    {
+      "name": "err_try_again",
+      "value": "Try again"
+    },
+    {
+      "name": "err_resume_tour",
+      "value": "Resume tour"
+    },
+    {
+      "name": "walk_next_stop",
+      "value": "Next · stop %d"
+    },
+    {
+      "name": "walk_in_m",
+      "value": "In %d m"
+    },
+    {
+      "name": "walk_here_stop",
+      "value": "You're here · stop %d"
+    },
+    {
+      "name": "walk_passing",
+      "value": "Passing · stop %d"
+    },
+    {
+      "name": "walk_paused",
+      "value": "Paused"
+    },
+    {
+      "name": "walk_waiting_gps",
+      "value": "Waiting for GPS"
+    },
+    {
+      "name": "walk_off_route",
+      "value": "Off route"
+    },
+    {
+      "name": "walk_tour_complete",
+      "value": "Tour complete"
+    },
+    {
+      "name": "walk_tour_ended",
+      "value": "Tour ended"
+    },
+    {
+      "name": "walk_about_min",
+      "value": "about %d min"
+    },
+    {
+      "name": "walk_story_of",
+      "value": "Story %1$d of %2$d"
+    },
+    {
+      "name": "walk_transcript",
+      "value": "Transcript"
+    },
+    {
+      "name": "walk_stops",
+      "value": "Stops (%d)"
+    },
+    {
+      "name": "walk_replay",
+      "value": "Replay last part"
+    },
+    {
+      "name": "walk_play",
+      "value": "Play"
+    },
+    {
+      "name": "walk_pause",
+      "value": "Pause"
+    },
+    {
+      "name": "walk_skip",
+      "value": "Skip this part"
+    },
+    {
+      "name": "walk_minimise",
+      "value": "Minimise, tour keeps running"
+    },
+    {
+      "name": "walk_menu",
+      "value": "More options"
+    },
+    {
+      "name": "walk_menu_stops",
+      "value": "Stops"
+    },
+    {
+      "name": "walk_menu_full_map",
+      "value": "Full map"
+    },
+    {
+      "name": "walk_menu_how",
+      "value": "How it works"
+    },
+    {
+      "name": "walk_replanned",
+      "value": "Re-planned from here."
+    },
+    {
+      "name": "walk_next_stop_cta",
+      "value": "Next stop"
+    },
+    {
+      "name": "walk_short_version",
+      "value": "Short version · stop for a moment to hear the full story"
+    },
+    {
+      "name": "walk_face",
+      "value": "Face %s"
+    },
+    {
+      "name": "walk_now_playing",
+      "value": "Now playing"
+    },
+    {
+      "name": "walk_directions",
+      "value": "Directions"
+    },
+    {
+      "name": "dir_ahead",
+      "value": "ahead"
+    },
+    {
+      "name": "dir_ahead_right",
+      "value": "ahead, slightly right"
+    },
+    {
+      "name": "dir_right",
+      "value": "on your right"
+    },
+    {
+      "name": "dir_behind_right",
+      "value": "behind you, right"
+    },
+    {
+      "name": "dir_behind",
+      "value": "behind you"
+    },
+    {
+      "name": "dir_behind_left",
+      "value": "behind you, left"
+    },
+    {
+      "name": "dir_left",
+      "value": "on your left"
+    },
+    {
+      "name": "dir_ahead_left",
+      "value": "ahead, slightly left"
+    },
+    {
+      "name": "dir_here",
+      "value": "you're here"
+    },
+    {
+      "name": "end_dialog_title",
+      "value": "End the tour?"
+    },
+    {
+      "name": "end_dialog_msg",
+      "value": "You've visited %1$d of %2$d stops. You can't resume after ending."
+    },
+    {
+      "name": "demo_controls_title",
+      "value": "Demo controls"
+    },
+    {
+      "name": "demo_speed",
+      "value": "Replay speed"
+    },
+    {
+      "name": "demo_jump_next",
+      "value": "Jump to next stop"
+    },
+    {
+      "name": "demo_assist_note",
+      "value": "Demo assist moves the simulated walker. It only exists in the Demo walk."
+    },
+    {
+      "name": "stops_sheet_title",
+      "value": "Stops"
+    },
+    {
+      "name": "stops_visited",
+      "value": "Visited"
+    },
+    {
+      "name": "stops_next",
+      "value": "Next"
+    },
+    {
+      "name": "stops_upcoming",
+      "value": "Upcoming"
+    },
+    {
+      "name": "stops_footer",
+      "value": "%1$d of %2$d visited · %3$s to go"
+    },
+    {
+      "name": "voice_fallback_badge",
+      "value": "Fallback voice"
+    },
+    {
+      "name": "voice_fallback_tooltip",
+      "value": "English is read by the Chinese on-device voice; the English voice is not installed on this device."
+    },
+    {
+      "name": "voice_native",
+      "value": "English voice"
+    },
+    {
+      "name": "voice_laura_installed",
+      "value": "Laura · Installed"
+    },
+    {
+      "name": "voice_fallback_row",
+      "value": "Fallback voice · Chinese voice reads English"
+    },
+    {
+      "name": "voice_zh",
+      "value": "聆小珊 · Chinese voice"
+    },
+    {
+      "name": "voice_text_only",
+      "value": "Text only"
+    },
+    {
+      "name": "voice_text_only_platform",
+      "value": "Text only: no voice on this device"
+    },
+    {
+      "name": "voice_download",
+      "value": "Download English voice"
+    },
+    {
+      "name": "voice_downloading",
+      "value": "Downloading voice… %s"
+    },
+    {
+      "name": "voice_download_failed",
+      "value": "Couldn't download the voice. The Fallback voice will read English for now; try again later."
+    },
+    {
+      "name": "voice_ready",
+      "value": "Voice ready."
+    },
+    {
+      "name": "voice_strategy",
+      "value": "English voice"
+    },
+    {
+      "name": "voice_strategy_auto",
+      "value": "Auto: English voice if installed, else Fallback voice"
+    },
+    {
+      "name": "voice_strategy_zh",
+      "value": "Always the Chinese voice (Fallback voice)"
+    },
+    {
+      "name": "voice_strategy_text",
+      "value": "Text only"
+    },
+    {
+      "name": "lang_en_spoken",
+      "value": "English (spoken)"
+    },
+    {
+      "name": "lang_zh_spoken",
+      "value": "中文 (spoken)"
+    },
+    {
+      "name": "lang_pl_text",
+      "value": "Polski (text only)"
+    },
+    {
+      "name": "lang_en_listen_pl_read",
+      "value": "Listen in English, read in Polish"
+    },
+    {
+      "name": "lang_pl_footnote",
+      "value": "Polish stories are shown as text. HarmonyOS on-device speech currently speaks English and Chinese."
+    },
+    {
+      "name": "lang_english",
+      "value": "English"
+    },
+    {
+      "name": "lang_chinese",
+      "value": "中文"
+    },
+    {
+      "name": "lang_polish",
+      "value": "Polski"
+    },
+    {
+      "name": "lang_system",
+      "value": "System"
+    },
+    {
+      "name": "place_listen",
+      "value": "Listen"
+    },
+    {
+      "name": "place_pause",
+      "value": "Pause"
+    },
+    {
+      "name": "place_look",
+      "value": "Look"
+    },
+    {
+      "name": "place_facts",
+      "value": "Facts"
+    },
+    {
+      "name": "place_sources",
+      "value": "Sources"
+    },
+    {
+      "name": "place_transcript",
+      "value": "Story"
+    },
+    {
+      "name": "place_tier_reviewed",
+      "value": "Historian script · reviewed · %d sources"
+    },
+    {
+      "name": "place_tier_grounded",
+      "value": "Short summary based on Wikipedia/City register · AI-assisted"
+    },
+    {
+      "name": "place_tier_wikipedia",
+      "value": "From Wikipedia"
+    },
+    {
+      "name": "place_tier_register",
+      "value": "From Kraków heritage register"
+    },
+    {
+      "name": "place_tier_basic",
+      "value": "Basic info"
+    },
+    {
+      "name": "place_mt_label",
+      "value": "Machine-translated"
+    },
+    {
+      "name": "place_shown_in_en",
+      "value": "Shown in English"
+    },
+    {
+      "name": "place_ai_note",
+      "value": "Drafted with AI from the sources above, reviewed by a person on %s."
+    },
+    {
+      "name": "place_offline_link",
+      "value": "You're offline. The link will open when you're connected."
+    },
+    {
+      "name": "place_no_story",
+      "value": "No story for this place yet. Here's what the sources say."
+    },
+    {
+      "name": "about_title",
+      "value": "Sources and licences"
+    },
+    {
+      "name": "about_ai_title",
+      "value": "How these stories are made"
+    },
+    {
+      "name": "about_ai_body",
+      "value": "Each tour story was drafted with the help of an AI model from the sources listed with it, then checked and edited by a person. Places outside the tour use short descriptions from Wikipedia or Kraków's heritage register, shown as they are. Nothing you do in the app is sent anywhere. Stories, maps and voices are stored on your phone."
+    },
+    {
+      "name": "about_osm",
+      "value": "Map data © OpenStreetMap contributors, ODbL 1.0"
+    },
+    {
+      "name": "about_wikipedia",
+      "value": "Text from Wikipedia (Wikipedia contributors), CC BY-SA 4.0"
+    },
+    {
+      "name": "about_wikidata",
+      "value": "Facts from Wikidata, CC0"
+    },
+    {
+      "name": "about_arcgis",
+      "value": "Monuments and plaques: City of Kraków open data (MSIP)"
+    },
+    {
+      "name": "about_osrm",
+      "value": "Walking routes computed with OSRM from OpenStreetMap data"
+    },
+    {
+      "name": "about_mt",
+      "value": "Polish and Chinese stories are machine-translated from the reviewed English and labelled as such."
+    },
+    {
+      "name": "map_full",
+      "value": "Full map"
+    },
+    {
+      "name": "map_expand",
+      "value": "Expand map"
+    },
+    {
+      "name": "map_unavailable",
+      "value": "Map unavailable"
+    },
+    {
+      "name": "map_waiting_gps",
+      "value": "Waiting for GPS"
+    },
+    {
+      "name": "map_recenter",
+      "value": "Recenter"
+    },
+    {
+      "name": "settings_title",
+      "value": "Settings"
+    },
+    {
+      "name": "settings_narration",
+      "value": "Narration"
+    },
+    {
+      "name": "settings_story_language",
+      "value": "Story language"
+    },
+    {
+      "name": "settings_app_language",
+      "value": "App language"
+    },
+    {
+      "name": "settings_voice",
+      "value": "Voice"
+    },
+    {
+      "name": "settings_guide",
+      "value": "Guide"
+    },
+    {
+      "name": "settings_walking",
+      "value": "Walking"
+    },
+    {
+      "name": "settings_spoken_directions",
+      "value": "Spoken directions"
+    },
+    {
+      "name": "settings_spoken_directions_note",
+      "value": "Short directions at turns between stops."
+    },
+    {
+      "name": "settings_trigger",
+      "value": "Start the story when I'm within"
+    },
+    {
+      "name": "settings_trigger_note",
+      "value": "Larger works better in narrow streets where GPS drifts."
+    },
+    {
+      "name": "settings_demo",
+      "value": "Demo"
+    },
+    {
+      "name": "settings_demo_walk",
+      "value": "Demo walk (simulated location)"
+    },
+    {
+      "name": "settings_demo_walk_note",
+      "value": "Replays a recorded walk along the Royal Route instead of using GPS. Everything simulated is labelled SIMULATED."
+    },
+    {
+      "name": "settings_replay_speed",
+      "value": "Replay speed"
+    },
+    {
+      "name": "settings_permissions",
+      "value": "Permissions"
+    },
+    {
+      "name": "settings_location",
+      "value": "Location"
+    },
+    {
+      "name": "settings_open_settings",
+      "value": "Open settings"
+    },
+    {
+      "name": "settings_about",
+      "value": "About"
+    },
+    {
+      "name": "settings_how_made",
+      "value": "How these stories are made"
+    },
+    {
+      "name": "settings_sources",
+      "value": "Sources and licences"
+    },
+    {
+      "name": "settings_version",
+      "value": "Version"
+    },
+    {
+      "name": "settings_version_value",
+      "value": "1.0 (HackYeah 2026 build)"
+    },
+    {
+      "name": "settings_offline_data",
+      "value": "Offline data"
+    },
+    {
+      "name": "onb_skip",
+      "value": "Skip"
+    },
+    {
+      "name": "onb_skip_a11y",
+      "value": "Skip introduction"
+    },
+    {
+      "name": "onb1_title",
+      "value": "Your guide fits in your pocket"
+    },
+    {
+      "name": "onb1_body",
+      "value": "Put your headphones in, lock your phone and walk. The Historian leads you through Kraków and tells you about each place as you reach it."
+    },
+    {
+      "name": "onb2_title",
+      "value": "How should the guide speak?"
+    },
+    {
+      "name": "onb2_body",
+      "value": "You can change this any time."
+    },
+    {
+      "name": "onb3_title",
+      "value": "Two permissions, and why"
+    },
+    {
+      "name": "onb_loc_title",
+      "value": "Location"
+    },
+    {
+      "name": "onb_loc_body",
+      "value": "Finds the next stop and knows when you've arrived. Used only while a tour is running."
+    },
+    {
+      "name": "onb_notif_title",
+      "value": "Notifications"
+    },
+    {
+      "name": "onb_notif_body",
+      "value": "Tells you when you arrive if your screen is off and audio is paused."
+    },
+    {
+      "name": "onb_allow",
+      "value": "Allow"
+    },
+    {
+      "name": "onb_allowed",
+      "value": "Allowed"
+    },
+    {
+      "name": "onb_footer",
+      "value": "Location is used only while a tour is running. Nothing leaves your phone."
+    },
+    {
+      "name": "onb_done",
+      "value": "Done"
+    },
+    {
+      "name": "onb_later",
+      "value": "Set up later"
+    },
+    {
+      "name": "onb_play_sample",
+      "value": "Play a sample"
+    },
+    {
+      "name": "onb_step_a11y",
+      "value": "Step %1$d of %2$d"
+    },
+    {
+      "name": "summary_complete",
+      "value": "Tour complete"
+    },
+    {
+      "name": "summary_ended",
+      "value": "Tour ended"
+    },
+    {
+      "name": "summary_done",
+      "value": "Done"
+    },
+    {
+      "name": "summary_stops",
+      "value": "stops"
+    },
+    {
+      "name": "summary_walked",
+      "value": "walked"
+    },
+    {
+      "name": "summary_total",
+      "value": "total"
+    },
+    {
+      "name": "summary_heard",
+      "value": "You heard"
+    },
+    {
+      "name": "summary_still_to_see",
+      "value": "Still to see"
+    },
+    {
+      "name": "summary_sources",
+      "value": "Sources and credits"
+    },
+    {
+      "name": "summary_start_again",
+      "value": "Start again"
+    },
+    {
+      "name": "summary_simulated",
+      "value": "Simulated walk: distances and times come from a recorded route."
+    },
+    {
+      "name": "summary_empty",
+      "value": "You ended before the first stop. The tour is still here when you're ready."
     }
   ]
 }
