@@ -138,6 +138,10 @@ export default function demoWalkPlayerTest() {
       const t = p.tick(1000, true);             // would leave: loops back instead
       expect(t.holding).assertTrue();
       expect(t.index).assertEqual(5);
+      for (let k = 0; k < 12; k++) {            // stays on for the whole extension, not only on loop ticks
+        expect(p.tick(1000, true).holding).assertTrue();
+      }
+      expect(p.tick(1000, false).holding).assertFalse();   // story over
     });
 
     it('hold_without_predicate_passes_through_at_walking_time', 0, () => {

@@ -180,7 +180,7 @@ export function demoFixToFix(d: DemoFix, timestampMs: number): Fix {
 export interface DemoTick {
   fix: Fix;
   index: number;       // index of the emitted sample in the track
-  holding: boolean;    // this tick kept the walker at a stop because holdActive was true ("Demo assist")
+  holding: boolean;    // the walker is kept at a stop past its recorded dwell because holdActive is true ("Demo assist")
   ended: boolean;      // the cursor is on the last sample and cannot advance
 }
 
@@ -191,6 +191,7 @@ export class DemoWalkPlayer {
   private simMs: number = 0;
   private startMs: number = 0;
   private started: boolean = false;
+  private loopSeg: number = -1;   // start index of the hold segment that has looped at least once, -1 none
 
   constructor(track: DemoTrack) {
     this.track = track;
@@ -203,6 +204,7 @@ export class DemoWalkPlayer {
     this.simMs = 0;
     this.startMs = startMs;
     this.started = true;
+    this.loopSeg = -1;
   }
 
   length(): number {
@@ -266,6 +268,7 @@ export class DemoWalkPlayer {
         }
         this.carryMs -= cost;
         this.idx = start;
+        this.loopSeg = start;
         holding = true;
         continue;
       }
@@ -279,6 +282,13 @@ export class DemoWalkPlayer {
       }
       this.carryMs -= dt;
       this.idx++;
+    }
+    // "Demo assist" stays on for the whole extension: from the first loop until the walker leaves the segment
+    // or the predicate turns false.
+    if (holdActive && this.loopSeg >= 0 && fixes[this.idx].hold && this.holdStart(this.idx) === this.loopSeg) {
+      holding = true;
+    } else if (!holding) {
+      this.loopSeg = -1;
     }
     const ended = this.isAtEnd() && !holding;
     const t: DemoTick = {
@@ -304,6 +314,7 @@ export class DemoWalkPlayer {
     }
     this.idx = i;
     this.carryMs = 0;
+    this.loopSeg = -1;
     return fixes[i].hold ? fixes[i].stop : 0;
   }
 
