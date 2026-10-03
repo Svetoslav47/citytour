@@ -4,7 +4,7 @@
 // listed offline; the active id resolves to '' with nothing installed, to the saved one, or to the first installed;
 // the first download becomes active, a later one does not; delete (active -> another installed course or none);
 // install replaces an older version; Home's mode (loading / empty state / ready / error); the Demo walk only for
-// Kraków; titles, sizes and progress.
+// the Kraków Royal Route course (not krakow-scholars); two Kraków courses side by side; titles, sizes and progress.
 import { describe, it, expect } from '@ohos/hypium';
 import {
   activeAfterInstall, afterDelete, afterInstall, CourseRow, CourseState, courseTitle, DEMO_COURSE_ID,
@@ -120,6 +120,25 @@ export default function courseRulesTest() {
       expect(demoWalkOffered('krakow')).assertTrue();
       expect(demoWalkOffered('')).assertFalse();
       expect(demoWalkOffered('gdansk')).assertFalse();
+      // the second Kraków course (Scholars and Saints) has no simulated track in the HAP
+      expect(demoWalkOffered('krakow-scholars')).assertFalse();
+    });
+
+    it('twoKrakowCourses', 0, () => {
+      // catalog order; the Royal Route installed and active, Scholars and Saints only on the server
+      const cat = [course('krakow', '1'), course('krakow-scholars', '1')];
+      expect(ids(mergeCourses([installed('krakow', '1')], cat, 'krakow'))).assertEqual('krakow:downloaded,krakow-scholars:available');
+      // download it: the active course stays the Royal Route until the user selects the new one
+      const both = afterInstall([installed('krakow', '1')], installed('krakow-scholars', '1'));
+      expect(activeAfterInstall('krakow', 'krakow-scholars')).assertEqual('krakow');
+      const rows = mergeCourses(both, cat, 'krakow-scholars');   // the user selected it
+      expect(ids(rows)).assertEqual('krakow:downloaded,krakow-scholars:downloaded');
+      expect(rows[1].active).assertTrue();
+      expect(rows[0].active).assertFalse();
+      expect(demoWalkOffered(resolveActive('krakow-scholars', both))).assertFalse();
+      expect(demoWalkOffered(resolveActive('krakow', both))).assertTrue();
+      // deleting the active Scholars course makes the Royal Route active again
+      expect(afterDelete(both, 'krakow-scholars', 'krakow-scholars').activeId).assertEqual('krakow');
     });
 
     it('titlesSizesProgress', 0, () => {
