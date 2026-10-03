@@ -2,7 +2,7 @@
 // Distance rounding and throttle rules of DESIGN §3.6 and the Look cue dial geometry of §3.6.1.
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  dialDot, dialShouldMove, normalizeSigned, relativeBearing, RoundedDistance, roundWalkDistance,
+  dialAngle, dialDot, dialShouldMove, relDirAngle, normalizeSigned, relativeBearing, RoundedDistance, roundWalkDistance,
   shouldUpdateDistance
 } from '../main/ets/core/map/WalkDisplay';
 
@@ -62,6 +62,14 @@ export default function walkDisplayTest() {
       expect(behind.behind).assertTrue();
       expect(near(behind.y, 56)).assertTrue();
       expect(dialDot(Number.NaN, 36, 36, 30, 20).valid).assertFalse();
+    });
+    it('dial_angle_matches_spoken_bucket_when_slow', 0, () => {
+      expect(relDirAngle('left')).assertEqual(-90);
+      expect(relDirAngle('aheadRight')).assertEqual(45);
+      expect(Number.isNaN(relDirAngle('here'))).assertTrue();
+      expect(dialAngle(100, 80, 1.3, 'ahead')).assertEqual(20);         // walking: exact angle
+      expect(dialAngle(100, 80, 0.2, 'right')).assertEqual(90);         // standing: the bucket
+      expect(dialAngle(100, Number.NaN, 1.3, 'left')).assertEqual(-90); // no course: the bucket
     });
     it('dial_moves_only_on_10_degrees', 0, () => {
       expect(dialShouldMove(10, 15)).assertFalse();

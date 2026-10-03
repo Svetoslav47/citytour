@@ -1119,6 +1119,30 @@
     {
       "name": "summary_empty",
       "value": "You ended before the first stop. The tour is still here when you're ready."
+    },
+    {
+      "name": "walk_look_up",
+      "value": "look up"
+    },
+    {
+      "name": "walk_back_home",
+      "value": "Back to Home"
+    },
+    {
+      "name": "walk_end_a11y",
+      "value": "End the tour"
+    },
+    {
+      "name": "walk_voice_info_a11y",
+      "value": "Fallback voice. English is read by the Chinese on-device voice."
+    },
+    {
+      "name": "walk_map_a11y",
+      "value": "Map of the route. Next stop %s."
+    },
+    {
+      "name": "map_you",
+      "value": "Your location"
     }
   ]
 }

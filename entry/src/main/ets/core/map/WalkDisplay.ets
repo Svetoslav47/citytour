@@ -106,3 +106,44 @@ export function dialShouldMove(prevRelDeg: number, nextRelDeg: number): boolean 
   }
   return Math.abs(normalizeSigned(nextRelDeg - prevRelDeg)) >= 10;
 }
+
+/**
+ * Dial angle for the engine's direction bucket, used when the exact course is not trustworthy (slow or no
+ * course), so the dot always matches the words the guide speaks. HERE (or unknown) = NaN = landmark mode.
+ */
+export function relDirAngle(relDir: string): number {
+  switch (relDir) {
+    case 'ahead':
+      return 0;
+    case 'aheadRight':
+      return 45;
+    case 'right':
+      return 90;
+    case 'behindRight':
+      return 150;
+    case 'behind':
+      return 180;
+    case 'behindLeft':
+      return -150;
+    case 'left':
+      return -90;
+    case 'aheadLeft':
+      return -45;
+    default:
+      return Number.NaN;
+  }
+}
+
+/** DESIGN §3.6.1: course over ground is trusted from 0.6 m/s. */
+export const MIN_COURSE_SPEED_MPS: number = 0.6;
+
+/** Exact relative bearing when moving with a valid course, else the bucket angle of `relDir`. */
+export function dialAngle(targetBearingDeg: number, courseDeg: number, speedMps: number, relDir: string): number {
+  if (Number.isFinite(speedMps) && speedMps >= MIN_COURSE_SPEED_MPS) {
+    const rel = relativeBearing(targetBearingDeg, courseDeg);
+    if (Number.isFinite(rel)) {
+      return rel;
+    }
+  }
+  return relDirAngle(relDir);
+}
