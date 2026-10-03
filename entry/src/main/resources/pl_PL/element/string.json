@@ -1449,6 +1449,26 @@
       "value": "Wybierz"
     },
     {
+      "name": "courses_play_now",
+      "value": "Odtwórz teraz"
+    },
+    {
+      "name": "courses_preparing",
+      "value": "Przygotowanie…"
+    },
+    {
+      "name": "courses_streaming",
+      "value": "Strumieniowo"
+    },
+    {
+      "name": "courses_play_failed",
+      "value": "Nie udało się uruchomić spaceru. Sprawdź połączenie i spróbuj ponownie albo pobierz spacer do użytku offline."
+    },
+    {
+      "name": "home_all_places_download",
+      "value": "Pobierz ten spacer, aby przeglądać wszystkie miejsca offline"
+    },
+    {
       "name": "courses_failed",
       "value": "Pobieranie nie powiodło się. Nic nie zmieniono; ponowna próba wznowi od miejsca przerwania."
     },
@@ -1550,11 +1570,11 @@
     },
     {
       "name": "home_empty_title",
-      "value": "Pobierz swój pierwszy spacer"
+      "value": "Wybierz spacer, aby zacząć"
     },
     {
       "name": "home_empty_body",
-      "value": "Pobierz spacer, aby zacząć. Potem działa offline."
+      "value": "Odtwórz spacer od razu albo pobierz go do użytku offline."
     },
     {
       "name": "home_empty_cta",

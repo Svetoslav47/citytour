@@ -68,6 +68,7 @@ import { FileStore } from '../services/remote/FileStore';
 import { RemoteClient } from '../services/remote/RemoteClient';
 import { Ed25519Verifier } from '../services/remote/SignatureVerifier';
 import { RemoteVoice } from '../services/speech/RemoteVoice';
+import { StreamClips } from '../services/remote/StreamClips';
 import { RemoteConfig } from './RemoteConfig';
 import { SystemClock, SystemScheduler } from './Clock';
 import { AppConfig } from './AppConfig';
@@ -151,6 +152,7 @@ export class AppContainer {
   private static remoteImpl: RemoteClient | undefined = undefined;
   private static coursesImpl: CourseRepository | undefined = undefined;
   private static remoteVoiceImpl: RemoteVoice | undefined = undefined;
+  private static streamClipsImpl: StreamClips | undefined = undefined;
 
   /** Idempotent. Builds services; starts nothing. */
   static init(ctx: common.UIAbilityContext): void {
@@ -238,6 +240,7 @@ export class AppContainer {
     AppContainer.remoteImpl = undefined;
     AppContainer.coursesImpl = undefined;
     AppContainer.remoteVoiceImpl = undefined;
+    AppContainer.streamClipsImpl = undefined;
     AppContainer.ctx = undefined;
   }
 
@@ -404,7 +407,7 @@ export class AppContainer {
   static remoteVoice(): RemoteVoice {
     if (AppContainer.remoteVoiceImpl === undefined) {
       AppContainer.remoteVoiceImpl = new RemoteVoice(AppContainer.narration(), AppContainer.remoteClient(),
-        () => AppContainer.filesDir(), () => AppContainer.courses().activeId());
+        () => AppContainer.filesDir(), () => AppContainer.courses().activeId(), AppContainer.streamClips());
     }
     return AppContainer.remoteVoiceImpl;
   }
@@ -423,7 +426,15 @@ export class AppContainer {
     return AppContainer.remoteImpl;
   }
 
-  /** Downloaded courses (SERVER.md §6). */
+  /** Clips of a streamed course, fetched on demand (SERVER.md §6 "Streaming a course"). */
+  static streamClips(): StreamClips {
+    if (AppContainer.streamClipsImpl === undefined) {
+      AppContainer.streamClipsImpl = new StreamClips(AppContainer.remoteClient());
+    }
+    return AppContainer.streamClipsImpl;
+  }
+
+  /** Downloaded and streamed courses (SERVER.md §6). */
   static courses(): CourseRepository {
     if (AppContainer.coursesImpl === undefined) {
       const pack = AppContainer.packRepository();
@@ -434,7 +445,9 @@ export class AppContainer {
       AppContainer.coursesImpl = new CourseRepository(AppContainer.remoteClient(),
         new CourseStore(() => AppContainer.filesDir()), active,
         new CoverStore(AppContainer.remoteClient(), () => AppContainer.filesDir()),
-        new CourseStore(() => AppContainer.filesDir(), 'cities'));
+        new CourseStore(() => AppContainer.filesDir(), 'cities'),
+        new CourseStore(() => AppContainer.filesDir(), 'stream'),
+        new CourseStore(() => AppContainer.filesDir(), 'stream-cities'));
     }
     return AppContainer.coursesImpl;
   }
@@ -471,10 +484,12 @@ export class AppContainer {
         AppContainer.tourImpl.onPackSwitched();
       }
       if (c.id === '' || c.audioManifestPath === '' || c.root === '') {
+        AppContainer.streamClips().setCourse('', '', false);
         AppContainer.narration().setCourseClips([]);
         return;
       }
-      const load: Promise<void> = FileStore.readText(`${c.root}/${c.audioManifestPath}`)
+      const streamLoad: Promise<void> = AppContainer.streamClips().setCourse(c.id, c.root, c.streamed);
+      const load: Promise<void> = streamLoad.then(() => FileStore.readText(`${c.root}/${c.audioManifestPath}`)
         .then((text: string | undefined): Promise<void> | undefined => {
           if (text === undefined) {
             Log.w(LogEvents.NARR_AUDIO, `event=course_clips_missing course=${c.id}`);
@@ -484,7 +499,7 @@ export class AppContainer {
           return courseClipsOffThread(text, c.root).then((entries: ClipEntry[]) => {
             AppContainer.narration().setCourseClips(entries);
           });
-        }).catch((e: Object) => {
+        })).catch((e: Object) => {
           Log.e(LogEvents.NARR_AUDIO, `event=course_clips_fail course=${c.id} ${Log.errKv(e)}`);
         });
       AppContainer.narration().trackClipLoad(load);

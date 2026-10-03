@@ -202,6 +202,11 @@ export class ClipIndex {
     this.failed.add(file);
   }
 
+  /** A clip that failed only for lack of time (a streamed clip that arrived late) can play again. */
+  clearFailed(file: string): void {
+    this.failed.delete(file);
+  }
+
   isFailed(file: string): boolean {
     return this.failed.has(file);
   }

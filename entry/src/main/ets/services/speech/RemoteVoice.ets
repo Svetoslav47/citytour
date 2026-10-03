@@ -13,6 +13,10 @@
  *   walk never waits 2.5 s per sentence. BASE_URL '' (RemoteConfig) = never any request.
  * - While a sentence waits for the server (at most 2.5 s) nothing is spoken; stopNow/pause/resume/speak keep their
  *   SpeechPort meaning (a newer speak() or stopNow() cancels the wait; pause holds it).
+ * Streamed course ("Play now", StreamClips): a sentence whose clip is not on the device yet waits for it (at most
+ * STREAM_CLIP_BUDGET_MS, 3 s) and the next sentences of the story are prefetched while it plays; a clip that does not
+ * arrive in time is skipped for that sentence (marked unavailable until it arrives), which then goes down the chain
+ * above (live studio voice, built-in voice, text for Polish).
  * Logs: REMOTE_TTS result=... reason=... sha=<12> ms=... cache=hit|miss; NarrationPlayer's NARR_AUDIO line says
  * src=remote|remote_cache|tts|text with the reason.
  */
@@ -26,7 +30,10 @@ import {
   ChainInput, ChainStep, decideVoice, judgeRemote, RemoteVerdict, ServerState, serverStateText, VoiceSrc
 } from '../../core/remote/VoiceChain';
 import { TTS_MAX_TEXT_CHARS } from '../../core/remote/ServerApi';
+import { prefetchAfter, StreamClip } from '../../core/remote/StreamRules';
+import { ClipEntry } from '../../core/speech/ClipSelection';
 import { FileStore } from '../remote/FileStore';
+import { StreamClips } from '../remote/StreamClips';
 import { RemoteClient } from '../remote/RemoteClient';
 import { LocalAudio, NarrationPlayer, RuntimeClip, RuntimeClipSource } from './NarrationPlayer';
 
@@ -60,13 +67,21 @@ export class RemoteVoice implements SpeechPort, RuntimeClipSource {
   private pending: Utterance | undefined = undefined;
   private seq: number = 0;
   private paused: boolean = false;
+  private readonly stream: StreamClips | undefined;
+  private keysOf: ClipEntry[] = [];
+  private keys: StreamClip[] = [];
 
-  constructor(inner: NarrationPlayer, client: RemoteClient, dirOf: () => string, courseIdOf: () => string) {
+  constructor(inner: NarrationPlayer, client: RemoteClient, dirOf: () => string, courseIdOf: () => string,
+    stream?: StreamClips) {
     this.inner = inner;
     this.client = client;
     this.dirOf = dirOf;
     this.courseIdOf = courseIdOf;
+    this.stream = stream;
     inner.setRuntimeClipSource(this);
+    if (stream !== undefined) {
+      stream.setArrivedListener((file: string) => inner.clipAvailable(file));
+    }
   }
 
   // ---------- settings / HUD ----------
@@ -135,6 +150,9 @@ export class RemoteVoice implements SpeechPort, RuntimeClipSource {
     try {
       this.seq++;
       this.pending = undefined;
+      if (this.streamWait(u)) {
+        return;
+      }
       const plan = this.plan(u);
       const step = plan.step;
       if (step === undefined || step.src !== VoiceSrc.REMOTE || this.results.has(plan.sha)) {
@@ -165,6 +183,20 @@ export class RemoteVoice implements SpeechPort, RuntimeClipSource {
 
   prefetch(u: Utterance): void {
     try {
+      const sf = this.streamFile(u);
+      if (sf !== '') {
+        // Never hand the player a streamed clip that is not on the device: fetch it, then prefetch (or fall back).
+        const mySeq = this.seq;
+        this.stream?.ensure(sf, 15000).then((ok: boolean) => {
+          if (!ok) {
+            this.inner.markClipUnavailable(sf);
+          }
+          if (this.seq === mySeq && this.pending !== u) {
+            this.prefetch(u);
+          }
+        });
+        return;
+      }
       const plan = this.plan(u);
       const step = plan.step;
       if (step === undefined || step.src !== VoiceSrc.REMOTE || this.results.has(plan.sha)) {
@@ -206,6 +238,84 @@ export class RemoteVoice implements SpeechPort, RuntimeClipSource {
 
   isSpeaking(): boolean {
     return (this.pending !== undefined && !this.paused) || this.inner.isSpeaking();
+  }
+
+  // ---------- streamed course clips ----------
+
+  /** The clip file of `u` when it streams and is not on the device yet ('' otherwise). */
+  private streamFile(u: Utterance): string {
+    if (this.stream === undefined) {
+      return '';
+    }
+    const local: LocalAudio = this.inner.localAudio(u);
+    if (!local.clip || !this.stream.isStreamClip(local.file) || this.stream.onDevice(local.file)) {
+      return '';
+    }
+    return local.file;
+  }
+
+  /** Prefetches the next sentences of `file`'s story (streamed course). */
+  private prefetchNext(file: string): void {
+    if (this.stream === undefined) {
+      return;
+    }
+    const entries: ClipEntry[] = this.inner.courseClipEntries();
+    if (entries !== this.keysOf) {
+      this.keysOf = entries;
+      this.keys = entries.map((e: ClipEntry) => {
+        const k = new StreamClip();
+        k.lang = e.lang;
+        k.poiId = e.poiId;
+        k.personaId = e.personaId;
+        k.length = e.length;
+        k.n = e.n;
+        k.file = e.file;
+        return k;
+      });
+    }
+    const cur = this.keys.find((k: StreamClip) => k.file === file);
+    if (cur !== undefined) {
+      this.stream.prefetch(prefetchAfter(this.keys, cur));
+    }
+  }
+
+  /**
+   * A streamed clip: prefetch the story's next sentences; when this one is not on the device, wait for it (bounded),
+   * then speak (from the clip, or down the chain when it did not arrive). True = speak() is deferred.
+   */
+  private streamWait(u: Utterance): boolean {
+    if (this.stream === undefined) {
+      return false;
+    }
+    const local: LocalAudio = this.inner.localAudio(u);
+    if (!local.clip || !this.stream.isStreamClip(local.file)) {
+      return false;
+    }
+    const file = local.file;
+    this.prefetchNext(file);
+    if (this.stream.onDevice(file)) {
+      return false;
+    }
+    if (this.inner.isSpeaking() || this.inner.isPaused()) {
+      this.inner.stopNow();
+    }
+    const mySeq = this.seq;
+    this.pending = u;
+    this.stream.ensure(file).then((ok: boolean) => {
+      if (!ok) {
+        this.inner.markClipUnavailable(file);   // this sentence goes down the chain; the clip plays once it arrives
+        Log.w(LogEvents.NARR_FALLBACK, `id=${u.id} from=stream_clip reason=not_in_time sha=${shortSha(local.sha)}`);
+      }
+      if (this.seq !== mySeq || this.pending !== u) {
+        return;   // a newer speak() or stopNow() won
+      }
+      const wasPaused = this.paused;
+      this.speak(u);   // now on the device (plays the clip), or marked unavailable (the chain decides)
+      if (wasPaused && this.pending === undefined) {
+        this.inner.pause();
+      }
+    });
+    return true;
   }
 
   // ---------- RuntimeClipSource (called by NarrationPlayer for a sentence without a clip) ----------

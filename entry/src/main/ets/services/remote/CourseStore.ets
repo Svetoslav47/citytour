@@ -61,6 +61,13 @@ export class InstallResult {
   record: CourseRecord | undefined = undefined;
 }
 
+/** install() extras: small text files written next to course.json, and a folder of already verified files to reuse. */
+export class InstallOptions {
+  extraFiles: Map<string, string> = new Map<string, string>();
+  /** Absolute folder whose files (same paths) are copied instead of fetched when their size + SHA-256 match. */
+  seedDir: string = '';
+}
+
 export class CancelToken {
   cancelled: boolean = false;
 }
@@ -272,7 +279,7 @@ export class CourseStore {
    * `summary` is the catalog row (stored for the offline list). Never rejects.
    */
   async install(client: RemoteClient, m: CourseManifest, summary: CourseSummary, cancel: CancelToken,
-    onProgress: (p: InstallProgress) => void): Promise<InstallResult> {
+    onProgress: (p: InstallProgress) => void, opts?: InstallOptions): Promise<InstallResult> {
     const res = new InstallResult();
     const root = this.root();
     if (root === '') {
@@ -304,6 +311,9 @@ export class CourseStore {
         let err = '';
         if (await CourseStore.alreadyThere(f, dest)) {
           prog.resumedFiles++;
+        } else if (opts !== undefined && opts.seedDir !== '' && await CourseStore.copyVerified(f,
+          `${opts.seedDir}/${f.path}`, dest)) {
+          prog.resumedFiles++;   // already verified in the stream folder (Download after Play now)
         } else {
           err = await this.fetchVerified(client, f, dest, cancel);
         }
@@ -340,7 +350,13 @@ export class CourseStore {
       rec.audioManifestPath = m.files.some((f: CourseFile) => f.path === m.audioManifestPath) ? m.audioManifestPath : '';
       rec.summary = summary;
       rec.cityId = m.cityId;
-      if (!(await FileStore.writeText(`${tmp}/course.json`, JSON.stringify(rec)))) {
+      let extrasOk = true;
+      if (opts !== undefined) {
+        for (const name of Array.from(opts.extraFiles.keys())) {
+          extrasOk = extrasOk && await FileStore.writeText(`${tmp}/${name}`, opts.extraFiles.get(name) as string);
+        }
+      }
+      if (!extrasOk || !(await FileStore.writeText(`${tmp}/course.json`, JSON.stringify(rec)))) {
         failure = 'write_record';
       } else {
         const dest = this.courseDir(m.courseId, m.version);
@@ -380,6 +396,19 @@ export class CourseStore {
       return false;
     }
     return (await FileStore.sha256File(path)) === f.sha256;
+  }
+
+  /** Copies `from` to `dest` when `from` has the right size and SHA-256 (a file a stream already verified). */
+  private static async copyVerified(f: CourseFile, from: string, dest: string): Promise<boolean> {
+    if (!(await CourseStore.alreadyThere(f, from))) {
+      return false;
+    }
+    const bytes = await FileStore.readBytes(from);
+    if (bytes === undefined) {
+      return false;
+    }
+    const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    return (await FileStore.writeBytes(dest, buf)) && (await CourseStore.alreadyThere(f, dest));
   }
 
   /** '' when the file is on disk with the right size and SHA-256. */

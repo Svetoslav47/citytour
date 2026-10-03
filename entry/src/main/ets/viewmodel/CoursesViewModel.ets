@@ -8,6 +8,9 @@
  * States: server disabled (BASE_URL '') -> "No course server"; offline -> cached catalog + "Offline" note + Retry;
  * no cached catalog and offline -> downloaded courses only + note + Retry. Every call is bounded (withTimeout) and
  * never throws.
+ * Play now (core/remote/StreamRules): streams a course instead of downloading it ("Preparing…" while its small files
+ * are fetched), makes it the active course and goes back to Home; Download stays the offline option (it also upgrades
+ * a streamed course, reusing what was already fetched).
  * RemoteSettings persists with PersistenceV2 under 'remoteSettings' (no change to the UserSettings contract).
  */
 import { PersistenceV2 } from '@kit.ArkUI';
@@ -16,9 +19,10 @@ import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import {
-  CourseRow, CourseState, courseTitle, downloadBytes, mergeCourses, progressPct, sizeLabel
+  CourseRow, CourseState, courseTitle, downloadBytes, InstalledCourse, mergeCourses, progressPct, sizeLabel
 } from '../core/remote/CourseRules';
 import { CoverChoice, rowHasCover } from '../core/remote/CoverRules';
+import { CourseSource, courseSource, streamRowActions, StreamRowActions } from '../core/remote/StreamRules';
 import { CatalogSource, CatalogState, OpResult } from '../services/remote/CourseRepository';
 import { CancelToken, InstallProgress } from '../services/remote/CourseStore';
 import { AppViewModel } from './AppViewModel';
@@ -98,6 +102,14 @@ export class CourseItem {
   @Trace pct: number = 0;
   @Trace cancelling: boolean = false;
   @Trace failed: boolean = false;
+  /** Play now (stream) is offered (primary); Download is then the secondary action. */
+  @Trace playNow: boolean = false;
+  /** The streamed copy of this course is on the device ("Streaming"). */
+  @Trace streaming: boolean = false;
+  /** Play now is fetching the course's small files. */
+  @Trace preparing: boolean = false;
+  /** Play now failed (offline, server error): a clear message on the row. */
+  @Trace playFailed: boolean = false;
   /** A cover banner is expected (the catalog names a cover, or the installed course has one). */
   @Trace hasCover: boolean = false;
   /** The cover JPEG ('' = placeholder while it loads, or for good when it cannot be fetched). */
@@ -111,6 +123,7 @@ export enum CatalogNote { NONE = 'none', LOADING = 'loading', DISABLED = 'disabl
 const CATALOG_TIMEOUT_MS: number = 15000;
 const SWITCH_TIMEOUT_MS: number = 15000;
 const DOWNLOAD_TIMEOUT_MS: number = 30 * 60000;
+const PLAY_TIMEOUT_MS: number = 60000;
 
 function uiLangOf(lang: Lang): string {
   return lang === Lang.PL ? 'pl' : lang === Lang.ZH ? 'zh' : 'en';
@@ -137,6 +150,10 @@ export class CoursesViewModel {
   private lang: Lang = Lang.EN;
   private progress: Map<string, number> = new Map<string, number>();
   private failed: Set<string> = new Set<string>();
+  private preparing: Set<string> = new Set<string>();
+  private playFailed: Set<string> = new Set<string>();
+  /** The Courses page is showing (Play now goes back to Home only from it). */
+  visible: boolean = false;
   private cancels: Map<string, CancelToken> = new Map<string, CancelToken>();
   /** Cover lookups by course id (kept across rebuilds, so a row never loses its photo). */
   private covers: Map<string, CoverChoice> = new Map<string, CoverChoice>();
@@ -187,6 +204,9 @@ export class CoursesViewModel {
       const repo = AppContainer.courses();
       const cat = repo.catalog().courses;
       const rows: CourseRow[] = mergeCourses(repo.installed(), cat, repo.activeId());
+      const downloadedIds: string[] = repo.installed().map((i: InstalledCourse) => i.id);
+      const streamedIds: string[] = repo.streamedIds();
+      const activeId = repo.activeId();
       const ui = uiLangOf(this.lang);
       const out: CourseItem[] = [];
       for (const r of rows) {
@@ -201,8 +221,14 @@ export class CoursesViewModel {
         it.size = sizeLabel(r.state === CourseState.DOWNLOADED ? r.summary.bytes :
           downloadBytes(r.summary.bytes, r.summary.cityId, repo.cityBytes(r.summary.cityId), repo.hasCity(r.summary.cityId)));
         it.state = r.state;
-        it.active = r.active;
-        it.canDelete = r.canDelete;
+        const src: CourseSource = courseSource(it.id, downloadedIds, streamedIds);
+        it.active = src === CourseSource.STREAMED ? activeId === it.id : r.active && activeId === it.id;
+        const acts: StreamRowActions = streamRowActions(src, it.active, this.enabled);
+        it.playNow = acts.playNow;
+        it.streaming = acts.streaming;
+        it.preparing = this.preparing.has(it.id);
+        it.playFailed = this.playFailed.has(it.id);
+        it.canDelete = r.canDelete || acts.streaming;
         it.canSelect = r.canSelect;
         const p = this.progress.get(it.id);
         it.downloading = p !== undefined;
@@ -257,12 +283,54 @@ export class CoursesViewModel {
     return this.items.find((i: CourseItem) => i.id === id);
   }
 
+  /**
+   * Play now: stream the course (small files only, clips on demand), make it the active course, then back to Home.
+   * A streamed copy that is current (or the server is unreachable) is just made active.
+   */
+  async play(id: string): Promise<void> {
+    this.tourRunning = AppContainer.tourController().isRunning();
+    if (this.preparing.has(id) || this.progress.has(id) || this.tourRunning) {
+      return;
+    }
+    this.playFailed.delete(id);
+    this.preparing.add(id);
+    this.rebuild();
+    const cancel = new CancelToken();
+    const timedOut = new OpResult();
+    timedOut.error = 'timeout';
+    let r: OpResult;
+    try {
+      r = await withTimeout(AppContainer.courses().stream(id, cancel, (p: InstallProgress) => {}), PLAY_TIMEOUT_MS,
+        timedOut, 'courses.stream');
+    } catch (e) {
+      r = new OpResult();
+      r.error = 'exception';
+    }
+    if (r.error === 'timeout') {
+      cancel.cancelled = true;
+    }
+    this.preparing.delete(id);
+    if (!r.ok) {
+      this.playFailed.add(id);
+      Log.w(LogEvents.COURSE, `event=ui_stream_fail id=${id} reason=${r.error}`);
+      this.rebuild();
+      return;
+    }
+    Log.i(LogEvents.COURSE, `event=ui_stream_ok id=${id}`);
+    this.rebuild();
+    notifyCourseChanged();
+    if (this.visible) {
+      AppViewModel.get().back();   // Home shows the walk, ready to start
+    }
+  }
+
   /** Download or update; progress shows on the row. */
   async download(id: string): Promise<void> {
     if (this.progress.has(id)) {
       return;
     }
     this.failed.delete(id);
+    this.playFailed.delete(id);
     this.progress.set(id, 0);
     const cancel = new CancelToken();
     this.cancels.set(id, cancel);

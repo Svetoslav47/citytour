@@ -24,9 +24,12 @@ export class CityCoursePackRepository implements PackRepository {
   private poiList: Poi[] = [];
   private info: CityInfo | undefined = undefined;
 
-  /** cityDir / courseDir: absolute pack folders (no trailing '/'). */
-  constructor(cityDir: string, courseDir: string) {
-    this.city = new SourcePackRepository(new FilePackSource(cityDir), true);
+  /**
+   * cityDir / courseDir: absolute pack folders (no trailing '/'). `streamedCity`: the city folder holds only what a
+   * streamed course needs (StreamRules: manifest, city.json, map), not its places.
+   */
+  constructor(cityDir: string, courseDir: string, streamedCity: boolean = false) {
+    this.city = new SourcePackRepository(new FilePackSource(cityDir), true, streamedCity);
     this.course = new SourcePackRepository(new FilePackSource(courseDir));
   }
 

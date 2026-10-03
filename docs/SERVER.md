@@ -207,6 +207,20 @@ The server runs on one instance with a persistent volume. That is enough for a h
   narration check's city-specific proper nouns come from `city.json` `properNouns`, and the SIMULATED Demo walk is
   the course pack's own `demo-walk.json` (offered for any course that ships one).
 - **Courses screen:** shows catalog rows with *Download* (size), progress + *Cancel*, *Downloaded*, *Update*, *Try again* (resumes: verified files in the temp folder are kept after a failure), and *Delete*. The last good catalog is kept for offline use.
+- **Streaming a course ("Play now", no server change).** Courses offers *Play now* (primary) next to *Download*.
+  `CourseRepository.stream` verifies the signed catalog, course and city manifests as for a download, then installs
+  with the same verified atomic installer only `StreamRules.streamCourseFiles` (every course file except the clips:
+  `tour/*` and `audio/manifest.json`) into `filesDir/stream/<id>/<version>/` (plus `stream-clips.json`: the clip
+  files' `{path, sha256, bytes}` from the signed manifest) and, when the city is not downloaded,
+  `streamCityFiles` (`manifest.json`, `city.json`, `map-*.json`) into `filesDir/stream-cities/<cityId>/<version>/`
+  (the city's places, stories and sources are not fetched; the course overlay holds its stops' records and stories;
+  `SourcePackRepository` partial mode). `krakow`: 13 + 3 files, ~2.5 MB, vs 1168 + 7 files, ~41 MB. A streamed course
+  can be the active one (also after a restart); a download of the same course wins (`courseSource`). Clips:
+  `StreamClips` fetches `/v1/blobs/<sha>` on demand (size + SHA-256, `.part` + rename, cached), `RemoteVoice` waits at
+  most 3 s (`STREAM_CLIP_BUDGET_MS`) and prefetches the next 3 sentences of the story (`prefetchAfter`); a late clip
+  falls back for that sentence (marked unavailable until it arrives); a network failure skips the wait for 30 s.
+  "All places" needs the downloaded city (`allPlacesAvailable`). *Download* copies the stream's already verified files
+  (`InstallOptions.seedDir`, re-verified) and then removes the stream; *Delete* removes both.
 - `RemoteVoice` (SpeechPort decorator) implements step 2 of the fallback chain. It checks `X-Text-Sha256` against the sha of its own text, and drops the audio on any mismatch.
 - The online studio voice is always on (no toggle). The HUD shows `server: online|offline|budget`.
 

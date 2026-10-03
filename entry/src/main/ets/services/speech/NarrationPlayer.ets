@@ -76,6 +76,7 @@ export class LocalAudio {
   optOut: boolean = false;        // the user's text-only or cross-language choice
   platformText: boolean = false;  // the plan's own fallback is text (Polish)
   sha: string = '';
+  file: string = '';              // the clip's absolute path when `clip` (a streamed course: maybe not fetched yet)
 }
 
 export const SYNTH_TIMEOUT_MS: number = 15000;
@@ -276,6 +277,25 @@ export class NarrationPlayer implements SpeechPort {
     Log.i(LogEvents.NARR_AUDIO, `event=course_clips clips=${entries.length} total=${this.clipCount()}`);
   }
 
+  /** The clip index entries of the active course (a streamed course prefetches the next sentences from them). */
+  courseClipEntries(): ClipEntry[] {
+    return this.courseEntries;
+  }
+
+  /** A streamed clip did not arrive in time: this and later sentences of it fall back until it arrives. */
+  markClipUnavailable(file: string): void {
+    if (this.clipIndex !== undefined) {
+      this.clipIndex.markFailed(file);
+    }
+  }
+
+  /** A streamed clip arrived (late): it plays again from now on. */
+  clipAvailable(file: string): void {
+    if (this.clipIndex !== undefined) {
+      this.clipIndex.clearFailed(file);
+    }
+  }
+
   setRuntimeClipSource(src: RuntimeClipSource | undefined): void {
     this.runtime = src;
   }
@@ -292,6 +312,7 @@ export class NarrationPlayer implements SpeechPort {
       };
       const d = selectAudio(this.clipIndex, q);
       out.clip = d.clip !== undefined;
+      out.file = d.clip !== undefined ? d.clip.file : '';
       out.optOut = d.reason === ClipReason.USER_TEXT_ONLY || d.reason === ClipReason.LISTEN_CHOICE;
       out.sha = d.sha !== '' ? d.sha : sha256Hex(u.text);
     } catch (e) {

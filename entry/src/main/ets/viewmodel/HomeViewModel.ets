@@ -34,6 +34,8 @@ export class HomeViewModel {
   @Trace estMinutes: number = 0;
   @Trace guideName: string = '';
   @Trace placesCount: number = 0;
+  /** "All places" can open: the city's places are on the device (false for a streamed walk: Download first). */
+  @Trace allPlaces: boolean = true;
   @Trace preview: PreviewPoint[] = [];
   @Trace map: MapData | undefined = undefined;
   @Trace mapScene: MapOverlay = new MapOverlay();
@@ -75,8 +77,10 @@ export class HomeViewModel {
     this.mapBounds = overlayBounds(this.mapScene) ?? [];
     try {
       this.placesCount = pack.pois().length;
+      this.allPlaces = AppContainer.courses().allPlacesReady();
     } catch (e) {
       this.placesCount = 0;
+      this.allPlaces = true;
     }
     this.hasTour = true;
     let courseId = '';
