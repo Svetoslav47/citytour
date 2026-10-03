@@ -263,7 +263,7 @@ export class RemoteClient {
   private async fetchToken(): Promise<string> {
     const h = await this.call('POST', '/v1/installs', '{}', http.HttpDataType.STRING, RemoteConfig.JSON_DEADLINE_MS,
       {});
-    if (h.status !== 200) {
+    if (h.status !== 200 && h.status !== 201) {   // the server answers 201 Created
       Log.w(LogEvents.REMOTE, `event=install_fail status=${h.status} ${h.error}`);
       return '';
     }

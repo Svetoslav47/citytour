@@ -21,7 +21,7 @@
  *   committed server/seed/ envelopes verify with it (checked in Node, see RemoteEnvelope.test.ets).
  */
 export class RemoteConfig {
-  static readonly BASE_URL: string = 'https://citytour.example';
+  static readonly BASE_URL: string = 'https://citytour-server.onrender.com';
 
   static readonly SIGNING_PUBLIC_KEY_SPKI_B64: string = 'MCowBQYDK2VwAyEANFPeilKdvGie94ZqhSmM1XtF7YfHmKTobvQ1bla4g4w=';
 
