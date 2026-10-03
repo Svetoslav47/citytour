@@ -179,6 +179,17 @@ Each simulated failure logs `src=debug`, so a log never presents a fake failure 
 
 _To be written as the implementation lands._
 
+## Data pipeline
+
+The app ships an offline Kraków pack in `entry/src/main/resources/rawfile/packs/krakow/` (generated, never hand-edited). `scripts/pack/build-pack.sh` (Node 22+, standard library only) builds it from the committed snapshots in `data/raw/` and the curated tour `data/tours/royal-route.json`, with the network disabled; two runs give byte-identical files (`manifest.json` lists each file's bytes and sha256).
+
+```bash
+scripts/pack/build-pack.sh           # ~1 s; prints file sizes, counts per language and tier, validation summary
+node --test scripts/pack/*.test.mjs  # pipeline tests, incl. "the committed pack equals a fresh build"
+```
+
+Content: 4,290 Wikidata places, the Royal Route, 110 OSRM walking legs, the Old Town map (OSM), and narrations in en/pl/zh: verbatim Wikipedia extracts where an article exists, otherwise a labelled name-only template. Every narration passes the validator in `scripts/pack/80-validate.mjs` (spec v1, shared with the app via `scripts/pack/fixtures/validator-cases.json`); its report is `validation-report.json`. Sources and licences are in `sources.json` and `data/raw/SOURCES.md`.
+
 ## Pre-existing and third-party components
 
 - Project scaffold: DevEco CLI `devecocli create` (Empty Ability template).
