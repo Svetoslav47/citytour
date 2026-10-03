@@ -7,8 +7,6 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 1
-# The Node pipeline targets the developer's Node (>= 22); remember it before env.sh puts DevEco's Node 18 first.
-PIPELINE_NODE="$(command -v node || true)"
 # shellcheck source=env.sh
 source "$ROOT/scripts/env.sh"
 
@@ -38,13 +36,13 @@ fi
 # 2. Dependencies (oh_modules is gitignored, so a fresh worktree needs an install).
 if [ ! -d oh_modules/@ohos/hypium ]; then
   echo "test.sh: installing ohpm dependencies"
-  "$OHPM" install --all >/dev/null || fail "ohpm install"
+  PATH="$DEVECO_NODE_BIN:$PATH" "$OHPM" install --all >/dev/null || fail "ohpm install"
 fi
 
 # 3. ArkTS local unit tests. Delete the old result first: a stale file would fake a pass.
 rm -f "$RESULT"
 LOG="$(mktemp -t citytour-test.XXXXXX)"
-"$HVIGORW" test -p module=entry -p coverage=false --no-daemon >"$LOG" 2>&1
+PATH="$DEVECO_NODE_BIN:$PATH" "$HVIGORW" test -p module=entry -p coverage=false --no-daemon >"$LOG" 2>&1
 HV_EXIT=$?
 if [ ! -f "$RESULT" ]; then
   tail -n 40 "$LOG"
@@ -67,7 +65,7 @@ rm -f "$LOG"
 PACK_TESTS=()
 while IFS= read -r t; do PACK_TESTS+=("$t"); done < <(find scripts/pack -name '*.test.mjs' 2>/dev/null | sort)
 if [ "${#PACK_TESTS[@]}" -gt 0 ]; then
-  "${PIPELINE_NODE:-node}" --test "${PACK_TESTS[@]}" || fail "node --test scripts/pack (${#PACK_TESTS[@]} files)"
+  node --test "${PACK_TESTS[@]}" || fail "node --test scripts/pack (${#PACK_TESTS[@]} files)"
   echo "Pipeline: ${#PACK_TESTS[@]} node test file(s) passed"
 fi
 

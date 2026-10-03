@@ -85,7 +85,7 @@ Debug builds run unsigned on the emulator, and the `.hap` we submit is the **uns
 
 ## Testing
 
-All commands run from the repository root on macOS with DevEco Studio installed in `/Applications`. `scripts/env.sh` exports the toolchain paths (`DEVECO_SDK_HOME`, DevEco's bundled Node on `PATH`, `HVIGORW`, `OHPM`, `HDC`); set `DEVECO_HOME` first if DevEco Studio lives elsewhere.
+All commands run from the repository root on macOS with DevEco Studio installed in `/Applications`. `scripts/env.sh` exports the toolchain paths (`DEVECO_SDK_HOME`, `HVIGORW`, `OHPM`, `HDC`, and `DEVECO_NODE_BIN`, the Node 18 that `hvigorw` runs on; it is only appended to `PATH` because `devecocli` needs a newer Node); set `DEVECO_HOME` first if DevEco Studio lives elsewhere.
 
 ```bash
 source scripts/env.sh           # optional (the scripts source it themselves); gives you $HDC and $HVIGORW
