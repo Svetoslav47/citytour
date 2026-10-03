@@ -420,10 +420,12 @@ class FakeMedia implements MediaSessionPort {
   states: MediaPlayState[] = [];
   onCommand: MediaCommandListener | undefined = undefined;
 
+  ok: boolean = true;
+
   init(onCommand: MediaCommandListener): Promise<boolean> {
     this.onCommand = onCommand;
-    this.active = true;
-    return Promise.resolve(true);
+    this.active = this.ok;
+    return Promise.resolve(this.ok);
   }
 
   setMeta(meta: MediaMeta): void {
@@ -1109,6 +1111,27 @@ export default function tourControllerTest() {
         expect(bad.narration('x', 'y', Lang.EN, NarrationLength.TEASER) === undefined).assertTrue();
         expect(h.log.count('UNCAUGHT')).assertEqual(0);
         c.shutdown();
+        done();
+      });
+
+    it('A10 row 15: AVSession refused => AVS_FAIL (INFO), the tour runs with in-app controls', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        h.media.ok = false;
+        await h.ctrl.setSource(FixSource.DEMO);
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        h.placeNear(MINI_BARBICAN, 120, 0);
+        await h.ctrl.start();
+        expect(h.ctrl.isRunning()).assertTrue();
+        expect(h.issue(IssueCode.AVS_FAIL)?.severity).assertEqual(IssueSeverity.INFO);
+        expect(h.log.find('AVS_FAIL', 'where=controller result=false', 0) >= 0).assertTrue();
+        expect(h.ctrl.current().platform.avsActive).assertFalse();
+        h.ctrl.pause();
+        expect(h.ctrl.current().paused).assertTrue();                    // in-app controls still work
+        h.ctrl.resume();
+        h.walkTo(MINI_BARBICAN, 1.3);
+        expect(h.log.find('POI_ENTER', `id=${MINI_BARBICAN}`, 0) >= 0).assertTrue();
+        h.ctrl.end();
         done();
       });
   });
