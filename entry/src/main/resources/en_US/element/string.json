@@ -1670,7 +1670,7 @@
     },
     {
       "name": "widget_here",
-      "value": "You're here · %1$d/%2$d"
+      "value": "Here · %1$d/%2$d"
     },
     {
       "name": "widget_at_stop",

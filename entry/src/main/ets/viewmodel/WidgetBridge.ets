@@ -94,7 +94,7 @@ export class WidgetBridge {
         o['title'] = poiName(pack, c.poiId, lang);
         o['big'] = WidgetBridge.distanceText(c.distanceM);
         o['foot'] = c.paused ? WidgetBridge.str('walk_paused') : Number.isFinite(c.distanceM) ?
-          WidgetBridge.str('walk_about_min', Math.max(1, Math.round(c.distanceM / WALK_MPS / 60))) : '';
+          `~${WidgetBridge.str('fmt_min', Math.max(1, Math.round(c.distanceM / WALK_MPS / 60)))}` : '';
         break;
       case CardMode.AT_STOP:
         o['overline'] = WidgetBridge.str('widget_here', c.stopNumber, c.totalStops);
