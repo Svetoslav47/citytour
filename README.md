@@ -153,6 +153,10 @@ devecocli emulator start "Watch 5"
 devecocli run --module wearable --device "Watch 5"   # builds wearable-default-unsigned.hap, installs, launches WatchAbility
 ```
 
+| Start | Demo walk glance | Look left cue | Tour complete |
+|---|---|---|---|
+| <img src="docs/img/watch/start.png" width="160" alt="Watch start screen"> | <img src="docs/img/watch/glance.png" width="160" alt="Glance: ring, arrow, 320 m, 0/11, Barbican, SIMULATED"> | <img src="docs/img/watch/look-left.png" width="160" alt="Look left flash at St Mary's"> | <img src="docs/img/watch/finished.png" width="160" alt="Tour complete 11 of 11"> |
+
 Watch emulator notes (all checked on "Watch 5", HarmonyOS 6.1.1(24)):
 
 - **Language.** A new watch emulator may start in Arabic and has no language page in its Settings. Set the
