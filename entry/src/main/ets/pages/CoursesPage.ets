@@ -23,6 +23,7 @@ export struct CoursesPage {
   @Local app: AppViewModel = AppViewModel.get();
   @Local vm: CoursesViewModel = CoursesViewModel.get();
   @Local sa: SafeArea = SafeArea.get();
+  @Local refreshing: boolean = false;
 
   aboutToAppear(): void {
     Log.i(LogEvents.APP_PAGE, 'page=Courses');
@@ -261,30 +262,38 @@ export struct CoursesPage {
 
   build() {
     NavDestination() {
-      Scroll() {
-        Column() {
-          SettingsHeader({ title: $r('app.string.courses_title'), backId: 'btnCoursesBack',
-            onBack: () => this.app.back() })
-          Column({ space: Space.S3 }) {
-            this.notes()
-            ForEach(this.vm.items, (it: CourseItem) => {
-              this.card(it)
-            }, (it: CourseItem) =>
-              // rebuild() makes new CourseItem objects: key on the row state too, or ForEach keeps the old row
-              // bound to the old object and never shows "downloading" / the progress bar.
-              `${it.id}|${it.state}|${it.downloading}|${it.active}|${it.failed}|${it.cancelling}`)
+      // Pull down to fetch the catalog again (it is also fetched every time the page opens).
+      Refresh({ refreshing: $$this.refreshing }) {
+        Scroll() {
+          Column() {
+            SettingsHeader({ title: $r('app.string.courses_title'), backId: 'btnCoursesBack',
+              onBack: () => this.app.back() })
+            Column({ space: Space.S3 }) {
+              this.notes()
+              ForEach(this.vm.items, (it: CourseItem) => {
+                this.card(it)
+              }, (it: CourseItem) =>
+                // rebuild() makes new CourseItem objects: key on the row state too, or ForEach keeps the old row
+                // bound to the old object and never shows "downloading" / the progress bar.
+                `${it.id}|${it.state}|${it.downloading}|${it.active}|${it.failed}|${it.cancelling}`)
+            }
+            .width('100%')
+            .padding({ left: Space.S4, right: Space.S4, bottom: Space.S6 + this.sa.bottom })
           }
           .width('100%')
-          .padding({ left: Space.S4, right: Space.S4, bottom: Space.S6 + this.sa.bottom })
+          .constraintSize({ maxWidth: Size.PAGE_MAX_W })
         }
+        .id('pageCourses')
+        .scrollBar(BarState.Off)
+        .align(Alignment.Top)
         .width('100%')
-        .constraintSize({ maxWidth: Size.PAGE_MAX_W })
+        .height('100%')
       }
-      .id('pageCourses')
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top)
-      .width('100%')
-      .height('100%')
+      .onRefreshing(() => {
+        this.vm.open(this.app.textLang).finally(() => {
+          this.refreshing = false;
+        });
+      })
     }
     .hideTitleBar(true)
     .backgroundColor($r('app.color.bg_canvas'))
