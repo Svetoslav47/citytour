@@ -1,5 +1,7 @@
 /*
- * Tour detail (DESIGN §3.3): route preview, title, stats, guide row (with the honest voice label), the stop
+ * Tour detail (DESIGN §3.3): hero cover photo with the title (or, for a course without a cover, the route preview
+ * as before), stats, the route map in its own "Route" section when the hero is a photo, guide row (with the honest
+ * voice label), the stop
  * list from the pack, "About these stories" and the sticky "Start tour" (id btnStartTour). Location is checked
  * here, in context (Flow D): a denied/approximate/switched-off state shows a banner that always offers the
  * Demo walk, so the flow never dead-ends.
@@ -10,6 +12,8 @@ import { LocBanner, TourPlanViewModel } from '../viewmodel/TourPlanViewModel';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { IssueBanner } from '../views/common/IssueBanner';
 import { MapCanvas } from '../views/map/MapCanvas';
+import { CoverPhoto } from '../views/common/CoverPhoto';
+import { CoverView } from '../core/remote/CoverRules';
 import { StopList } from '../views/common/StopList';
 import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
 import { IssueCode } from '../contracts/EngineTypes';
@@ -65,6 +69,19 @@ export struct TourDetailPage {
   private bannerAction(): Resource {
     return this.vm.locBanner === LocBanner.DENIED ? $r('app.string.err_perm_allow') :
       $r('app.string.err_perm_turn_on');
+  }
+
+  /** The hero is the cover photo (or its loading placeholder); else the route map is the hero, as before. */
+  private photoHero(): boolean {
+    return this.vm.cover.view() !== CoverView.FALLBACK;
+  }
+
+  @Builder
+  routeMap(boxHeight: number, topInset: number) {
+    MapCanvas({ map: this.vm.map, scene: this.vm.scene, bounds: this.vm.sceneBounds,
+      boxHeight: boxHeight, topInset: topInset, mapId: 'mapTourDetail' })
+      .onClick(() => this.app.openFullMap('tour'))
+      .accessibilityText($r('app.string.tour_map_a11y', this.vm.title, this.vm.stops.length))
   }
 
   @Builder
@@ -143,17 +160,19 @@ export struct TourDetailPage {
   @Builder
   content() {
     Column() {
-      Text(this.vm.title)
-        .fontSize(Type.TITLE1)
-        .lineHeight(Type.TITLE1_LH)
-        .fontWeight(FontWeight.Bold)
-        .fontColor($r('app.color.text_primary'))
+      if (!this.photoHero()) {
+        Text(this.vm.title)
+          .fontSize(Type.TITLE1)
+          .lineHeight(Type.TITLE1_LH)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.text_primary'))
+      }
       if (this.vm.summary !== '') {
         Text(this.vm.summary)
           .fontSize(Type.BODY)
           .lineHeight(Type.BODY_LH)
           .fontColor($r('app.color.text_secondary'))
-          .margin({ top: Space.S1 })
+          .margin({ top: this.photoHero() ? 0 : Space.S1 })
       }
       Row() {
         this.stat(this.vm.listedM > 0 ? distanceRes(this.vm.listedM) : '—', $r('app.string.tour_stat_walk'))
@@ -165,6 +184,17 @@ export struct TourDetailPage {
       .width('100%')
       .padding({ left: Space.S1, right: Space.S1 })
       .margin({ top: Space.S5 })
+
+      if (this.photoHero()) {
+        // The route map moved here from the top when the hero became the cover photo (same map, same tap).
+        this.sectionHeader($r('app.string.tour_route_header'))
+        Column() {
+          this.routeMap(200, 0)
+        }
+        .width('100%')
+        .borderRadius(Radius.LG)
+        .clip(true)
+      }
 
       if (this.vm.guideName !== '') {
         this.guideRow()
@@ -255,10 +285,19 @@ export struct TourDetailPage {
         Scroll() {
           Column() {
             Stack({ alignContent: Alignment.TopStart }) {
-              MapCanvas({ map: this.vm.map, scene: this.vm.scene, bounds: this.vm.sceneBounds,
-                boxHeight: 260 + this.sa.top, topInset: 40 + this.sa.top, mapId: 'mapTourDetail' })
-                .onClick(() => this.app.openFullMap('tour'))
-                .accessibilityText($r('app.string.tour_map_a11y', this.vm.title, this.vm.stops.length))
+              if (this.photoHero()) {
+                CoverPhoto({
+                  path: this.vm.cover.path,
+                  credit: this.vm.cover.credit,
+                  alt: $r('app.string.cover_alt_title', this.vm.title),
+                  title: this.vm.title,
+                  boxHeight: 280 + this.sa.top,
+                  textPadding: Space.S4 + this.sa.left,
+                  photoId: 'coverTourDetail'
+                })
+              } else {
+                this.routeMap(260 + this.sa.top, 40 + this.sa.top)
+              }
               FloatingIconButton({
                 symbol: $r('sys.symbol.chevron_backward'),
                 label: $r('app.string.a11y_back'),
