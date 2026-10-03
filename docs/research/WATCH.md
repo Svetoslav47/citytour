@@ -1,6 +1,6 @@
 # CityTour on a Huawei watch: research and plan
 
-Status: research done and decisions taken on 2026-10-03. Work happens on branch `cap/wearable` (worktree `../citytour-wt/wearable`) plus a separate `feat/common-har` branch that lands first.
+Status (2026-10-04): W0-W7 done on branch `cap/wearable`, on top of `feat/common-har` (lands first). Verified on the Watch 5 emulator (HarmonyOS 6.1.1(24), English): full Demo walk 11/11 with all four cues logged and flashed, real-GPS permission/switch/out-of-area path, phone smoke unaffected. Not verified: real vibration, a real watch. Next slices: §3 rows 3-8.
 
 Research was done by Claude Code (Opus 5.5) with three research subagents. They read the installed SDK's device definitions, the official docs through `devecocli docs`, and public web sources. Anything not confirmed is marked **UNVERIFIED**.
 
@@ -90,7 +90,7 @@ Cues are rate-limited so they never stack. Each cue is also logged and flashed o
 
 ## 6. Task plan
 
-| ID | Branch | Task | Done when |
+| ID | Branch | Task | Done when (status 2026-10-04: all done) |
 | --- | --- | --- | --- |
 | W0 | – | Download the wearable image (started 2026-10-03), create a watch emulator, boot it | `devecocli emulator list` shows a running `wearable` instance |
 | W1 | `feat/common-har` | Move `contracts/` + `core/` into a `common` HAR; entry imports from `'common'`; update `scripts/test.sh` guards and paths; README/ARCHITECTURE note | Build, `scripts/test.sh` and the Pura 90 smoke run all pass. **Person A gets a heads-up before merge** (every import path changes); merged first. |
