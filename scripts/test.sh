@@ -7,6 +7,8 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 1
+# The Node pipeline targets the developer's Node (>= 22); remember it before env.sh puts DevEco's Node 18 first.
+PIPELINE_NODE="$(command -v node || true)"
 # shellcheck source=env.sh
 source "$ROOT/scripts/env.sh"
 
@@ -54,14 +56,19 @@ num() { echo "$SUMMARY" | sed -nE "s/.*$1: ([0-9]+).*/\1/p"; }
 RUN="$(num 'Tests run')"; FAILURES="$(num Failure)"; ERRORS="$(num Error)"
 echo "ArkTS: $SUMMARY"
 if [ "${RUN:-0}" -eq 0 ] || [ "${FAILURES:-1}" -ne 0 ] || [ "${ERRORS:-1}" -ne 0 ]; then
-  grep -E '^(test=|Error in )' "$RESULT" || cat "$RESULT"
+  # Print each failing case as "<suite> <test>: <message>"; fall back to the raw file.
+  awk '/^class=/{c=substr($0,7)} /^test=/{t=substr($0,6)} /^Error in /{print "  FAILED " c " " t ": " substr($0,10); n++}
+       END{exit n==0}' "$RESULT" || cat "$RESULT"
   fail "run=$RUN failure=$FAILURES error=$ERRORS"
 fi
 rm -f "$LOG"
 
-# 4. Node pipeline tests, once any exist.
-if compgen -G "scripts/pack/*.test.mjs" >/dev/null || find scripts/pack -name '*.test.mjs' 2>/dev/null | grep -q .; then
-  node --test scripts/pack/ || fail "node --test scripts/pack/"
+# 4. Node pipeline tests, once any exist (explicit file list: works on every Node version).
+PACK_TESTS=()
+while IFS= read -r t; do PACK_TESTS+=("$t"); done < <(find scripts/pack -name '*.test.mjs' 2>/dev/null | sort)
+if [ "${#PACK_TESTS[@]}" -gt 0 ]; then
+  "${PIPELINE_NODE:-node}" --test "${PACK_TESTS[@]}" || fail "node --test scripts/pack (${#PACK_TESTS[@]} files)"
+  echo "Pipeline: ${#PACK_TESTS[@]} node test file(s) passed"
 fi
 
 echo "TESTS: PASS n=$RUN"
