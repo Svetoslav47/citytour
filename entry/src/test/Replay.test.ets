@@ -1039,7 +1039,9 @@ export default function replayTest() {
       const b: EngineReplay = new EngineReplay(false, 1, true);
       b.plan = a.plan;
       b.run();
-      const text = (r: EngineReplay): string => r.obs.logs.map((l: LogLine) => `${l.code} ${l.kv}`).join('\n');
+      // A9: the mid-tour re-plan runs the planner again; its wall-clock `ms=` in the REPLAN line is not replayed.
+      const text = (r: EngineReplay): string => r.obs.logs.map((l: LogLine) => `${l.code} ${l.kv}`)
+        .join('\n').replace(/ ms=[0-9]+/g, ' ms=_');
       expect(a.obs.logs.length > 50).assertTrue();
       expect(text(a)).assertEqual(text(b));
     });
