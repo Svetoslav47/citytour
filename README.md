@@ -153,6 +153,18 @@ System lines are included by default (`--no-system` skips them, `--system-only` 
 
 Model `eleven_multilingual_v2`, mono `mp3_44100_64` by default (`--output-format mp3_22050_32` halves the size). Input is the pack's `narrations/<lang>.json`; `--narrations-dir`, `--langs`, `--lengths`, `--fixture` and `--help` change that. The pre-commit hook rejects ElevenLabs key values.
 
+### Course server (optional, `server/`)
+
+Course downloads and runtime studio voice for lines without a clip come from an optional server ([`docs/SERVER.md`](docs/SERVER.md), Express + TypeScript, Node 22). The app works fully without it. Run it locally, publish the Kraków course and smoke-test it without any ElevenLabs call:
+
+```bash
+cd server && npm ci && npm test
+npm run keygen
+npm run publish-course -- --course krakow --pack ../entry/src/main/resources/rawfile/packs/krakow --audio ../entry/src/main/resources/rawfile/audio --data ./data --seed ./seed
+```
+
+Environment, Docker, Render deploy and the smoke test: [`server/README.md`](server/README.md). After a template change in `Phrases.ets`, re-run `publish-course --seed` too (the allowed-lines set holds the exact sentences).
+
 ### Signing
 
 Debug builds run unsigned on the emulator, and the `.hap` we submit is the **unsigned debug build** from a tagged commit (verified to install and run on the emulator; see `docs/PLAN.md` task S4). Signing is only needed for a physical device: open the project in DevEco Studio and go to **File → Project Structure → Signing Configs → Automatically generate** (this needs a Huawei account). That writes `signingConfigs` into `build-profile.json5`; never commit it. Signing material stays out of git (see `.gitignore`).

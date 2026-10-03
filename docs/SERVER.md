@@ -49,6 +49,52 @@ canonical JSON of `payload` (sorted keys, UTF-8). It is base64.
 
 **`POST /v1/tts` body:** `{courseId, lang:"en"|"pl"|"zh", text}`. The body is at most 1 KB and `text` at most 400 chars.
 
+### 3.1 Implementation details the app relies on (added with `server/`, shape above unchanged)
+
+**Canonical JSON (what is signed).** `sig = base64(Ed25519(privateKey, utf8(canonical(payload))))`, where
+`canonical(v)` is:
+- `null`, `true`, `false` as is; a **string** or **number** exactly as `JSON.stringify` writes it (ECMAScript
+  Number::toString, so `2.5`, `40307550`, `1e+21`; `-0` becomes `0`; NaN/Infinity are never present). Non-ASCII
+  characters are written raw (not `\u` escaped), only `"`, `\` and control characters (and lone surrogates) are escaped;
+- an **array**: `[` + its elements' canonical forms joined by `,` + `]`, order kept;
+- an **object**: `{` + `"key":value` pairs joined by `,` + `}`, keys sorted ascending by UTF-16 code units (the
+  default `Array.prototype.sort()`; every key we emit is ASCII, so this equals byte order), keys written with
+  `JSON.stringify`; no member is ever `undefined`;
+- no whitespace anywhere.
+In ArkTS this is the same recursive function over the parsed `payload` (`JSON.stringify` for each primitive and
+key). Verify against the **raw** `sig` string and the `payload` object of the envelope; the server signs exactly
+what it serves (the files are signed once at publish time). Reference implementations:
+`server/src/canonical.ts` and the 15-line copy in `server/scripts/smoke.mjs`.
+
+**Public key encodings.** `npm run keygen` prints the same key three ways: raw 32 bytes (base64), SPKI DER
+(base64, `MCowBQYDK2VwAyEA` + raw) and PEM. HarmonyOS `cryptoFramework` `Ed25519` `convertKey` takes the SPKI DER.
+
+**Manifest `files[].path`.** Paths are relative to the app's `rawfile/` layout, so a downloaded course mirrors the
+bundled one: `packs/<packId>/<file>` (every file of the pack, including `manifest.json` and
+`narrations/<lang>.json`), `audio/manifest.json`, and every clip under the path the clip manifest already uses
+(`audio/<lang>/<group-or-poi>/<hash>.mp3`). Download each `files[i]` from `/v1/blobs/<sha256>`, check
+`sha256(bytes) == files[i].sha256` and `bytes.length == files[i].bytes`, then write it to `<courseDir>/<path>`.
+`version` = `<pack version>-a<first 8 hex of sha256(audio/manifest.json)>`, so it changes when either changes.
+`allowedTtsSha` = sha256 of the exact `allowed.json` bytes (a JSON array of sorted lowercase hex strings).
+
+**Allowed set content.** Narration sentences of every narration file of the pack; every system/arrival/nav line
+of `scripts/voice/system-lines.mjs` for every tour (all 110 legs); and the numeric lines (approach with/without
+direction, next stop with distance, off-route bearing with/without direction) for every tour stop x every RelDir x
+every wording `distancePhrase` can produce up to 60 minutes (10..100 m step 10, 150..500 m step 50, 6..60 min), in
+en/pl/zh. Golden-tested against the app (`SystemLines.test.ets`). Lines further than 60 min are not allowed and fall
+back to the built-in voice.
+
+**`POST /v1/tts` responses.** 200 `audio/mpeg` with `X-Text-Sha256` (sha256 of the request `text`), `X-Cache:
+hit|miss`, `X-Blob-Sha256`. Errors are JSON `{error}`: 400 `bad_request` (zod: unknown fields, `text` 1..400 chars),
+401 `unauthorized`, 403 `not_allowed`, 404 `unknown_course`, 413 `payload_too_large` (body over 2 KB; Chinese text
+is up to 3 bytes per char, so the limit is 2 KB, not 1 KB), 429 `rate_limited` or `budget` (with `Retry-After`),
+502 `tts_upstream`, 503 `tts_unavailable` (breaker open, `Retry-After`). Every non-200 means: use the fallback.
+Shipped clips are pre-seeded in `tts-index.json` at publish time, so they are always cache hits (no credits).
+
+**Deploy data.** `publish-course --seed server/seed` also writes the signed metadata to `server/seed/`
+(committed). The Docker image bundles it plus the pack/clip files, and on boot copies anything missing to
+`DATA_DIR` (verifying every sha256). See `server/README.md`.
+
 ## 4. Security
 
 **The ElevenLabs key lives only in the server's environment.** It is never in the app, the repo or the logs.

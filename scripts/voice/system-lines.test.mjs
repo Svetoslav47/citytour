@@ -80,3 +80,23 @@ test('Royal Route enumeration: every group and language, unique texts, nav cues 
   const all = lines.filter((l) => l.group === 'nav');
   assert.ok(tourOnly.length > 0 && tourOnly.length <= all.length);
 });
+
+test('numeric lines: distance buckets and every stop x direction x bucket (course server allowed set)', async () => {
+  const { distanceBuckets, numericCases, stopNames, approachSentence, nextStopSentence, offRouteSentences } =
+    await import('./system-lines.mjs');
+  const en = distanceBuckets('en').map((b) => b.text);
+  assert.equal(en[0], '10 metres');
+  assert.ok(en.includes('100 metres') && en.includes('500 metres') && en.includes('6 minutes'));
+  assert.equal(en[en.length - 1], '60 minutes');
+  assert.equal(en.length, 10 + 8 + 55);
+  assert.equal(distanceBuckets('pl').length, en.length);
+  assert.equal(approachSentence('en', 'Barbican', 'left', 80, true), 'In about 80 metres, on your left: Barbican.');
+  assert.equal(approachSentence('zh', '瓮城', 'here', 80, true), '再走大约80米，就到瓮城。');
+  assert.equal(nextStopSentence('pl', 'Barbakan', 600), 'Następny przystanek: Barbakan, około 8 minut stąd.');
+  assert.deepEqual(offRouteSentences('en', 'Cloth Hall', 200, 'behindRight', true),
+    ['You\'ve left the route.', 'Cloth Hall is about 200 metres behind you, on the right.']);
+  const names = stopNames(pack);
+  const cases = numericCases(names);
+  // per lang: stops x buckets x (nextStop + 10 approach + 10 offRoute: 9 dirs + directions off)
+  assert.equal(cases.length, 3 * names.en.length * en.length * 21);
+});
