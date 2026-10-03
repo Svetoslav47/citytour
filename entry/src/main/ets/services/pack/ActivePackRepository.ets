@@ -1,59 +1,60 @@
 /*
- * The PackRepository the whole app holds (AppContainer.packRepository()): it forwards to the ACTIVE course's pack,
- * the bundled Kraków pack (always available) or a downloaded course (FilePackRepository) chosen on the Courses
- * screen (docs/SERVER.md §6). Nothing else in the app needs to know which one it is.
+ * The PackRepository the whole app holds (AppContainer.packRepository()): it forwards to the ACTIVE course's pack, a
+ * downloaded course (FilePackRepository) chosen on the Courses screen (docs/SERVER.md §6), or to EmptyPackRepository
+ * when no course is installed (the app ships no built-in course). Nothing else in the app needs to know which one.
  *
  * - load(): waits (bounded) for the start-up choice of the active course, then loads it. A downloaded course that
- *   fails to load falls back to the bundled pack (COURSE event=fallback), so a broken download never blocks the app.
+ *   fails to load stays active and reports the failure (Home shows the error state; the Courses screen can delete or
+ *   re-download it).
  * - switchTo(): loads the new pack first and swaps only when it loaded; the old pack stays active otherwise.
- * With no server and no downloads this is a transparent wrapper around RawfilePackRepository.
+ * - switchToNone(): back to "no course" (the last course was deleted).
  */
 import { Lang, MapData, Narration, NarrationLength, Persona, Poi, RouteData, SourceRef, Tour } from '../../contracts/Model';
 import { PackLoadResult, PackRepository } from '../../contracts/Ports';
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
+import { EmptyPackRepository } from './EmptyPackRepository';
 
 const STARTUP_CHOICE_TIMEOUT_MS: number = 3000;
 
+/** The start-up choice: a course's pack and its id. */
+export class PackChoice {
+  repo: PackRepository;
+  id: string;
+
+  constructor(repo: PackRepository, id: string) {
+    this.repo = repo;
+    this.id = id;
+  }
+}
+
 export class ActivePackRepository implements PackRepository {
-  private readonly bundled: PackRepository;
-  private current: PackRepository;
-  private currentId: string;
-  private readonly bundledId: string;
+  private readonly none: PackRepository = new EmptyPackRepository();
+  private current: PackRepository = this.none;
+  private currentId: string = '';
   private startup: Promise<void> = Promise.resolve();
   private loading: Promise<PackLoadResult> | undefined = undefined;
   private chosen: boolean = false;   // the start-up choice was applied (or timed out); later choices are ignored
 
-  constructor(bundled: PackRepository, bundledId: string) {
-    this.bundled = bundled;
-    this.current = bundled;
-    this.bundledId = bundledId;
-    this.currentId = bundledId;
-  }
-
-  bundledRepo(): PackRepository {
-    return this.bundled;
-  }
-
+  /** The active course id, '' when no course is installed. */
   activeId(): string {
     return this.currentId;
   }
 
-  isBundled(): boolean {
-    return this.current === this.bundled;
+  hasCourse(): boolean {
+    return this.currentId !== '';
   }
 
   /**
-   * Start-up: `choose` resolves the downloaded course to use (or undefined for the bundled pack) before the first
-   * load(). Called once by CourseRepository.init().
+   * Start-up: `choose` resolves the installed course to use (undefined = none) before the first load(). Called once
+   * by CourseRepository.start().
    */
-  setStartupChoice(choose: Promise<PackRepository | undefined>, idOf: () => string): void {
-    this.startup = choose.then((repo: PackRepository | undefined) => {
-      if (repo !== undefined && !this.chosen) {
-        const id = idOf();
-        this.current = repo;
-        this.currentId = id;
-        Log.i(LogEvents.COURSE, `event=active_restore id=${id}`);
+  setStartupChoice(choose: Promise<PackChoice | undefined>): void {
+    this.startup = choose.then((c: PackChoice | undefined) => {
+      if (c !== undefined && !this.chosen) {
+        this.current = c.repo;
+        this.currentId = c.id;
+        Log.i(LogEvents.COURSE, `event=active_restore id=${c.id}`);
       }
     }).catch((e: Object) => {
       Log.e(LogEvents.COURSE, `event=active_restore_fail ${Log.errKv(e)}`);
@@ -78,7 +79,7 @@ export class ActivePackRepository implements PackRepository {
       return bad;
     }
     if (!r.ok) {
-      Log.e(LogEvents.COURSE, `event=switch_fail id=${id} issues=${r.issues.length} keep=${this.currentId}`);
+      Log.e(LogEvents.COURSE, `event=switch_fail id=${id} issues=${r.issues.length} keep=${this.currentId || 'none'}`);
       return r;
     }
     this.chosen = true;
@@ -90,29 +91,27 @@ export class ActivePackRepository implements PackRepository {
     return r;
   }
 
-  /** Back to the bundled pack. */
-  switchToBundled(): Promise<PackLoadResult> {
-    return this.switchTo(this.bundled, this.bundledId);
+  /** No course any more (the active one was deleted and no other is installed). */
+  switchToNone(): Promise<PackLoadResult> {
+    this.chosen = true;
+    this.current = this.none;
+    this.currentId = '';
+    this.loading = this.none.load();
+    Log.i(LogEvents.COURSE, 'event=active id=none');
+    return this.loading;
   }
 
   private async doLoad(): Promise<PackLoadResult> {
     await Promise.race([this.startup, new Promise<void>((resolve) => setTimeout(resolve, STARTUP_CHOICE_TIMEOUT_MS))]);
     this.chosen = true;
     const repo = this.current;
-    let r: PackLoadResult;
     try {
-      r = await repo.load();
+      return await repo.load();
     } catch (e) {
+      Log.e(LogEvents.COURSE, `event=load_fail id=${this.currentId || 'none'} ${Log.errKv(e as Object)}`);
       const bad: PackLoadResult = { ok: false, issues: [] };
-      r = bad;
+      return bad;
     }
-    if (!r.ok && repo !== this.bundled) {
-      Log.w(LogEvents.COURSE, `event=fallback from=${this.currentId} to=${this.bundledId} reason=load_failed`);
-      this.current = this.bundled;
-      this.currentId = this.bundledId;
-      return this.bundled.load();
-    }
-    return r;
   }
 
   pois(): Poi[] {

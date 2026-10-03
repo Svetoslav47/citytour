@@ -89,11 +89,14 @@ export class TourPlanViewModel {
   @Trace showSheet: boolean = false;
   @Trace starting: boolean = false;
   @Trace startFailed: boolean = false;
+  /** The SIMULATED Demo walk is offered only for the Kraków course (CourseRules.demoWalkOffered). */
+  @Trace demoOffered: boolean = false;
   private pendingStart: boolean = false;
   private personaId: string = '';
 
   load(tourId: string, lang: Lang): void {
     this.textLang = lang;
+    this.demoOffered = AppContainer.demoWalkOffered();
     const pack = AppContainer.packRepository();
     const tour = findTour(pack, tourId);
     if (tour === undefined) {
@@ -140,7 +143,7 @@ export class TourPlanViewModel {
     this.locBanner = LocBanner.NONE;
     try {
       // B9: Settings > Demo walk is on => the SIMULATED source at the saved speed, no location gate.
-      if (SettingsViewModel.settings().useDemoWalk) {
+      if (SettingsViewModel.settings().useDemoWalk && AppContainer.demoWalkOffered()) {
         const ok = await SettingsViewModel.applySource('startTour');
         this.demo = true;
         Log.i(LogEvents.LOC_SOURCE, `kind=demo where=tourDetail reason=settings ok=${ok}`);
@@ -195,6 +198,9 @@ export class TourPlanViewModel {
 
   /** Banner action "Try a demo walk instead": the SIMULATED source, clearly labelled from here on. */
   async useDemo(): Promise<boolean> {
+    if (!AppContainer.demoWalkOffered()) {
+      return false;
+    }
     const ok = await withTimeout(AppContainer.tourControl().setSource(FixSource.DEMO).then((): boolean => true),
       CONTROL_TIMEOUT_MS, false, 'tour.setSource.demo');
     this.demo = true;

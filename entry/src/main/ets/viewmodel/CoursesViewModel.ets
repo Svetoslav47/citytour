@@ -1,11 +1,13 @@
 /*
  * Courses screen view model (docs/SERVER.md §6 "Courses screen") and the persisted "Online studio voice" setting.
  * Rows come from the pure core/remote/CourseRules.mergeCourses over CourseRepository's installed courses, its
- * catalog (server or the last verified offline copy) and the bundled course. Each row shows title (UI language),
- * city, stops · km · minutes, languages, size, and its state: Download (size) / progress % / Downloaded ✓ / Update /
- * Delete; selecting a downloaded course makes it the active course for Home and Tour detail.
- * States: server disabled (BASE_URL '') -> "Only the built-in course"; offline -> cached catalog + "Offline" note;
- * no cached catalog and offline -> local courses only + note. Every call is bounded (withTimeout) and never throws.
+ * catalog (server or the last verified offline copy). The app ships no built-in course. Each row shows title (UI
+ * language), city, stops · km · minutes, languages, size, and its state: Download (size) / progress % + Cancel /
+ * Downloaded ✓ / Update / Retry / Delete; selecting a downloaded course makes it the active course for Home and Tour
+ * detail. The first download becomes the active course on its own (CourseRepository).
+ * States: server disabled (BASE_URL '') -> "No course server"; offline -> cached catalog + "Offline" note + Retry;
+ * no cached catalog and offline -> downloaded courses only + note + Retry. Every call is bounded (withTimeout) and
+ * never throws.
  * RemoteSettings persists with PersistenceV2 under 'remoteSettings' (no change to the UserSettings contract).
  */
 import { PersistenceV2 } from '@kit.ArkUI';
@@ -14,13 +16,10 @@ import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { CourseRow, CourseState, courseTitle, mergeCourses, progressPct, sizeLabel } from '../core/remote/CourseRules';
-import { CourseSummary } from '../core/remote/ServerApi';
 import { CatalogSource, CatalogState, OpResult } from '../services/remote/CourseRepository';
 import { CancelToken, InstallProgress } from '../services/remote/CourseStore';
 import { AppViewModel } from './AppViewModel';
 import { withTimeout } from './Async';
-import { localName } from './Format';
-import { findTour, listedMetres } from './PackView';
 import { MapCache } from './MapViewModel';
 
 /** The active course changed: drop the cached detail map and let Home / About re-read the pack. */
@@ -89,12 +88,12 @@ export class CourseItem {
   @Trace langs: string = '';
   @Trace size: string = '';
   @Trace state: CourseState = CourseState.AVAILABLE;
-  @Trace builtin: boolean = false;
   @Trace active: boolean = false;
   @Trace canDelete: boolean = false;
   @Trace canSelect: boolean = false;
   @Trace downloading: boolean = false;
   @Trace pct: number = 0;
+  @Trace cancelling: boolean = false;
   @Trace failed: boolean = false;
 }
 
@@ -127,7 +126,6 @@ export class CoursesViewModel {
   @Trace switchFailed: boolean = false;
   @Trace tourRunning: boolean = false;
   @Trace busySwitch: boolean = false;
-  private bundled: CourseSummary = new CourseSummary();
   private lang: Lang = Lang.EN;
   private progress: Map<string, number> = new Map<string, number>();
   private failed: Set<string> = new Set<string>();
@@ -141,7 +139,6 @@ export class CoursesViewModel {
       this.enabled = repo.serverEnabled();
       this.tourRunning = AppContainer.tourController().isRunning();
       await withTimeout(repo.init(), CATALOG_TIMEOUT_MS, undefined, 'courses.init');
-      await this.buildBundled();
       this.rebuild();
       if (!this.enabled) {
         this.note = CatalogNote.DISABLED;
@@ -174,33 +171,11 @@ export class CoursesViewModel {
     return st.source === CatalogSource.CACHE ? CatalogNote.OFFLINE_CACHED : CatalogNote.OFFLINE_EMPTY;
   }
 
-  /** The bundled course's catalog-shaped summary, from the bundled pack itself. */
-  private async buildBundled(): Promise<void> {
-    const repo = AppContainer.courses();
-    const pack = repo.bundledPack();
-    const s = new CourseSummary();
-    s.id = repo.bundledCourseId();
-    s.version = await withTimeout(repo.bundledVersion(), 5000, '', 'courses.bundledVersion');
-    const tour = findTour(pack, '');
-    if (tour !== undefined) {
-      s.title.en = localName(tour.titles, Lang.EN);
-      s.title.pl = localName(tour.titles, Lang.PL);
-      s.title.zh = localName(tour.titles, Lang.ZH);
-      s.stops = tour.stops.length;
-      s.minutes = tour.estMinutes;
-      const m = listedMetres(pack, tour.stops.map((st) => st.poiId));
-      s.km = m > 0 ? Math.round(m / 100) / 10 : 0;
-    }
-    s.city = 'Kraków';
-    s.langs = ['en', 'pl', 'zh'];
-    this.bundled = s;
-  }
-
   private rebuild(): void {
     try {
       const repo = AppContainer.courses();
       const cat = repo.catalog().courses;
-      const rows: CourseRow[] = mergeCourses(this.bundled, repo.installed(), cat, repo.activeId());
+      const rows: CourseRow[] = mergeCourses(repo.installed(), cat, repo.activeId());
       const ui = uiLangOf(this.lang);
       const out: CourseItem[] = [];
       for (const r of rows) {
@@ -214,12 +189,13 @@ export class CoursesViewModel {
         it.langs = r.summary.langs.map((l: string) => l === 'zh' ? '中文' : l.toUpperCase()).join(' · ');
         it.size = sizeLabel(r.summary.bytes);
         it.state = r.state;
-        it.builtin = r.builtin;
         it.active = r.active;
         it.canDelete = r.canDelete;
         it.canSelect = r.canSelect;
         const p = this.progress.get(it.id);
         it.downloading = p !== undefined;
+        const c = this.cancels.get(it.id);
+        it.cancelling = c !== undefined && c.cancelled;
         it.pct = p !== undefined ? p : 0;
         it.failed = this.failed.has(it.id);
         out.push(it);
@@ -254,6 +230,7 @@ export class CoursesViewModel {
     };
     const timedOut = new OpResult();
     timedOut.error = 'timeout';
+    const activeBefore = AppContainer.courses().activeId();
     let r: OpResult;
     try {
       r = await withTimeout(AppContainer.courses().download(id, cancel, onProgress), DOWNLOAD_TIMEOUT_MS, timedOut,
@@ -267,15 +244,33 @@ export class CoursesViewModel {
     }
     this.progress.delete(id);
     this.cancels.delete(id);
-    if (!r.ok) {
+    if (!r.ok && r.error !== 'cancelled') {
       this.failed.add(id);
       Log.w(LogEvents.COURSE, `event=ui_download_fail id=${id} reason=${r.error}`);
+    } else if (!r.ok) {
+      Log.i(LogEvents.COURSE, `event=ui_download_cancelled id=${id}`);
     }
     this.rebuild();
-    if (r.ok && AppContainer.courses().activeId() === id) {
-      notifyCourseChanged();   // an update of the active course: Home re-reads it
+    const activeNow = AppContainer.courses().activeId();
+    if (r.ok && (activeNow === id || activeNow !== activeBefore)) {
+      notifyCourseChanged();   // the first download (now active) or an update of the active course: Home re-reads it
     }
   }
+
+  /** Stops a running download; the partial files are discarded and nothing installed changes. */
+  cancel(id: string): void {
+    const c = this.cancels.get(id);
+    if (c !== undefined) {
+      c.cancelled = true;
+      const it = this.item(id);
+      if (it !== undefined) {
+        it.cancelling = true;
+      }
+      Log.i(LogEvents.COURSE, `event=ui_download_cancel id=${id}`);
+    }
+  }
+
+
 
   async remove(id: string): Promise<void> {
     if (this.tourRunning && AppContainer.courses().activeId() === id) {
@@ -292,7 +287,7 @@ export class CoursesViewModel {
     }
   }
 
-  /** Make a bundled or downloaded course the active one (not during a tour). */
+  /** Make a downloaded course the active one (not during a tour). */
   async select(id: string): Promise<void> {
     this.switchFailed = false;
     this.tourRunning = AppContainer.tourController().isRunning();

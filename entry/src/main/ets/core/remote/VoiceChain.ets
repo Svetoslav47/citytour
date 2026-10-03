@@ -2,7 +2,7 @@
  * Per-sentence voice fallback chain (docs/SERVER.md §2). Pure: no @kit imports, unit-tested in
  * entry/src/test/VoiceChain.test.ets.
  *
- *   1. clip          a pre-rendered clip of the bundled or downloaded course (ClipSelection, hash of the sentence)
+ *   1. clip          a pre-rendered clip of the downloaded course (ClipSelection, hash of the sentence)
  *   2. remote_cache  a runtime studio line rendered earlier (filesDir/tts/<sha>.mp3)
  *   3. remote        POST /v1/tts within REMOTE_BUDGET_MS, only when "Online studio voice" is on, the server is
  *                    configured and not known to be offline or out of budget; X-Text-Sha256 must equal our sha

@@ -1,12 +1,14 @@
 // Suite: CourseRules.test - module under test: core/remote/CourseRules (SERVER.md §6 CourseRepository + Courses screen).
-// Cases: the bundled course is always present and first (no server, offline, catalog without it), never deletable;
-// catalog-only = Download; installed + same version = Downloaded; another version = Update (also for the bundled id);
-// installed courses stay listed offline; delete (active falls back to bundled, bundled refused); install replaces an
-// older version; the active id resolves to bundled when its download is missing; titles, sizes and progress.
+// The app ships NO built-in course. Cases: first run lists only the catalog (nothing installed, no active course);
+// catalog-only = Download; installed + same version = Downloaded; another version = Update; installed courses stay
+// listed offline; the active id resolves to '' with nothing installed, to the saved one, or to the first installed;
+// the first download becomes active, a later one does not; delete (active -> another installed course or none);
+// install replaces an older version; Home's mode (loading / empty state / ready / error); the Demo walk only for
+// Kraków; titles, sizes and progress.
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  afterDelete, afterInstall, CourseRow, CourseState, courseTitle, InstalledCourse, mergeCourses, progressPct,
-  resolveActive, sizeLabel
+  activeAfterInstall, afterDelete, afterInstall, CourseRow, CourseState, courseTitle, DEMO_COURSE_ID,
+  demoWalkOffered, HomeMode, homeMode, InstalledCourse, mergeCourses, progressPct, resolveActive, sizeLabel
 } from '../main/ets/core/remote/CourseRules';
 import { CourseSummary } from '../main/ets/core/remote/ServerApi';
 
@@ -27,79 +29,97 @@ function installed(id: string, version: string): InstalledCourse {
   return i;
 }
 
-const BUNDLED: CourseSummary = course('krakow', '1.0.0');
-
 function ids(rows: CourseRow[]): string {
   return rows.map((r: CourseRow) => `${r.summary.id}:${r.state}`).join(',');
 }
 
 export default function courseRulesTest() {
   describe('CourseRules', () => {
-    it('bundledAlwaysPresentWithoutServer', 0, () => {
-      const rows = mergeCourses(BUNDLED, [], undefined, '');
-      expect(ids(rows)).assertEqual('krakow:builtin');
-      expect(rows[0].builtin).assertTrue();
+    it('firstRunNoBuiltInCourse', 0, () => {
+      // No server reached and nothing installed: no rows at all (the UI shows the offline/empty note).
+      expect(mergeCourses([], undefined, '').length).assertEqual(0);
+      const rows = mergeCourses([], [course('krakow', '1')], '');
+      expect(ids(rows)).assertEqual('krakow:available');
+      expect(rows[0].active).assertFalse();
       expect(rows[0].canDelete).assertFalse();
-      expect(rows[0].active).assertTrue();
-      const r2 = mergeCourses(BUNDLED, [], [course('gdansk', '1')], '');
-      expect(ids(r2)).assertEqual('krakow:builtin,gdansk:available');
+      expect(rows[0].canSelect).assertFalse();
+      expect(resolveActive('', [])).assertEqual('');
     });
 
     it('catalogStates', 0, () => {
       const cat = [course('krakow', '1.0.0'), course('gdansk', '2'), course('warsaw', '1')];
-      const rows = mergeCourses(BUNDLED, [installed('gdansk', '2'), installed('warsaw', '0')], cat, 'gdansk');
-      expect(ids(rows)).assertEqual('krakow:builtin,gdansk:downloaded,warsaw:update');
+      const rows = mergeCourses([installed('gdansk', '2'), installed('warsaw', '0')], cat, 'gdansk');
+      expect(ids(rows)).assertEqual('krakow:available,gdansk:downloaded,warsaw:update');
       expect(rows[1].active).assertTrue();
       expect(rows[0].active).assertFalse();
       expect(rows[1].canDelete).assertTrue();
+      expect(rows[1].canSelect).assertTrue();
       expect(rows[2].installedVersion).assertEqual('0');
       expect(rows[2].summary.version).assertEqual('1');   // the row shows the catalog version
     });
 
-    it('bundledIdUpdate', 0, () => {
-      const newer = [course('krakow', '1.1.0')];
-      expect(ids(mergeCourses(BUNDLED, [], newer, ''))).assertEqual('krakow:update');
-      const rows = mergeCourses(BUNDLED, [installed('krakow', '1.1.0')], newer, '');
-      expect(ids(rows)).assertEqual('krakow:downloaded');
-      expect(rows[0].canDelete).assertTrue();     // deletes the downloaded update, the bundled copy stays
-      expect(rows[0].builtin).assertTrue();
-    });
-
     it('offlineKeepsInstalled', 0, () => {
-      const rows = mergeCourses(BUNDLED, [installed('gdansk', '2')], undefined, 'gdansk');
-      expect(ids(rows)).assertEqual('krakow:builtin,gdansk:downloaded');
-      expect(rows[1].active).assertTrue();
+      const rows = mergeCourses([installed('krakow', '2')], undefined, 'krakow');
+      expect(ids(rows)).assertEqual('krakow:downloaded');
+      expect(rows[0].active).assertTrue();
       // a course the server no longer lists stays usable
-      expect(ids(mergeCourses(BUNDLED, [installed('gdansk', '2')], [course('warsaw', '1')], '')))
-        .assertEqual('krakow:builtin,warsaw:available,gdansk:downloaded');
+      expect(ids(mergeCourses([installed('gdansk', '2')], [course('warsaw', '1')], '')))
+        .assertEqual('warsaw:available,gdansk:downloaded');
     });
 
-    it('activeFallsBackToBundled', 0, () => {
-      expect(resolveActive('gdansk', 'krakow', [])).assertEqual('krakow');
-      expect(resolveActive('', 'krakow', [installed('gdansk', '2')])).assertEqual('krakow');
-      expect(resolveActive('gdansk', 'krakow', [installed('gdansk', '2')])).assertEqual('gdansk');
-      const rows = mergeCourses(BUNDLED, [], [course('gdansk', '2')], 'gdansk');
+    it('activeResolution', 0, () => {
+      expect(resolveActive('gdansk', [])).assertEqual('');                                     // saved one gone
+      expect(resolveActive('', [installed('gdansk', '2')])).assertEqual('gdansk');              // first installed
+      expect(resolveActive('gdansk', [installed('krakow', '1'), installed('gdansk', '2')])).assertEqual('gdansk');
+      expect(resolveActive('warsaw', [installed('krakow', '1'), installed('gdansk', '2')])).assertEqual('krakow');
+      // the merged rows mark the resolved active course
+      const rows = mergeCourses([installed('krakow', '1')], [course('krakow', '1')], 'gone');
       expect(rows[0].active).assertTrue();
-      expect(rows[1].active).assertFalse();
+    });
+
+    it('firstDownloadBecomesActive', 0, () => {
+      expect(activeAfterInstall('', 'krakow')).assertEqual('krakow');
+      expect(activeAfterInstall('krakow', 'gdansk')).assertEqual('krakow');   // later downloads do not switch
+      expect(activeAfterInstall('krakow', 'krakow')).assertEqual('krakow');   // an update of the active course
     });
 
     it('deleteRules', 0, () => {
       const list = [installed('gdansk', '2'), installed('warsaw', '1')];
-      const d = afterDelete(list, 'gdansk', 'gdansk', 'krakow');
+      const d = afterDelete(list, 'gdansk', 'gdansk');
       expect(d.allowed).assertTrue();
       expect(d.installed.length).assertEqual(1);
-      expect(d.activeId).assertEqual('krakow');
-      const d2 = afterDelete(list, 'warsaw', 'gdansk', 'krakow');
+      expect(d.activeId).assertEqual('warsaw');   // the active one was deleted: another installed course
+      const d2 = afterDelete(list, 'warsaw', 'gdansk');
       expect(d2.activeId).assertEqual('gdansk');
-      const d3 = afterDelete(list, 'krakow', 'krakow', 'krakow');
+      const d3 = afterDelete(list, 'krakow', 'gdansk');
       expect(d3.allowed).assertFalse();
       expect(d3.installed.length).assertEqual(2);
+      // deleting the last (active) course: no course, Home goes back to the empty state
+      const d4 = afterDelete([installed('krakow', '1')], 'krakow', 'krakow');
+      expect(d4.allowed).assertTrue();
+      expect(d4.installed.length).assertEqual(0);
+      expect(d4.activeId).assertEqual('');
     });
 
     it('installReplacesOlderVersion', 0, () => {
       const list = afterInstall([installed('gdansk', '1'), installed('warsaw', '1')], installed('gdansk', '2'));
       expect(list.length).assertEqual(2);
       expect(list.filter((i: InstalledCourse) => i.id === 'gdansk')[0].version).assertEqual('2');
+    });
+
+    it('homeModeEmptyState', 0, () => {
+      expect(homeMode(true, false, false)).assertEqual(HomeMode.LOADING);
+      expect(homeMode(false, false, false)).assertEqual(HomeMode.NO_COURSE);   // first run: "Download your first walk"
+      expect(homeMode(false, false, true)).assertEqual(HomeMode.NO_COURSE);
+      expect(homeMode(false, true, true)).assertEqual(HomeMode.READY);
+      expect(homeMode(false, true, false)).assertEqual(HomeMode.ERROR);       // installed but unreadable
+    });
+
+    it('demoWalkOnlyForKrakow', 0, () => {
+      expect(DEMO_COURSE_ID).assertEqual('krakow');
+      expect(demoWalkOffered('krakow')).assertTrue();
+      expect(demoWalkOffered('')).assertFalse();
+      expect(demoWalkOffered('gdansk')).assertFalse();
     });
 
     it('titlesSizesProgress', 0, () => {

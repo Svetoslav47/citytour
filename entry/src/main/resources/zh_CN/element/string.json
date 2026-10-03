@@ -210,7 +210,7 @@
     },
     {
       "name": "home_pack_error_body",
-      "value": "请重新安装应用。游览数据随应用一起安装，无需联网。"
+      "value": "无法读取已下载的路线。请打开路线页面，删除后重新下载。"
     },
     {
       "name": "home_progress_a11y",
@@ -1362,7 +1362,7 @@
     },
     {
       "name": "settings_pack_title",
-      "value": "克拉科夫数据包"
+      "value": "路线数据"
     },
     {
       "name": "settings_pack_line",
@@ -1374,7 +1374,7 @@
     },
     {
       "name": "settings_pack_included",
-      "value": "已内置"
+      "value": "已下载"
     },
     {
       "name": "settings_pack_loading",
@@ -1545,14 +1545,6 @@
       "value": "路线"
     },
     {
-      "name": "courses_builtin_only",
-      "value": "仅内置路线"
-    },
-    {
-      "name": "courses_builtin_only_note",
-      "value": "此版本没有路线服务器。内置路线可完全离线使用。"
-    },
-    {
       "name": "courses_loading",
       "value": "正在查找路线…"
     },
@@ -1562,7 +1554,7 @@
     },
     {
       "name": "courses_offline_empty",
-      "value": "离线。无法加载路线列表；已下载的路线仍可使用。"
+      "value": "无法连接路线服务器。请检查网络后重试；已下载的路线仍可离线使用。"
     },
     {
       "name": "courses_unverified",
@@ -1579,10 +1571,6 @@
     {
       "name": "courses_meta_no_km",
       "value": "%1$d 站 · %2$d 分钟"
-    },
-    {
-      "name": "courses_builtin",
-      "value": "内置"
     },
     {
       "name": "courses_active",
@@ -1618,7 +1606,7 @@
     },
     {
       "name": "courses_failed",
-      "value": "下载失败，未作任何更改，请重试。"
+      "value": "下载失败，未作任何更改；重试会从中断处继续。"
     },
     {
       "name": "courses_switch_failed",
@@ -1635,10 +1623,6 @@
     {
       "name": "courses_delete_msg",
       "value": "以后可以重新下载。"
-    },
-    {
-      "name": "courses_delete_update_msg",
-      "value": "内置版本仍保留在手机上。"
     },
     {
       "name": "courses_cancel",
@@ -1719,6 +1703,46 @@
     {
       "name": "place_card_details",
       "value": "详情"
+    },
+    {
+      "name": "home_empty_title",
+      "value": "下载你的第一条路线"
+    },
+    {
+      "name": "home_empty_body",
+      "value": "CityTour 的路线保存在路线服务器上。只需下载一次，之后即可完全离线使用。"
+    },
+    {
+      "name": "home_empty_cta",
+      "value": "浏览路线"
+    },
+    {
+      "name": "home_open_courses",
+      "value": "打开路线"
+    },
+    {
+      "name": "courses_no_server",
+      "value": "没有路线服务器"
+    },
+    {
+      "name": "courses_no_server_note",
+      "value": "此版本没有路线服务器，无法下载路线。"
+    },
+    {
+      "name": "courses_delete_active_msg",
+      "value": "这是正在使用的路线。删除后，在重新下载之前应用中将没有路线。"
+    },
+    {
+      "name": "courses_empty",
+      "value": "服务器上还没有发布路线。"
+    },
+    {
+      "name": "courses_cancelling",
+      "value": "正在取消…"
+    },
+    {
+      "name": "settings_pack_none",
+      "value": "尚未下载路线"
     }
   ]
 }

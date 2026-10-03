@@ -1,10 +1,13 @@
 /*
- * Courses screen (docs/SERVER.md §6), opened from Home "More courses". One card per course: title in the UI language,
- * city, stops · km · minutes, languages, and the action for its state: Download · size / progress % / Downloaded ✓ /
- * Update / Delete, plus "Use" for a downloaded course that is not active ("In use" on the active one). The bundled
- * course is always first and can never be deleted. Notes: server disabled -> "Only the built-in course";
- * offline -> the cached list with an "Offline" note. DESIGN.md tokens (Tokens.ets, app colours), SafeArea insets.
- * Ids: pageCourses, courseRow_<id>, btnCourseDownload_<id>, btnCourseUse_<id>, btnCourseDelete_<id>, noteCourses.
+ * Courses screen (docs/SERVER.md §6), opened from Home ("Browse walks" on first run, "More courses" later). The app
+ * ships no built-in course: the catalog loads on open. One card per course: title in the UI language, city, stops ·
+ * km · minutes, languages, and the action for its state: Download · size / progress % + Cancel / Downloaded ✓ /
+ * Update / Try again / Delete, plus "Use" for a downloaded course that is not active ("In use" on the active one).
+ * Notes: server disabled -> "No course server"; offline -> the cached list (or nothing) with an "Offline" note and
+ * Try again; an empty catalog -> "No walks are published yet". DESIGN.md tokens (Tokens.ets, app colours),
+ * SafeArea insets.
+ * Ids: pageCourses, courseRow_<id>, btnCourseDownload_<id>, btnCourseCancel_<id>, btnCourseUse_<id>,
+ * btnCourseDelete_<id>, noteCourses.
  */
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
@@ -30,7 +33,7 @@ export struct CoursesPage {
     try {
       this.getUIContext().showAlertDialog({
         title: $r('app.string.courses_delete_title'),
-        message: it.builtin ? $r('app.string.courses_delete_update_msg') : $r('app.string.courses_delete_msg'),
+        message: it.active ? $r('app.string.courses_delete_active_msg') : $r('app.string.courses_delete_msg'),
         primaryButton: {
           value: $r('app.string.courses_cancel'),
           action: () => {}
@@ -86,11 +89,11 @@ export struct CoursesPage {
       }
     } else if (this.vm.note === CatalogNote.DISABLED) {
       Column({ space: Space.S1 }) {
-        Text($r('app.string.courses_builtin_only'))
+        Text($r('app.string.courses_no_server'))
           .fontSize(Type.BODY)
           .fontWeight(FontWeight.Medium)
           .fontColor($r('app.color.text_primary'))
-        Text($r('app.string.courses_builtin_only_note'))
+        Text($r('app.string.courses_no_server_note'))
           .fontSize(Type.FOOTNOTE)
           .lineHeight(Type.FOOTNOTE_LH)
           .fontColor($r('app.color.text_secondary'))
@@ -104,6 +107,8 @@ export struct CoursesPage {
       this.noteBox($r('app.string.courses_offline_empty'), true)
     } else if (this.vm.note === CatalogNote.UNVERIFIED) {
       this.noteBox($r('app.string.courses_unverified'), true)
+    } else if (this.vm.note === CatalogNote.NONE && this.vm.items.length === 0) {
+      this.noteBox($r('app.string.courses_empty'), true)
     }
     if (this.vm.tourRunning) {
       this.noteBox($r('app.string.courses_tour_running'), false)
@@ -129,7 +134,7 @@ export struct CoursesPage {
   primaryAction(it: CourseItem) {
     if (it.downloading) {
       Column({ space: Space.S1 }) {
-        Text($r('app.string.courses_downloading', `${it.pct}%`))
+        Text(it.cancelling ? $r('app.string.courses_cancelling') : $r('app.string.courses_downloading', `${it.pct}%`))
           .fontSize(Type.CALLOUT)
           .fontFeature(TABULAR)
           .fontColor($r('app.color.text_secondary'))
@@ -138,12 +143,21 @@ export struct CoursesPage {
           .backgroundColor($r('app.color.divider'))
           .style({ strokeWidth: 4 })
           .width('100%')
+          .accessibilityText($r('app.string.courses_downloading', `${it.pct}%`))
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
+      Button($r('app.string.courses_cancel'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
+        .id(`btnCourseCancel_${it.id}`)
+        .height(Size.TOUCH)
+        .fontSize(Type.CALLOUT)
+        .fontColor($r('app.color.text_secondary'))
+        .enabled(!it.cancelling)
+        .onClick(() => this.vm.cancel(it.id))
     } else if (it.state === CourseState.AVAILABLE || it.state === CourseState.UPDATE) {
-      Button(it.state === CourseState.UPDATE ? $r('app.string.courses_update') :
-        (it.size !== '' ? $r('app.string.courses_download', it.size) : $r('app.string.courses_download_plain')),
+      Button(it.failed ? $r('app.string.courses_retry') :
+        (it.state === CourseState.UPDATE ? $r('app.string.courses_update') :
+          (it.size !== '' ? $r('app.string.courses_download', it.size) : $r('app.string.courses_download_plain'))),
         { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.NORMAL })
         .id(`btnCourseDownload_${it.id}`)
         .height(36)
@@ -154,14 +168,10 @@ export struct CoursesPage {
         .onClick(() => {
           this.vm.download(it.id);
         })
-    } else if (it.state === CourseState.DOWNLOADED) {
+    } else {
       Text($r('app.string.courses_downloaded'))
         .fontSize(Type.CALLOUT)
         .fontColor($r('app.color.accent'))
-    } else {
-      Text($r('app.string.courses_builtin'))
-        .fontSize(Type.CALLOUT)
-        .fontColor($r('app.color.text_secondary'))
     }
   }
 
@@ -203,9 +213,6 @@ export struct CoursesPage {
       Row({ space: Space.S2 }) {
         if (it.langs !== '') {
           this.chip(it.langs)
-        }
-        if (it.builtin) {
-          this.chip($r('app.string.courses_builtin'))
         }
       }
 

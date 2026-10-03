@@ -1,6 +1,6 @@
 /*
- * App-wide UI state (B4): the navigation stack, the offline pack load state, the text language and the
- * tour-flow view model. One instance per app (AppViewModel.get()). Views talk to view models only; view models
+ * App-wide UI state (B4): the navigation stack, the active course's pack state (loading / no course / ready / error;
+ * the app ships no built-in course, docs/SERVER.md §6), the text language and the tour-flow view model. One instance per app (AppViewModel.get()). Views talk to view models only; view models
  * reach services through AppContainer getters (ARCHITECTURE §1.2).
  * Navigation: Navigation + NavPathStack + navDestination builder (doc: ts-basic-components-navigation).
  */
@@ -12,6 +12,7 @@ import { AppConfig } from '../app/AppConfig';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
+import { HomeMode, homeMode } from '../core/remote/CourseRules';
 import { withTimeout } from './Async';
 import { TourPlanViewModel } from './TourPlanViewModel';
 
@@ -31,7 +32,13 @@ export class Routes {
   static readonly COURSES: string = 'Courses';                        // SERVER.md §6: downloadable courses
 }
 
-export enum PackState { LOADING = 'loading', READY = 'ready', ERROR = 'error' }
+/** NO_COURSE: nothing downloaded yet (or the last course was deleted): Home shows "Download your first walk". */
+export enum PackState { LOADING = 'loading', NO_COURSE = 'noCourse', READY = 'ready', ERROR = 'error' }
+
+function packStateOf(res: PackLoadResult): PackState {
+  const m = homeMode(false, AppContainer.hasCourse(), res.ok);
+  return m === HomeMode.NO_COURSE ? PackState.NO_COURSE : m === HomeMode.READY ? PackState.READY : PackState.ERROR;
+}
 
 const PACK_LOAD_TIMEOUT_MS: number = 10000;
 
@@ -82,7 +89,7 @@ export class AppViewModel {
     }
   }
 
-  /** Loads the bundled pack once (local, no network). Never throws. */
+  /** Loads the active course's pack once (local files, no network). Never throws. */
   async loadPack(): Promise<void> {
     if (this.loadStarted) {
       return;
@@ -94,30 +101,47 @@ export class AppViewModel {
       issues: [this.issue(IssueCode.PACK_ERR, 'load timeout or exception')]
     };
     const res = await withTimeout(AppContainer.packRepository().load(), PACK_LOAD_TIMEOUT_MS, failed, 'pack.load');
-    this.packIssues = res.issues;
-    this.packState = res.ok ? PackState.READY : PackState.ERROR;
-    if (res.manifest !== undefined) {
-      this.packVersion = res.manifest.version;
-      this.packBuiltAt = res.manifest.builtAt.substring(0, 10);
-      this.packPois = res.manifest.counts.pois;
-    }
-    if (!res.ok) {
-      Log.e(LogEvents.PACK_ERR, `where=ui issues=${res.issues.length}`);
+    this.applyLoad(res);
+    if (res === failed) {
+      // A slow load (a large course on a slow device) still lands: show it when it does.
+      AppContainer.packRepository().load().then((late: PackLoadResult) => {
+        if (late.ok) {
+          this.applyLoad(late);
+          this.courseRev++;
+        }
+      }).catch((e: Object) => {
+        Log.e(LogEvents.UNCAUGHT, `where=AppViewModel.loadPack.late ${Log.errKv(e)}`);
+      });
     }
   }
 
-  /** SERVER.md §6: the active course changed (the pack is already loaded by CourseRepository). */
+  private applyLoad(res: PackLoadResult): void {
+    this.packIssues = res.issues;
+    this.packState = packStateOf(res);
+    this.packVersion = res.manifest !== undefined ? res.manifest.version : '';
+    this.packBuiltAt = res.manifest !== undefined ? res.manifest.builtAt.substring(0, 10) : '';
+    this.packPois = res.manifest !== undefined ? res.manifest.counts.pois : 0;
+    if (this.packState === PackState.ERROR) {
+      Log.e(LogEvents.PACK_ERR, `where=ui issues=${res.issues.length}`);
+    } else if (this.packState === PackState.NO_COURSE) {
+      Log.i(LogEvents.COURSE, 'event=no_course where=ui action=empty_state');
+    }
+  }
+
+  /** SERVER.md §6: the active course changed (downloaded, switched, deleted; CourseRepository already loaded it). */
   courseChanged(): void {
     this.courseRev++;
-    AppContainer.packRepository().load().then((res: PackLoadResult) => {
-      if (res.manifest !== undefined) {
-        this.packVersion = res.manifest.version;
-        this.packBuiltAt = res.manifest.builtAt.substring(0, 10);
-        this.packPois = res.manifest.counts.pois;
-      }
-    }).catch((e: Object) => {
-      Log.e(LogEvents.UNCAUGHT, `where=AppViewModel.courseChanged ${Log.errKv(e)}`);
-    });
+    const failed: PackLoadResult = {
+      ok: false,
+      issues: [this.issue(IssueCode.PACK_ERR, 'load timeout or exception')]
+    };
+    withTimeout(AppContainer.packRepository().load(), PACK_LOAD_TIMEOUT_MS, failed, 'pack.load.courseChanged')
+      .then((res: PackLoadResult) => {
+        this.applyLoad(res);
+        this.courseRev++;
+      }).catch((e: Object) => {
+        Log.e(LogEvents.UNCAUGHT, `where=AppViewModel.courseChanged ${Log.errKv(e)}`);
+      });
   }
 
   openCourses(): void {

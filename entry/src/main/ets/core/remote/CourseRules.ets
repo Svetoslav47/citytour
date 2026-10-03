@@ -2,20 +2,20 @@
  * Course list rules (docs/SERVER.md §6 "CourseRepository" and "Courses screen"). Pure: no @kit imports, unit-tested
  * in entry/src/test/CourseRules.test.ets.
  *
- * - The bundled course (rawfile) is always present, always first, and can never be deleted.
+ * The app ships NO built-in course: every course (Kraków included) is downloaded from the course server.
  * - A downloaded course is listed even when the catalog is unavailable (offline) or no longer lists it.
- * - A catalog version different from the installed one (or, for the bundled course id, from the bundled pack) is
- *   an update. A downloaded copy of the bundled course id (an update of it) can be deleted, which returns to the
- *   bundled version.
- * - The active course falls back to the bundled course whenever its download is missing (deleted, broken).
+ * - A catalog version different from the installed one is an update.
+ * - The active course is '' (none: Home shows "Download your first walk") until a course is installed. The first
+ *   successful download becomes the active course. Deleting the active course makes another installed course
+ *   active, or none when it was the last one.
+ * - The Demo walk (a SIMULATED Royal Route track shipped in the HAP) is only offered for the Kraków course.
  */
 import { CourseSummary } from './ServerApi';
 
 export enum CourseState {
-  BUILTIN = 'builtin',         // the bundled course, nothing newer on the server
   AVAILABLE = 'available',     // on the server, not downloaded: "Download"
   DOWNLOADED = 'downloaded',   // installed and current (or the server is unknown): "Downloaded ✓"
-  UPDATE = 'update'            // installed (or bundled) but the server has another version: "Update"
+  UPDATE = 'update'            // installed but the server has another version: "Update"
 }
 
 export class InstalledCourse {
@@ -27,10 +27,9 @@ export class InstalledCourse {
 export class CourseRow {
   summary: CourseSummary = new CourseSummary();   // what the row shows (catalog when known, else the local copy)
   state: CourseState = CourseState.AVAILABLE;
-  builtin: boolean = false;
   installedVersion: string = '';                  // '' = not downloaded
   canDelete: boolean = false;
-  canSelect: boolean = false;                     // bundled or downloaded: can be the active course
+  canSelect: boolean = false;                     // downloaded: can be the active course
   active: boolean = false;
 }
 
@@ -45,42 +44,55 @@ function findInstalled(list: InstalledCourse[], id: string): InstalledCourse | u
   return list.find((c: InstalledCourse) => c.id === id);
 }
 
-/** The id the app should use as its active course. */
-export function resolveActive(activeId: string, bundledId: string, installed: InstalledCourse[]): string {
-  if (activeId === '' || activeId === bundledId) {
-    return bundledId;
+/** The course whose SIMULATED Demo walk track ships in the HAP (rawfile/demo/royal-route-walk.json). */
+export const DEMO_COURSE_ID: string = 'krakow';
+
+/** The id the app should use as its active course: the saved one when installed, else the first installed, else ''. */
+export function resolveActive(activeId: string, installed: InstalledCourse[]): string {
+  if (activeId !== '' && findInstalled(installed, activeId) !== undefined) {
+    return activeId;
   }
-  return findInstalled(installed, activeId) !== undefined ? activeId : bundledId;
+  return installed.length > 0 ? installed[0].id : '';
+}
+
+/** The active course after `installedId` was downloaded: the first download becomes active, else no change. */
+export function activeAfterInstall(activeId: string, installedId: string): string {
+  return activeId === '' ? installedId : activeId;
+}
+
+/** The Demo walk (SIMULATED Royal Route track) is offered only while the Kraków course is active. */
+export function demoWalkOffered(activeId: string): boolean {
+  return activeId === DEMO_COURSE_ID;
+}
+
+/** What Home shows. */
+export enum HomeMode { LOADING = 'loading', NO_COURSE = 'noCourse', READY = 'ready', ERROR = 'error' }
+
+/**
+ * Home's mode from the pack load: still loading; no course installed (empty state "Download your first walk");
+ * a course that loaded; a course that is installed but failed to load (error state, the Courses screen can
+ * re-download or delete it).
+ */
+export function homeMode(loading: boolean, hasCourse: boolean, loadOk: boolean): HomeMode {
+  if (loading) {
+    return HomeMode.LOADING;
+  }
+  if (!hasCourse) {
+    return HomeMode.NO_COURSE;
+  }
+  return loadOk ? HomeMode.READY : HomeMode.ERROR;
 }
 
 /**
  * The Courses screen rows. `catalog` undefined = the server was never reached and nothing is cached (offline,
- * disabled): only local courses are listed.
+ * disabled): only installed courses are listed.
  */
-export function mergeCourses(bundled: CourseSummary, installed: InstalledCourse[], catalog: CourseSummary[] | undefined,
+export function mergeCourses(installed: InstalledCourse[], catalog: CourseSummary[] | undefined,
   activeId: string): CourseRow[] {
-  const active = resolveActive(activeId, bundled.id, installed);
+  const active = resolveActive(activeId, installed);
   const rows: CourseRow[] = [];
-
-  // 1. The bundled course (always).
-  const b = new CourseRow();
-  b.builtin = true;
-  b.canSelect = true;
-  const bInst = findInstalled(installed, bundled.id);
-  const bCat = find(catalog, bundled.id);
-  b.summary = bCat !== undefined ? bCat : (bInst !== undefined ? bInst.summary : bundled);
-  if (bInst !== undefined) {
-    b.installedVersion = bInst.version;
-    b.canDelete = true;   // deletes the downloaded update only
-    b.state = bCat !== undefined && bCat.version !== bInst.version ? CourseState.UPDATE : CourseState.DOWNLOADED;
-  } else {
-    b.state = bCat !== undefined && bCat.version !== bundled.version ? CourseState.UPDATE : CourseState.BUILTIN;
-  }
-  b.active = active === bundled.id;
-  rows.push(b);
-
-  // 2. Downloaded courses, in catalog order first, then the ones the catalog does not list.
-  const done = new Set<string>([bundled.id]);
+  // Catalog order first, then installed courses the catalog does not list.
+  const done = new Set<string>();
   const ordered: string[] = [];
   if (catalog !== undefined) {
     for (const c of catalog) {
@@ -125,23 +137,23 @@ export function afterInstall(installed: InstalledCourse[], c: InstalledCourse): 
   return out;
 }
 
-/** The installed list after a delete; the active course after it (bundled when the active one was deleted). */
+/** The installed list after a delete; the active course after it (another installed course, or none). */
 export class DeleteResult {
   installed: InstalledCourse[] = [];
   activeId: string = '';
   allowed: boolean = true;
 }
 
-export function afterDelete(installed: InstalledCourse[], id: string, activeId: string, bundledId: string): DeleteResult {
+export function afterDelete(installed: InstalledCourse[], id: string, activeId: string): DeleteResult {
   const r = new DeleteResult();
   if (findInstalled(installed, id) === undefined) {
-    r.allowed = false;   // the bundled course itself (or an unknown id) is never deleted
+    r.allowed = false;   // an unknown id is never deleted
     r.installed = installed;
-    r.activeId = resolveActive(activeId, bundledId, installed);
+    r.activeId = resolveActive(activeId, installed);
     return r;
   }
   r.installed = installed.filter((i: InstalledCourse) => i.id !== id);
-  r.activeId = resolveActive(activeId === id ? bundledId : activeId, bundledId, r.installed);
+  r.activeId = resolveActive(activeId === id ? '' : activeId, r.installed);
   return r;
 }
 

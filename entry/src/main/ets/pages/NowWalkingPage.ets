@@ -185,7 +185,7 @@ export struct NowWalkingPage {
       IssueBanner({
         message: $r('app.string.err_loc_lost'),
         code: IssueCode.LOC_LOST,
-        actionLabel: this.vm.isDemo() ? '' : $r('app.string.err_try_demo'),
+        actionLabel: this.vm.isDemo() || !this.vm.demoOffered() ? '' : $r('app.string.err_try_demo'),
         actionId: 'btnNoGpsDemo',
         onAction: () => {
           this.vm.switchToDemo();

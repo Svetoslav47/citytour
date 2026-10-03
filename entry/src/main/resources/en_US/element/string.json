@@ -210,7 +210,7 @@
     },
     {
       "name": "home_pack_error_body",
-      "value": "Reinstall the app. The tour data ships with it and needs no internet."
+      "value": "The downloaded walk couldn't be read. Open Courses, delete it and download it again."
     },
     {
       "name": "home_progress_a11y",
@@ -1362,7 +1362,7 @@
     },
     {
       "name": "settings_pack_title",
-      "value": "Kraków pack"
+      "value": "Walk data"
     },
     {
       "name": "settings_pack_line",
@@ -1374,7 +1374,7 @@
     },
     {
       "name": "settings_pack_included",
-      "value": "Included"
+      "value": "Downloaded"
     },
     {
       "name": "settings_pack_loading",
@@ -1545,14 +1545,6 @@
       "value": "Courses"
     },
     {
-      "name": "courses_builtin_only",
-      "value": "Only the built-in course"
-    },
-    {
-      "name": "courses_builtin_only_note",
-      "value": "This build has no course server. The built-in course works fully offline."
-    },
-    {
       "name": "courses_loading",
       "value": "Checking for courses…"
     },
@@ -1562,7 +1554,7 @@
     },
     {
       "name": "courses_offline_empty",
-      "value": "Offline. The course list could not be loaded; downloaded courses still work."
+      "value": "Can't reach the course server. Check your connection and try again; downloaded walks still work offline."
     },
     {
       "name": "courses_unverified",
@@ -1579,10 +1571,6 @@
     {
       "name": "courses_meta_no_km",
       "value": "%1$d stops · %2$d min"
-    },
-    {
-      "name": "courses_builtin",
-      "value": "Built in"
     },
     {
       "name": "courses_active",
@@ -1618,7 +1606,7 @@
     },
     {
       "name": "courses_failed",
-      "value": "Download failed. Nothing was changed; try again."
+      "value": "Download failed. Nothing was changed; Try again continues where it stopped."
     },
     {
       "name": "courses_switch_failed",
@@ -1635,10 +1623,6 @@
     {
       "name": "courses_delete_msg",
       "value": "It can be downloaded again later."
-    },
-    {
-      "name": "courses_delete_update_msg",
-      "value": "The built-in version stays on the phone."
     },
     {
       "name": "courses_cancel",
@@ -1719,6 +1703,46 @@
     {
       "name": "place_card_details",
       "value": "Details"
+    },
+    {
+      "name": "home_empty_title",
+      "value": "Download your first walk"
+    },
+    {
+      "name": "home_empty_body",
+      "value": "CityTour keeps its walks on the course server. Download one once; after that it works fully offline."
+    },
+    {
+      "name": "home_empty_cta",
+      "value": "Browse walks"
+    },
+    {
+      "name": "home_open_courses",
+      "value": "Open courses"
+    },
+    {
+      "name": "courses_no_server",
+      "value": "No course server"
+    },
+    {
+      "name": "courses_no_server_note",
+      "value": "This build has no course server, so no walk can be downloaded."
+    },
+    {
+      "name": "courses_delete_active_msg",
+      "value": "This is the walk in use. Without it the app has no walk until you download one again."
+    },
+    {
+      "name": "courses_empty",
+      "value": "No walks are published on the server yet."
+    },
+    {
+      "name": "courses_cancelling",
+      "value": "Cancelling…"
+    },
+    {
+      "name": "settings_pack_none",
+      "value": "No walk downloaded yet"
     }
   ]
 }

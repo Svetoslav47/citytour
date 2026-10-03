@@ -227,6 +227,10 @@ export class SettingsViewModel {
   @Trace notifBusy: boolean = false;
   @Trace packKnown: boolean = false;
   @Trace packOk: boolean = true;
+  /** A course is installed (the app ships none; false until the first download). */
+  @Trace hasCourse: boolean = true;
+  /** The SIMULATED Demo walk is offered only for the Kraków course (its track ships in the HAP). */
+  @Trace demoOffered: boolean = false;
   @Trace pack: PackLine = packLine(0, 0, []);
   @Trace guideName: string = '';
   @Trace tourRunning: boolean = false;
@@ -479,6 +483,8 @@ export class SettingsViewModel {
     const pack = AppContainer.packRepository();
     const failed: PackLoadResult = { ok: false, issues: [] };
     const res = await withTimeout(pack.load(), QUERY_TIMEOUT_MS, failed, 'settings.pack.load');
+    this.hasCourse = AppContainer.hasCourse();
+    this.demoOffered = AppContainer.demoWalkOffered();
     this.packOk = res.ok;
     if (res.ok) {
       try {

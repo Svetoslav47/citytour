@@ -1,20 +1,17 @@
 /*
- * The offline Kraków pack from rawfile/packs/krakow/ (task B3; pack built by scripts/pack/build-pack.sh, B2).
+ * A course pack read through a PackSource (task B3; the pack is built by scripts/pack/build-pack.sh into
+ * data/course/krakow/packs/krakow/ and downloaded from the course server; the app bundles no course).
  * - load() runs once and is shared (the UI and the TourController both call it).
  * - Integrity: every file listed in manifest.json is checked for byte size and SHA-256 when it is read;
  *   a mismatch, invalid JSON or another schema major is blocking (PACK_ERR, ARCHITECTURE §9 row 17).
  * - Records are re-validated by core/content/PackParser; invalid ones are dropped (PACK_DROP).
  * - Narrations load lazily per language (NarrationRepository), the map lazily per level.
- * Remote courses (docs/SERVER.md §6): the same parsing and integrity checks also serve a downloaded course; only the
- * byte source differs (PackSource: rawfile here, files under filesDir/courses/<id>/<version>/ in FilePackRepository).
- * APIs (all <= API 20): application.getApplicationContext (14+, doc js-apis-app-ability-application),
- * ResourceManager.getRawFileContent / getRawFileContentSync (9+/10+, js-apis-resource-manager),
- * util.TextDecoder.create + decodeToString (12+, js-apis-util), cryptoFramework.createMd SHA256 +
- * updateSync/digestSync (12+, js-apis-cryptoframework).
+ * FilePackRepository supplies the bytes from filesDir/courses/<id>/<version>/ (docs/SERVER.md §6); tests can supply
+ * any other PackSource.
+ * APIs (all <= API 20): util.TextDecoder.create + decodeToString (12+, js-apis-util), cryptoFramework.createMd
+ * SHA256 + updateSync/digestSync (12+, js-apis-cryptoframework).
  */
-import { application } from '@kit.AbilityKit';
 import { cryptoFramework } from '@kit.CryptoArchitectureKit';
-import { resourceManager } from '@kit.LocalizationKit';
 import { util } from '@kit.ArkTS';
 import { AppIssue, IssueCode, IssueSeverity } from '../../contracts/EngineTypes';
 import {
@@ -28,9 +25,6 @@ import {
   pruneTourStops
 } from '../../core/content/PackParser';
 import { NarrationRepository } from './NarrationRepository';
-
-export const PACK_DIR: string = 'packs/krakow/';
-export const PACK_ID: string = 'krakow';
 
 function hex(bytes: Uint8Array): string {
   let s = '';
@@ -47,31 +41,7 @@ export interface PackSource {
   readSync(file: string): Uint8Array;
 }
 
-/** The bundled pack in rawfile/packs/krakow/. */
-export class RawfilePackSource implements PackSource {
-  private rm: resourceManager.ResourceManager | undefined = undefined;
-
-  label(): string {
-    return 'rawfile';
-  }
-
-  read(file: string): Promise<Uint8Array> {
-    return this.resources().getRawFileContent(`${PACK_DIR}${file}`);
-  }
-
-  readSync(file: string): Uint8Array {
-    return this.resources().getRawFileContentSync(`${PACK_DIR}${file}`);
-  }
-
-  private resources(): resourceManager.ResourceManager {
-    if (this.rm === undefined) {
-      this.rm = application.getApplicationContext().resourceManager;
-    }
-    return this.rm;
-  }
-}
-
-export class RawfilePackRepository implements PackRepository {
+export class SourcePackRepository implements PackRepository {
   private loading: Promise<PackLoadResult> | undefined = undefined;
   private readonly src: PackSource;
   private manifestData: PackManifest | undefined = undefined;
@@ -84,21 +54,12 @@ export class RawfilePackRepository implements PackRepository {
   private routeData: RouteData = emptyRoutes();
   private maps: Map<string, MapData> = new Map<string, MapData>();
   private narr: NarrationRepository;
+  private prefetched: Map<string, string> = new Map<string, string>();
 
-  constructor(src?: PackSource) {
-    this.src = src !== undefined ? src : new RawfilePackSource();
+  constructor(src: PackSource) {
+    this.src = src;
     this.narr = new NarrationRepository((lang: Lang) => this.readTextSync(`narrations/${lang}.json`),
       (id: string) => this.poiById.get(id), (id: string) => this.sourceById.has(id));
-  }
-
-  /** True when the bundled pack is present (manifest readable). Used by PackFactory. */
-  static available(): boolean {
-    try {
-      const bytes = application.getApplicationContext().resourceManager.getRawFileContentSync(`${PACK_DIR}manifest.json`);
-      return bytes.length > 0;
-    } catch (e) {
-      return false;
-    }
   }
 
   load(): Promise<PackLoadResult> {
@@ -160,7 +121,7 @@ export class RawfilePackRepository implements PackRepository {
     try {
       return this.narr.get(poiId, personaId, lang, len);
     } catch (e) {
-      Log.e(LogEvents.UNCAUGHT, `where=RawfilePackRepository.narration ${Log.errKv(e as Object)}`);
+      Log.e(LogEvents.UNCAUGHT, `where=SourcePackRepository.narration ${Log.errKv(e as Object)}`);
       return undefined;
     }
   }
@@ -242,10 +203,11 @@ export class RawfilePackRepository implements PackRepository {
           'routes.json');
       }
 
+      const prefetched = await this.prefetchLazyFiles(mr.manifest.files);
       const narrEn = this.narr.ensure(Lang.EN);
       Log.i(LogEvents.PACK_LOAD, `where=repo src=${this.src.label()} ms=${Date.now() - t0} pack=${mr.manifest.packId} ` +
         `version=${mr.manifest.version} pois=${this.poiList.length} tours=${this.tourList.length} ` +
-        `narr=${narrEn} legs=${this.routeData.legs.length} sources=${this.sourceById.size}`);
+        `narr=${narrEn} prefetched=${prefetched} legs=${this.routeData.legs.length} sources=${this.sourceById.size}`);
       const ok: PackLoadResult = { ok: true, manifest: mr.manifest, issues: issues };
       return ok;
     } catch (e) {
@@ -260,46 +222,90 @@ export class RawfilePackRepository implements PackRepository {
     return r;
   }
 
-  /** Reads a pack file; when `verify`, checks it against the manifest (bytes + SHA-256). */
+  /**
+   * Reads a pack file; when `verify`, checks it against the manifest (bytes + SHA-256). The read and the hash are
+   * asynchronous (fileIo / cryptoFramework Promises), so the UI thread only decodes and parses.
+   */
   private async readText(file: string, verify: boolean): Promise<string | undefined> {
     try {
       const bytes = await this.src.read(file);
-      return this.decodeChecked(file, bytes, verify);
+      if (verify && !this.checkEntry(file, bytes, await this.sha256Async(bytes))) {
+        return undefined;
+      }
+      return SourcePackRepository.decode(bytes);
     } catch (e) {
       Log.e(LogEvents.PACK_ERR, `file=${file} reason=read ${Log.errKv(e as Object)}`);
       return undefined;
     }
   }
 
+  /** Narrations and maps are read during load() (async) and handed out once to the lazy synchronous readers. */
+  private async prefetchLazyFiles(files: PackFile[]): Promise<number> {
+    let n = 0;
+    for (const f of files) {
+      if (f.path.startsWith('narrations/') || f.path.startsWith('map-')) {
+        const t = await this.readText(f.path, true);
+        if (t !== undefined) {
+          this.prefetched.set(f.path, t);
+          n++;
+        }
+      }
+    }
+    return n;
+  }
+
   private readTextSync(file: string): string | undefined {
+    const hit = this.prefetched.get(file);
+    if (hit !== undefined) {
+      this.prefetched.delete(file);   // parsed once by its reader, which keeps the result
+      return hit;
+    }
     try {
       const bytes = this.src.readSync(file);
-      return this.decodeChecked(file, bytes, true);
+      return this.checkEntry(file, bytes, this.sha256(bytes)) ? SourcePackRepository.decode(bytes) : undefined;
     } catch (e) {
       Log.w(LogEvents.PACK_ERR, `file=${file} reason=read ${Log.errKv(e as Object)} blocking=false`);
       return undefined;
     }
   }
 
-  private decodeChecked(file: string, bytes: Uint8Array, verify: boolean): string | undefined {
-    if (verify) {
-      const entry = this.fileIndex.get(file);
-      if (entry === undefined) {
-        Log.w(LogEvents.PACK_ERR, `file=${file} reason=not_in_manifest blocking=false`);
-      } else {
-        if (entry.bytes !== bytes.length) {
-          Log.e(LogEvents.PACK_ERR, `file=${file} reason=size expected=${entry.bytes} got=${bytes.length}`);
-          return undefined;
-        }
-        const sha = this.sha256(bytes);
-        if (sha !== '' && entry.sha256 !== '' && sha !== entry.sha256.toLowerCase()) {
-          Log.e(LogEvents.PACK_ERR, `file=${file} reason=sha256_mismatch`);
-          return undefined;
-        }
-      }
-    }
+  private static decode(bytes: Uint8Array): string {
     const decoder = util.TextDecoder.create('utf-8', { ignoreBOM: true });
     return decoder.decodeToString(bytes);
+  }
+
+  /** Size + SHA-256 against the pack manifest. `sha` '' = crypto unavailable (size check only). */
+  private checkEntry(file: string, bytes: Uint8Array, sha: string): boolean {
+    const entry = this.fileIndex.get(file);
+    if (entry === undefined) {
+      Log.w(LogEvents.PACK_ERR, `file=${file} reason=not_in_manifest blocking=false`);
+      return true;
+    }
+    if (entry.bytes !== bytes.length) {
+      Log.e(LogEvents.PACK_ERR, `file=${file} reason=size expected=${entry.bytes} got=${bytes.length}`);
+      return false;
+    }
+    if (sha !== '' && entry.sha256 !== '' && sha !== entry.sha256.toLowerCase()) {
+      Log.e(LogEvents.PACK_ERR, `file=${file} reason=sha256_mismatch`);
+      return false;
+    }
+    return true;
+  }
+
+  /** Async hex SHA-256 in 256 KB chunks, or '' if the crypto service is unavailable. */
+  private async sha256Async(bytes: Uint8Array): Promise<string> {
+    try {
+      const md = cryptoFramework.createMd('SHA256');
+      const step = 256 * 1024;
+      for (let off = 0; off < bytes.length; off += step) {
+        await md.update({ data: bytes.subarray(off, Math.min(bytes.length, off + step)) });
+      }
+      const d = await md.digest();
+      return hex(d.data);
+    } catch (e) {
+      Log.w(LogEvents.PACK_ERR, `reason=sha256_unavailable ${Log.errKv(e as Object)} blocking=false`);
+      return '';
+    }
   }
 
   /** Hex SHA-256, or '' if the crypto service is unavailable (then only the size check applies). */

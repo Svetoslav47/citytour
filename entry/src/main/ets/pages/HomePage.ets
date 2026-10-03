@@ -1,6 +1,9 @@
 /*
  * Home (DESIGN §3.2): the "Now walking" continue card when a tour runs, the Royal Route card, a one-tap
- * "Try a demo walk" (id btnDemoWalk, SIMULATED) and the offline place count. Root content of the Navigation.
+ * "Try a demo walk" (id btnDemoWalk, SIMULATED; only for the Kraków course) and the offline place count. Root
+ * content of the Navigation. The app ships no built-in course: with none installed Home shows the empty state
+ * "Download your first walk" (id cardNoCourse, button btnBrowseWalks -> Courses); a course that fails to load shows
+ * the error state with a way to Courses (btnHomeCourses).
  */
 import { StopStatus } from '../contracts/EngineTypes';
 import { AppViewModel, PackState, Routes } from '../viewmodel/AppViewModel';
@@ -105,14 +108,16 @@ export struct HomePage {
       .height(56)
       .width('100%')
 
-      Row({ space: Space.S1 }) {
-        Text($r('app.string.offline_ready'))
-          .fontSize(Type.CALLOUT)
-          .lineHeight(Type.CALLOUT_LH)
-          .fontColor($r('app.color.text_secondary'))
-        SymbolGlyph($r('sys.symbol.checkmark'))
-          .fontSize(14)
-          .fontColor([$r('app.color.accent')])
+      if (this.app.packState === PackState.READY) {
+        Row({ space: Space.S1 }) {
+          Text($r('app.string.offline_ready'))
+            .fontSize(Type.CALLOUT)
+            .lineHeight(Type.CALLOUT_LH)
+            .fontColor($r('app.color.text_secondary'))
+          SymbolGlyph($r('sys.symbol.checkmark'))
+            .fontSize(14)
+            .fontColor([$r('app.color.accent')])
+        }
       }
     }
     .alignItems(HorizontalAlign.Start)
@@ -401,9 +406,63 @@ export struct HomePage {
         .fontSize(Type.CALLOUT)
         .fontColor($r('app.color.text_secondary'))
         .textAlign(TextAlign.Center)
+      if (this.vm.coursesEnabled()) {
+        Button($r('app.string.home_open_courses'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.NORMAL })
+          .id('btnHomeCourses')
+          .height(Size.BUTTON_H)
+          .fontSize(Type.BODY)
+          .fontColor($r('app.color.accent'))
+          .backgroundColor($r('app.color.accent_subtle'))
+          .margin({ top: Space.S2 })
+          .onClick(() => this.app.openCourses())
+      }
     }
     .width('100%')
     .padding(Space.S6)
+    .margin({ top: Space.S6 })
+  }
+
+  /** First run (or the last course deleted): nothing to walk yet, one clear way to the Courses screen. */
+  @Builder
+  noCourse() {
+    Column({ space: Space.S3 }) {
+      Stack() {
+        SymbolGlyph($r('sys.symbol.arrow_down_circle'))
+          .fontSize(32)
+          .fontColor([$r('app.color.accent')])
+      }
+      .width(64)
+      .height(64)
+      .borderRadius(32)
+      .backgroundColor($r('app.color.accent_subtle'))
+
+      Text($r('app.string.home_empty_title'))
+        .fontSize(Type.TITLE3)
+        .lineHeight(Type.TITLE3_LH)
+        .fontWeight(FontWeight.Medium)
+        .fontColor($r('app.color.text_primary'))
+        .textAlign(TextAlign.Center)
+      Text(this.vm.coursesEnabled() ? $r('app.string.home_empty_body') : $r('app.string.courses_no_server_note'))
+        .fontSize(Type.CALLOUT)
+        .lineHeight(Type.CALLOUT_LH)
+        .fontColor($r('app.color.text_secondary'))
+        .textAlign(TextAlign.Center)
+      if (this.vm.coursesEnabled()) {
+        Button($r('app.string.home_empty_cta'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.EMPHASIZED })
+          .id('btnBrowseWalks')
+          .width('100%')
+          .height(Size.BUTTON_H)
+          .fontSize(Type.BODY)
+          .backgroundColor($r('app.color.accent'))
+          .margin({ top: Space.S2 })
+          .onClick(() => this.app.openCourses())
+      }
+    }
+    .id('cardNoCourse')
+    .width('100%')
+    .padding(Space.S5)
+    .borderRadius(Radius.LG)
+    .backgroundColor($r('app.color.bg_surface'))
     .margin({ top: Space.S6 })
   }
 
@@ -425,6 +484,8 @@ export struct HomePage {
                 .fontColor($r('app.color.text_secondary'))
             }
             .margin({ top: Space.S6 })
+          } else if (this.app.packState === PackState.NO_COURSE) {
+            this.noCourse()
           } else if (this.app.packState === PackState.ERROR) {
             this.packError()
           } else {
@@ -435,7 +496,9 @@ export struct HomePage {
             if (this.vm.hasTour) {
               this.tourCard()
             }
-            this.demoButton()
+            if (this.vm.demoOffered) {
+              this.demoButton()
+            }
             this.sectionHeader($r('app.string.home_explore'))
             this.exploreRow()
             if (this.vm.coursesEnabled()) {

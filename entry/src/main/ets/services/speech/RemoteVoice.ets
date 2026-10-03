@@ -1,6 +1,6 @@
 /*
  * RemoteVoice: a SpeechPort decorator around NarrationPlayer that adds step 2 of the voice fallback chain
- * (docs/SERVER.md §2): a sentence with no pre-rendered clip (bundled or downloaded course) is asked from the server
+ * (docs/SERVER.md §2): a sentence with no pre-rendered clip in the downloaded course is asked from the server
  * (POST /v1/tts) when Settings "Online studio voice" is on and the server is reachable, within a 2.5 s budget.
  *
  * - The decision is the pure core/remote/VoiceChain.decideVoice; the response is judged by judgeRemote: the
