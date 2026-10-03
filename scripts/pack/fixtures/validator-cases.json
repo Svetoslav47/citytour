@@ -1,5 +1,5 @@
 {
- "$comment": "Shared expectations for the narration validator spec v1: scripts/pack/80-validate.mjs (pipeline) and core/content/NarrationValidator.ets (app, task B3) must give these verdicts. ctx.sourceTexts is absent on purpose: claims_quote is pipeline-only and never runs here. expectFailed lists every failed check id in check order (a schema failure stops validation). Hand-made; the narration.validation field is ignored by the validator.",
+ "$comment": "Shared expectations for the narration validator spec v1: scripts/pack/80-validate.mjs (pipeline) and core/content/NarrationValidator.ets (app, task B3) must give these verdicts. ctx.sourceTexts is absent on purpose: claims_quote is pipeline-only and never runs here. Where spec v1 left a detail open the cases pin the behaviour of the merged app port (core/content/NarrationValidator.ets, PR #56): numbers match as substrings, nothing (not even a [pNNN] pause marker) is stripped from the text, possessives are not stripped. expectFailed lists every failed check id in check order (a schema failure stops validation). Hand-made; the narration.validation field is ignored by the validator.",
  "validatorVersion": 1,
  "cases": [
   {
@@ -174,7 +174,7 @@
    ]
   },
   {
-   "name": "a number only inside a longer quote number fails numbers (token equality)",
+   "name": "numbers match as substrings of a quote (\"14\" is found in \"1498\")",
    "narration": {
     "id": "poi_wd_Q807309:historian:en:teaser",
     "poiId": "poi_wd_Q807309",
@@ -182,7 +182,7 @@
     "lang": "en",
     "length": "teaser",
     "sentences": [
-     "The Barbican was built around the 14th century to guard the road into the city.",
+     "The Barbican was built in the 14th century to guard the road into the city.",
      "It is one of the few fortified outposts of this kind still standing in Europe."
     ],
     "tier": "reviewed",
@@ -231,11 +231,9 @@
      "克拉科夫瓮城"
     ]
    },
-   "expectOk": false,
-   "expectFirstFailed": "numbers",
-   "expectFailed": [
-    "numbers"
-   ]
+   "expectOk": true,
+   "expectFirstFailed": null,
+   "expectFailed": []
   },
   {
    "name": "\"on your left\" fails forbidden",
@@ -857,7 +855,51 @@
    ]
   },
   {
-   "name": "a [pNNN] pause marker is allowed and its digits are not numbers",
+   "name": "a [pNNN] pause marker is not a forbidden \"[\"",
+   "narration": {
+    "id": "poi_wd_Q807309:historian:en:teaser",
+    "poiId": "poi_wd_Q807309",
+    "personaId": "historian",
+    "lang": "en",
+    "length": "teaser",
+    "sentences": [
+     "The Barbican is a fortified outpost that was once connected to the city walls. [p400]",
+     "It guarded the road into the city."
+    ],
+    "tier": "source-extract",
+    "sources": [
+     "wp_en_Q807309"
+    ],
+    "claims": [],
+    "generatedBy": {
+     "kind": "extract",
+     "at": "2026-10-03T14:01:44Z"
+    },
+    "validation": {
+     "status": "pass",
+     "checks": [],
+     "validatorVersion": 1
+    }
+   },
+   "ctx": {
+    "sourceIds": [
+     "wp_en_Q807309",
+     "wp_pl_Q807309",
+     "wp_zh_Q807309",
+     "wd_Q807309"
+    ],
+    "poiNames": [
+     "Barbican",
+     "Barbakan",
+     "克拉科夫瓮城"
+    ]
+   },
+   "expectOk": true,
+   "expectFirstFailed": null,
+   "expectFailed": []
+  },
+  {
+   "name": "pause-marker digits count as numbers in authored scripts (v1: quote them or leave markers out)",
    "narration": {
     "id": "poi_wd_Q807309:historian:en:teaser",
     "poiId": "poi_wd_Q807309",
@@ -914,9 +956,11 @@
      "克拉科夫瓮城"
     ]
    },
-   "expectOk": true,
-   "expectFirstFailed": null,
-   "expectFailed": []
+   "expectOk": false,
+   "expectFirstFailed": "numbers",
+   "expectFailed": [
+    "numbers"
+   ]
   },
   {
    "name": "a historian hedge fails forbidden",
@@ -1297,7 +1341,69 @@
    ]
   },
   {
-   "name": "allowlisted names with a possessive pass proper_nouns",
+   "name": "allowlisted names pass proper_nouns",
+   "narration": {
+    "id": "poi_wd_Q807309:historian:en:teaser",
+    "poiId": "poi_wd_Q807309",
+    "personaId": "historian",
+    "lang": "en",
+    "length": "teaser",
+    "sentences": [
+     "The Barbican guarded the road to Kraków from the north around 1498.",
+     "It is one of the few fortified outposts of this kind still standing in Europe, near the Old Town."
+    ],
+    "tier": "reviewed",
+    "sources": [
+     "wp_en_Q807309"
+    ],
+    "claims": [
+     {
+      "text": "Built around 1498.",
+      "sourceId": "wp_en_Q807309",
+      "quote": "The Barbican was built around 1498"
+     },
+     {
+      "text": "One of the few left.",
+      "sourceId": "wp_en_Q807309",
+      "quote": "one of the few remaining fortified outposts in Europe"
+     }
+    ],
+    "generatedBy": {
+     "kind": "llm",
+     "model": "claude-opus-5-5",
+     "promptId": "historian-v1",
+     "at": "2026-10-03T20:00:00Z"
+    },
+    "reviewedBy": {
+     "reviewer": "MS",
+     "at": "2026-10-03T22:30:00Z",
+     "status": "approved"
+    },
+    "validation": {
+     "status": "pass",
+     "checks": [],
+     "validatorVersion": 1
+    }
+   },
+   "ctx": {
+    "sourceIds": [
+     "wp_en_Q807309",
+     "wp_pl_Q807309",
+     "wp_zh_Q807309",
+     "wd_Q807309"
+    ],
+    "poiNames": [
+     "Barbican",
+     "Barbakan",
+     "克拉科夫瓮城"
+    ]
+   },
+   "expectOk": true,
+   "expectFirstFailed": null,
+   "expectFailed": []
+  },
+  {
+   "name": "a possessive is not stripped: \"Kraków's\" is not found (4 of 5 found < 85 %)",
    "narration": {
     "id": "poi_wd_Q807309:historian:en:teaser",
     "poiId": "poi_wd_Q807309",
@@ -1354,9 +1460,11 @@
      "克拉科夫瓮城"
     ]
    },
-   "expectOk": true,
-   "expectFirstFailed": null,
-   "expectFailed": []
+   "expectOk": false,
+   "expectFirstFailed": "proper_nouns",
+   "expectFailed": [
+    "proper_nouns"
+   ]
   },
   {
    "name": "name-only EN template passes (lang is not checked)",

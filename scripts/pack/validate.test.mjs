@@ -68,7 +68,7 @@ test('lang heuristics and helpers', () => {
   assert.equal(langMatches('这是城门。', 'zh'), true);
   assert.equal(langMatches('   ', 'en'), false);
   assert.equal(removeNames('Brama Floriańska stoi.', ['Brama', 'Brama Floriańska']).trim(), 'stoi.');
-  assert.deepEqual(properNounCandidates('The Barbican’s walls near "Kraków", [p300] Old Town.'), ['Barbican', 'Kraków', 'Old', 'Town']);
+  assert.deepEqual(properNounCandidates('The Barbican’s walls near "Kraków", [p300] Old Town 1498 Éire.'), ['Barbican’s', 'Kraków', 'Old', 'Town', 'Éire']);
 });
 
 test('selectNarration: first passing candidate wins; fallback records the failed checks', () => {

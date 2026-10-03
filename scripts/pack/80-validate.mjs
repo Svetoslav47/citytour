@@ -1,7 +1,9 @@
 // Stage 8: narration validator, spec v1 (docs/ARCHITECTURE.md §7.4). Node 22+ ESM, stdlib only.
 //
-// The app's core/content/NarrationValidator.ets (task B3) implements the SAME spec; the shared expectations
-// are scripts/pack/fixtures/validator-cases.json (B3 ports them to ArkTS). validateNarration() is pure.
+// The app's core/content/NarrationValidator.ets + LangDetect.ets (task B3, merged in PR #56) implement the SAME
+// spec; where the spec left a detail open, this file follows the app's choice so both give identical verdicts.
+// Shared expectations: scripts/pack/fixtures/validator-cases.json (to be ported to the app's Hypium tests).
+// validateNarration() is pure.
 //
 // validateNarration(n, ctx) -> { ok, failed: [checkId...], firstFailed: checkId | null, applied: [checkId...] }
 //   ctx.sourceIds          string[] (or Set): every SourceRef id in the pack
@@ -9,51 +11,48 @@
 //   ctx.sourceTexts        { [sourceId]: string } PIPELINE ONLY (the app has no source texts): enables claims_quote
 //   ctx.translatedFromTier optional: tier of the narration this one was machine-translated from (see `numbers`)
 //
-// Definitions used by the checks:
-//   raw text   = sentences joined with ' '
-//   text       = raw text with every [pNNN] pause marker (/\[p\d+\]/g) replaced by ' '
+// Definitions used by the checks (aligned check by check with the merged app port, B3, PR #56):
+//   text       = sentences joined with ' ' (nothing is stripped: a [pNNN] pause marker counts as a word and its
+//                digits count as a number; keep pause markers out of authored scripts or quote the digits)
 //   words(s)   = number of whitespace-separated tokens of s (s.split(/\s+/) without empty tokens)
 //   cjk(s)     = number of chars of s in [一-鿿] (U+4E00..U+9FFF)
 //   size(s)    = cjk(s) for zh, words(s) for en/pl
 //   letters(s) = chars of s matching /\p{L}/u
 //
 // Checks, in this order (a check that does not apply to the narration is skipped and does not count):
-//  1 schema          all tiers. id === `${poiId}:${personaId}:${lang}:${length}`; poiId/personaId non-empty
-//                    strings; lang in en|pl|zh; length in teaser|full|deep; tier in
-//                    reviewed|grounded-ai|source-extract|name-only; sentences is a non-empty array of strings
-//                    that are non-empty after trim(); sources is an array of ids that all resolve in
-//                    ctx.sourceIds; claims is an array of {text, sourceId, quote} strings whose sourceId resolves;
-//                    tier reviewed => reviewedBy with non-empty reviewer and at strings and status in
-//                    approved|edited; generatedBy.kind in llm|human|extract|template|mt.
-//                    A schema failure stops validation (the other checks would read malformed data).
+//  1 schema          all tiers. id, poiId, personaId are strings and id === `${poiId}:${personaId}:${lang}:${length}`;
+//                    lang in en|pl|zh; length in teaser|full|deep; tier in reviewed|grounded-ai|source-extract|
+//                    name-only; sentences is a non-empty array of strings that are non-empty after trim(); sources
+//                    and claims are arrays; every sources[] id resolves in ctx.sourceIds; every claim is an object
+//                    with a string quote and a sourceId that resolves; tier reviewed => reviewedBy with a non-empty
+//                    reviewer string, an `at` string and status in approved|edited; generatedBy.kind in
+//                    llm|human|extract|template|mt. A schema failure stops validation.
 //  2 length          reviewed, grounded-ai. size(text) within: teaser 15-60 words / 40-150 zh chars;
 //                    full 120-420 / 300-1000; deep 0-900 / 0-2200 (inclusive bounds).
-//  3 sentence_length reviewed, grounded-ai. every sentence (pause markers removed): size <= 45 (zh <= 110).
+//  3 sentence_length reviewed, grounded-ai. every sentence: size <= 45 (zh <= 110).
 //  4 extract_size    source-extract. sentences.length <= 6 and size(text) <= 160 (zh <= 500).
-//  5 total_chars     all tiers. (raw text).length < 10000 (UTF-16 code units, the TTS limit).
-//  6 lang            all tiers except name-only. On `text` with every ctx.poiNames entry (longest first,
+//  5 total_chars     all tiers. text.length < 10000 (UTF-16 code units, the TTS limit).
+//  6 lang            all tiers except name-only. On `text` with every non-empty ctx.poiNames entry (longest first,
 //                    case-sensitive, all occurrences) replaced by ' ':
-//                      no letters at all => fail;
-//                      zh: cjk / letters >= 0.6;
-//                      en: ASCII letters [A-Za-z] / letters >= 0.95 AND enStop > plStop;
-//                      pl: plStop > enStop OR the text contains one of ąćęłńóśźżĄĆĘŁŃÓŚŹŻ.
+//                      zh: letters > 0 and cjk / letters >= 0.6;
+//                      en: letters > 0 and ASCII letters [A-Za-z] / letters >= 0.95 and enStop > plStop;
+//                      pl: plStop > enStop or the text contains one of ąćęłńóśźżĄĆĘŁŃÓŚŹŻ.
 //                    enStop/plStop = count of the lowercased words (text.toLowerCase().split(/[^\p{L}]+/u))
 //                    that are in EN_STOPWORDS / PL_STOPWORDS (whole-word matches, each occurrence counts).
 //  7 numbers         reviewed, grounded-ai, and generatedBy.kind === 'mt' when ctx.translatedFromTier ===
-//                    'reviewed'. Every number token (/\d+/g) of `text` must equal a number token of at least
-//                    one claims[].quote (token equality: "13" is not found in a quote that only has "1320").
-//  8 proper_nouns    reviewed, grounded-ai, in en or pl. For every sentence (pause markers removed), tokens =
-//                    whitespace split, each stripped of leading/trailing non-letter/non-digit chars and of a
-//                    trailing possessive 's/’s, empty tokens dropped. A candidate is a token that starts with
-//                    an uppercase letter (\p{Lu}) and is not the first token of its sentence. At least 85 % of
-//                    the candidates must be a case-sensitive substring of a claims[].quote, a ctx.poiNames
-//                    entry or a PROPER_NOUN_ALLOWLIST entry. Vacuously true with no candidates.
+//                    'reviewed'. Every number token (/\d+/g) of `text` is a substring of at least one
+//                    claims[].quote ("14" is found in a quote that says "1498").
+//  8 proper_nouns    reviewed, grounded-ai, in en or pl. For every sentence, tokens = whitespace split, each
+//                    stripped of leading/trailing non-letters (/^[^\p{L}]+|[^\p{L}]+$/gu), empty tokens dropped. A
+//                    candidate is a token after the first one of its sentence whose first char c is a cased capital
+//                    (c === c.toUpperCase() && c !== c.toLowerCase()). At least 85 % of the candidates must be a
+//                    case-sensitive substring of a claims[].quote, a ctx.poiNames entry or a PROPER_NOUN_ALLOWLIST
+//                    entry. Vacuously true with no candidates. (A possessive is not stripped: "Kraków's" != "Kraków".)
 //  9 claims_quote    only when ctx.sourceTexts is given (pipeline). Every claims[].quote is a substring of
 //                    ctx.sourceTexts[claim.sourceId] (missing text => fail). Vacuously true with no claims.
-// 10 forbidden       all tiers, on raw text: /https?:\/\//i; any of # * _ `; { or }; a '[' left after
-//                    removing [pNNN] markers; the ASCII phrases of FORBIDDEN_WORDS as whole words
-//                    (/\bphrase\b/i); the non-ASCII phrases of FORBIDDEN_WORDS as substrings of the
-//                    lowercased text.
+// 10 forbidden       all tiers, on text: any of FORBIDDEN_PATTERNS (URL; # * _ ` { }; a '[' that does not start a
+//                    [pNNN] marker; TODO as a word; "as an ai", "i cannot" anywhere; the hedges reportedly / it is
+//                    said / allegedly / legend has it as words; the absolute directions anywhere, case-insensitive).
 //
 // Fallback (pipeline, selectNarration): candidates for one POI/persona/lang/length are tried best tier first
 // (grounded-ai/reviewed -> source-extract -> name-only); the first that passes is emitted. Its validation is
@@ -92,11 +91,16 @@ export const PROPER_NOUN_ALLOWLIST = Object.freeze([
   'Kraków', 'Krakow', 'Poland', 'Polish', 'Vistula', 'Wawel', 'Rynek', 'Old Town', 'Main Square', 'UNESCO', 'Royal Route',
   'Gothic', 'Renaissance', 'Baroque', 'Romanesque', 'Catholic', 'Jagiellonian',
 ]);
-export const FORBIDDEN_WORDS = Object.freeze([
-  'TODO', 'As an AI', 'I cannot',
-  'reportedly', 'it is said', 'allegedly', 'legend has it',
-  'on your left', 'on your right', 'to your left', 'to your right', 'behind you', 'po lewej', 'po prawej', 'za tobą',
-  '左边', '右边', '左侧', '右侧',
+/** Same list and same regexes as the app's NarrationValidator.ets (B3). */
+export const FORBIDDEN_PATTERNS = Object.freeze([
+  /https?:\/\//i,
+  /[#*_`{}]/,
+  /\[(?!p\d+\])/,
+  /\bTODO\b/i, /as an ai/i, /i cannot/i,
+  /\breportedly\b/i, /\bit is said\b/i, /\ballegedly\b/i, /\blegend has it\b/i,
+  /on your left/i, /on your right/i, /to your left/i, /to your right/i, /behind you/i,
+  /po lewej/i, /po prawej/i, /za tobą/i,
+  /左边/, /右边/, /左侧/, /右侧/,
 ]);
 
 const TIERS = new Set(TIER_ORDER);
@@ -105,23 +109,13 @@ const REVIEW_STATUSES = new Set(['approved', 'edited']);
 const AUTHORED = new Set(['reviewed', 'grounded-ai']);
 const EN_SET = new Set(EN_STOPWORDS);
 const PL_SET = new Set(PL_STOPWORDS);
-const PAUSE_RE = /\[p\d+\]/g;
-const CJK_RE = /[一-鿿]/g;
+const CJK_RE = /[\u4e00-\u9fff]/g;
 const LETTER_RE = /\p{L}/gu;
 const ASCII_LETTER_RE = /[A-Za-z]/g;
 const PL_DIACRITIC_RE = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/;
-const FORBIDDEN_RES = FORBIDDEN_WORDS.map((w) =>
-  /^[\x20-\x7e]+$/.test(w)
-    ? { test: (raw) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(raw) }
-    : { test: (raw) => raw.toLowerCase().includes(w.toLowerCase()) },
-);
 
 // ---------------------------------------------------------------------------------------------
 // Measures (exported: the extract stage sizes its texts with the same functions)
-
-export function stripPauses(s) {
-  return s.replace(PAUSE_RE, ' ');
-}
 
 export function wordCount(s) {
   return s.split(/\s+/).filter((t) => t.length > 0).length;
@@ -148,23 +142,22 @@ function nonEmptyString(v) {
 
 function checkSchema(n, ctx) {
   if (!isObj(n)) return false;
-  if (!nonEmptyString(n.poiId) || !nonEmptyString(n.personaId)) return false;
+  if (typeof n.id !== 'string' || typeof n.poiId !== 'string' || typeof n.personaId !== 'string') return false;
   if (!LANGS.includes(n.lang) || !LENGTHS.includes(n.length) || !TIERS.has(n.tier)) return false;
   if (n.id !== `${n.poiId}:${n.personaId}:${n.lang}:${n.length}`) return false;
   if (!Array.isArray(n.sentences) || n.sentences.length === 0) return false;
   if (!n.sentences.every((s) => typeof s === 'string' && s.trim().length > 0)) return false;
+  if (!Array.isArray(n.sources) || !Array.isArray(n.claims)) return false;
   const ids = ctx.sourceIds instanceof Set ? ctx.sourceIds : new Set(ctx.sourceIds ?? []);
-  if (!Array.isArray(n.sources) || !n.sources.every((id) => typeof id === 'string' && ids.has(id))) return false;
-  if (!Array.isArray(n.claims)) return false;
+  if (!n.sources.every((id) => ids.has(id))) return false;
   for (const c of n.claims) {
-    if (!isObj(c) || typeof c.text !== 'string' || typeof c.quote !== 'string' || typeof c.sourceId !== 'string') return false;
-    if (!ids.has(c.sourceId)) return false;
+    if (!isObj(c) || typeof c.quote !== 'string' || !ids.has(c.sourceId)) return false;
   }
-  if (!isObj(n.generatedBy) || !PROVENANCE_KINDS.has(n.generatedBy.kind)) return false;
   if (n.tier === 'reviewed') {
     const r = n.reviewedBy;
-    if (!isObj(r) || !nonEmptyString(r.reviewer) || !nonEmptyString(r.at) || !REVIEW_STATUSES.has(r.status)) return false;
+    if (!isObj(r) || !nonEmptyString(r.reviewer) || typeof r.at !== 'string' || !REVIEW_STATUSES.has(r.status)) return false;
   }
+  if (!isObj(n.generatedBy) || !PROVENANCE_KINDS.has(n.generatedBy.kind)) return false;
   return true;
 }
 
@@ -176,7 +169,7 @@ function checkLength(n, text) {
 
 function checkSentenceLength(n) {
   const max = n.lang === 'zh' ? MAX_SENTENCE.zh : MAX_SENTENCE.words;
-  return n.sentences.every((s) => sizeOf(stripPauses(s), n.lang) <= max);
+  return n.sentences.every((s) => sizeOf(s, n.lang) <= max);
 }
 
 function checkExtractSize(n, text) {
@@ -185,9 +178,8 @@ function checkExtractSize(n, text) {
 }
 
 export function removeNames(text, names) {
-  const sorted = [...new Set((names ?? []).filter((s) => typeof s === 'string' && s.length > 0))].sort(
-    (a, b) => b.length - a.length || (a < b ? -1 : a > b ? 1 : 0),
-  );
+  // Longest first; equal lengths keep their input order (a stable sort, like the app's LangDetect.stripNames).
+  const sorted = (names ?? []).filter((s) => typeof s === 'string' && s.length > 0).sort((a, b) => b.length - a.length);
   let out = text;
   for (const name of sorted) out = out.split(name).join(' ');
   return out;
@@ -210,17 +202,19 @@ export function langMatches(text, lang) {
 }
 
 function checkNumbers(n, text) {
-  const allowed = new Set();
-  for (const c of n.claims) for (const m of c.quote.match(/\d+/g) || []) allowed.add(m);
-  return (text.match(/\d+/g) || []).every((m) => allowed.has(m));
+  const quotes = n.claims.map((c) => c.quote);
+  return (text.match(/\d+/g) || []).every((m) => quotes.some((q) => q.includes(m)));
 }
 
 export function properNounCandidates(sentence) {
-  const tokens = stripPauses(sentence)
+  const tokens = sentence
     .split(/\s+/)
-    .map((t) => t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').replace(/['’]s$/u, ''))
+    .map((t) => t.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, ''))
     .filter((t) => t.length > 0);
-  return tokens.filter((t, i) => i > 0 && /^\p{Lu}/u.test(t));
+  return tokens.filter((t, i) => {
+    const c = t.charAt(0);
+    return i > 0 && c === c.toUpperCase() && c !== c.toLowerCase();
+  });
 }
 
 function checkProperNouns(n, ctx) {
@@ -240,12 +234,8 @@ function checkClaimsQuote(n, ctx) {
   });
 }
 
-function checkForbidden(raw) {
-  if (/https?:\/\//i.test(raw)) return false;
-  if (/[#*_`]/.test(raw)) return false;
-  if (/[{}]/.test(raw)) return false;
-  if (raw.replace(PAUSE_RE, '').includes('[')) return false;
-  return !FORBIDDEN_RES.some((r) => r.test(raw));
+function checkForbidden(text) {
+  return !FORBIDDEN_PATTERNS.some((re) => re.test(text));
 }
 
 /** Which checks apply to a (schema-valid) narration. */
@@ -266,8 +256,7 @@ export function applicableChecks(n, ctx = {}) {
 /** Spec v1. Pure. */
 export function validateNarration(n, ctx = {}) {
   if (!checkSchema(n, ctx)) return { ok: false, failed: ['schema'], firstFailed: 'schema', applied: ['schema'] };
-  const raw = n.sentences.join(' ');
-  const text = stripPauses(raw);
+  const text = n.sentences.join(' ');
   const applied = applicableChecks(n, ctx);
   const failed = [];
   for (const id of applied) {
@@ -285,7 +274,7 @@ export function validateNarration(n, ctx = {}) {
         pass = checkExtractSize(n, text);
         break;
       case 'total_chars':
-        pass = raw.length < MAX_TOTAL_CHARS;
+        pass = text.length < MAX_TOTAL_CHARS;
         break;
       case 'lang':
         pass = langMatches(removeNames(text, ctx.poiNames), n.lang);
@@ -300,7 +289,7 @@ export function validateNarration(n, ctx = {}) {
         pass = checkClaimsQuote(n, ctx);
         break;
       case 'forbidden':
-        pass = checkForbidden(raw);
+        pass = checkForbidden(text);
         break;
       default:
         throw new Error(`unknown check ${id}`);
