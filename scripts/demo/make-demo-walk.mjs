@@ -13,8 +13,13 @@
 // dwell, fixed first and last stop) visits the stops, so the simulated walker stays on the route the app draws and
 // guides along (task A9: turn cues and off-route detection run against exactly these legs).
 // Output:
-//   entry/src/main/resources/rawfile/demo/royal-route-walk.json   (default)
-//   entry/src/test/fixtures/DemoTrackMini.ets                     (with --fixture: stops 7-11 for A11's replay test)
+//   data/course/<courseId>/demo-walk.json   (default course krakow; split-city.mjs ships it in the course's tour/ pack,
+//                                            the app downloads it with the course)
+//   entry/src/test/fixtures/DemoTrackMini.ets  (with --fixture, krakow only: stops 7-11 for A11's replay test)
+//
+// --course <id> (default krakow): the pack data/course/<id>/packs/<id>/ and its single tour. Only krakow (The Royal
+// Route) gets the scripted extras below (Floriańska warm-up, pass-by stop, detour, accuracy dip); every other course
+// is a plain walk: warm-up at the first stop, then the pack's legs in the planner's order with a dwell at every stop.
 //
 // The walk (defaults, all seeded and deterministic):
 //   - starts slightly off-route on ul. Floriańska at the Main Square end (a visitor coming from the square),
@@ -30,7 +35,7 @@
 //   - one ~80 m detour off Grodzka between stops 7 and 8: the off-route + re-plan case;
 //   - 10 s of degraded accuracy (60 m, sigma 25 m) in ul. Kanonicza between stops 10 and 11.
 //
-// Usage: node scripts/demo/make-demo-walk.mjs [--seed N] [--start florianska|barbican] [--out FILE] [--fixture]
+// Usage: node scripts/demo/make-demo-walk.mjs [--course ID] [--seed N] [--start florianska|barbican] [--out FILE] [--fixture]
 // Node 22+, standard library only.
 
 import fs from 'node:fs';
@@ -40,10 +45,9 @@ import { fileURLToPath } from 'node:url';
 import { unproject } from '../pack/projection.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const PACK_DIR = 'data/course/krakow/packs/krakow';
-const TOUR_ID = 'royal-route';
+const DEFAULT_COURSE = 'krakow';
+const DEFAULT_TOUR_ID = 'royal-route';
 const OSM_DIR = 'data/raw/osm';
-const OUT_FILE = 'entry/src/main/resources/rawfile/demo/royal-route-walk.json';
 const FIXTURE_FILE = 'entry/src/test/fixtures/DemoTrackMini.ets';
 
 // ---- parameters (written into the output under "params") ----
@@ -83,21 +87,34 @@ const FLORIANSKA_START = { lat: 50.06260, lng: 19.93963 };
 
 // ---- CLI ----
 const argv = process.argv.slice(2);
-let outFile = OUT_FILE;
+let courseId = DEFAULT_COURSE;
+let outFile = null;
 let writeFixture = false;
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
-  if (a === '--seed') { P.seed = Number(argv[++i]); }
+  if (a === '--course') { courseId = String(argv[++i]); }
+  else if (a === '--seed') { P.seed = Number(argv[++i]); }
   else if (a === '--start') { P.start = argv[++i]; }
   else if (a === '--out') { outFile = argv[++i]; }
   else if (a === '--fixture') { writeFixture = true; }
   else if (a === '-h' || a === '--help') {
-    console.log('node scripts/demo/make-demo-walk.mjs [--seed N] [--start florianska|barbican] [--out FILE] [--fixture]');
+    console.log('node scripts/demo/make-demo-walk.mjs [--course ID] [--seed N] [--start florianska|barbican] [--out FILE] [--fixture]');
     process.exit(0);
   } else { die(`unknown argument ${a}`); }
 }
 if (!Number.isInteger(P.seed)) { die('--seed must be an integer'); }
 if (P.start !== 'florianska' && P.start !== 'barbican') { die('--start must be florianska or barbican'); }
+if (!/^[a-z0-9][a-z0-9-]*$/.test(courseId)) { die(`--course ${courseId}: expected a lowercase id like krakow-scholars`); }
+const PACK_DIR = `data/course/${courseId}/packs/${courseId}`;
+if (outFile === null) { outFile = `data/course/${courseId}/demo-walk.json`; }
+// The scripted extras exist only for the Royal Route (krakow); other courses get a plain walk (see the header).
+const ROYAL = courseId === DEFAULT_COURSE;
+if (!ROYAL) {
+  if (writeFixture) { die('--fixture is only for the default course krakow'); }
+  Object.assign(P, { start: 'first-stop', passByStop: 0, detourAfterStop: 0, detourAtFraction: 0, detourOutM: 0,
+    poorAccAfterStop: 0, poorAccAtFraction: 0, poorAccS: 0, poorAccM: 0, poorAccSigmaM: 0, fixtureFromStop: 0,
+    detourSide: 'none', dwellTowardPoiM: {} });
+}
 
 function die(msg) {
   console.error(`make-demo-walk: ${msg}`);
@@ -152,8 +169,11 @@ function readJson(rel) {
 const routes = readJson(`${PACK_DIR}/routes.json`);
 const tours = readJson(`${PACK_DIR}/tours.json`);
 const poisJson = readJson(`${PACK_DIR}/pois.json`);
-const tour = (Array.isArray(tours) ? tours : []).find((t) => t.id === TOUR_ID);
-if (!tour || !Array.isArray(tour.stops) || tour.stops.length < 2) { die(`${PACK_DIR}/tours.json has no tour ${TOUR_ID}`); }
+const tourList = Array.isArray(tours) ? tours : [];
+const tour = ROYAL ? tourList.find((t) => t.id === DEFAULT_TOUR_ID) : (tourList.length === 1 ? tourList[0] : undefined);
+if (!tour || !Array.isArray(tour.stops) || tour.stops.length < 2) {
+  die(`${PACK_DIR}/tours.json has no ${ROYAL ? `tour ${DEFAULT_TOUR_ID}` : 'single tour'}`);
+}
 if (!Array.isArray(routes?.legs) || !Array.isArray(routes?.nodeIds)) { die(`${PACK_DIR}/routes.json has no legs`); }
 const poiById = new Map((Array.isArray(poisJson) ? poisJson : poisJson.pois || []).map((p) => [p.id, p]));
 const order = plannedOrder(tour, routes);
@@ -470,7 +490,7 @@ function distToLine(p, poly) {
   }
   return best;
 }
-{
+if (P.detourAfterStop > 0) {
   const s7 = stopLog.get(P.detourAfterStop);
   const s8 = stopLog.get(P.detourAfterStop + 1);
   let first = -1;
@@ -496,13 +516,13 @@ for (const pc of pieces) {
   if (pc.kind === 'walk') { const c = cumulative(pc.pts); walkedM += c[c.length - 1]; }
 }
 const track = {
-  id: 'royal-route-walk',
-  name: 'Royal Route demo walk',
+  id: ROYAL ? 'royal-route-walk' : `${tour.id}-walk`,
+  name: ROYAL ? 'Royal Route demo walk' : `${tour.titles?.en ?? tour.id} demo walk`,
   simulated: true,
   notice: 'SIMULATED location track for the emulator demo (the emulator GPS is a fixed point). Not recorded GPS.',
   generatedBy: 'scripts/demo/make-demo-walk.mjs',
-  source: `${PACK_DIR}/routes.json (the pack's OSRM foot legs in the planner's order, OSM data ODbL) + ` +
-    `ul. Floriańska from ${OSM_DIR} (ODbL)`,
+  source: `${PACK_DIR}/routes.json (the pack's OSRM foot legs in the planner's order, OSM data ODbL)` +
+    (ROYAL ? ` + ul. Floriańska from ${OSM_DIR} (ODbL)` : ''),
   params: P,
   summary: { fixes: fixes.length, durationS: fixes.length - 1, walkedM: Math.round(walkedM) },
   stops: stops.map((s) => ({
