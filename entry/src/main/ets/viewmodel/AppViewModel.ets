@@ -133,18 +133,26 @@ export class AppViewModel {
 
   /** SERVER.md §6: the active course changed (downloaded, switched, deleted; CourseRepository already loaded it). */
   courseChanged(): void {
+    this.reloadPack();
+  }
+
+  /** courseChanged, awaitable: resolves true once the active course's pack is loaded and READY. Never rejects. */
+  async reloadPack(): Promise<boolean> {
     this.courseRev++;
     const failed: PackLoadResult = {
       ok: false,
       issues: [this.issue(IssueCode.PACK_ERR, 'load timeout or exception')]
     };
-    withTimeout(AppContainer.packRepository().load(), PACK_LOAD_TIMEOUT_MS, failed, 'pack.load.courseChanged')
-      .then((res: PackLoadResult) => {
-        this.applyLoad(res);
-        this.courseRev++;
-      }).catch((e: Object) => {
-        Log.e(LogEvents.UNCAUGHT, `where=AppViewModel.courseChanged ${Log.errKv(e)}`);
-      });
+    try {
+      const res = await withTimeout(AppContainer.packRepository().load(), PACK_LOAD_TIMEOUT_MS, failed,
+        'pack.load.courseChanged');
+      this.applyLoad(res);
+      this.courseRev++;
+      return this.packState === PackState.READY;
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=AppViewModel.courseChanged ${Log.errKv(e as Object)}`);
+      return false;
+    }
   }
 
   openCourses(): void {
