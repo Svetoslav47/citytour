@@ -23,8 +23,15 @@
 //                   or summaries-<lang>.json, matched by title + revision id) and has >= 2 words
 //   meta / format   front matter, required sections, review state (empty reviewed => status draft; filled
 //                   reviewed "<initials> <YYYY-MM-DD>" => status approved|edited), view hint
+//
+// Machine translations (<poiId>.pl.md / .zh.md with `generatedBy: mt`, prompt scripts/pack/prompts/translate-v1.md):
+//   the same section checks, run with the EN file's claims plus the translation's own (optional) claims; front
+//   matter needs translatedFrom: en, translated: <YYYY-MM-DD> and sourceSha256 = scriptHash() of the EN text it
+//   was translated from. When the EN text has changed since (a human edited it), the file is reported as STALE
+//   (a warning, not a failure): ask an agent to refresh that translation (scripts/pack/review/README.md).
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -127,6 +134,48 @@ export function properNounCandidates(sentence) {
     .map((t) => t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').replace(/['’]s$/u, ''))
     .filter((t) => t.length > 0);
   return tokens.filter((t, i) => i > 0 && /^\p{Lu}/u.test(t));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Review state and translation freshness (shared with scripts/pack/70-narrate.mjs)
+
+export const REVIEWED_RE = /^(\S+) (\d{4}-\d{2}-\d{2})$/;
+export const SHA256_RE = /^[0-9a-f]{64}$/;
+
+/**
+ * The review state of a file's front matter: { reviewed: false } for a draft, { reviewed: true, review:
+ * {reviewer, at, status} } for a human-reviewed file, or { error } when the two lines disagree (a filled
+ * `reviewed:` without approved|edited, or approved|edited without a filled `reviewed:`).
+ */
+export function reviewState(meta) {
+  const reviewed = meta.reviewed ?? '';
+  const status = meta.status ?? '';
+  if (reviewed === '') {
+    if (status !== 'draft') return { error: `reviewed is empty, so status must be draft (got ${status || '(empty)'})` };
+    return { reviewed: false };
+  }
+  const m = REVIEWED_RE.exec(reviewed);
+  if (!m) return { error: 'reviewed must be "<initials> <YYYY-MM-DD>"' };
+  if (!STATUSES_REVIEWED.includes(status)) return { error: `a reviewed file needs status approved|edited (got ${status || '(empty)'})` };
+  return { reviewed: true, review: { reviewer: m[1], at: m[2], status } };
+}
+
+/** True when the file is a machine translation (front matter `generatedBy: mt`). */
+export const isTranslation = (meta) => meta.generatedBy === 'mt';
+
+/**
+ * SHA-256 (hex) of the script text of a parsed EN file: the teaser, full and deep sentences, in order. Claims,
+ * notes, view hint and front matter are not part of it, so approving a file without editing it keeps its
+ * translations fresh, and a text edit makes them stale.
+ */
+export function scriptHash(parsed) {
+  const body = JSON.stringify(SECTIONS.map((s) => parsed.sections[s] ?? []));
+  return createHash('sha256').update(body, 'utf8').digest('hex');
+}
+
+/** Claims a translation is checked (and emitted) with: the EN file's claims, then the translation's own. */
+export function translationClaims(parsed, enParsed) {
+  return [...(enParsed?.claims ?? []), ...parsed.claims];
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -360,17 +409,41 @@ export function checkReview(parsed, ctx) {
   if (meta.persona !== 'historian') fail('meta', 'meta', `persona must be historian, got ${meta.persona || '(empty)'}`);
   if (!meta.promptId) fail('meta', 'meta', 'promptId is empty');
   if (!meta.model) fail('meta', 'meta', 'model is empty');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(meta.drafted ?? '')) fail('meta', 'meta', 'drafted must be YYYY-MM-DD');
-  if (!('reviewed' in meta)) fail('meta', 'meta', 'reviewed line is missing (leave it empty until a human reviews)');
-  else if (meta.reviewed === '') {
-    if (meta.status !== 'draft') fail('meta', 'review', `reviewed is empty, so status must be draft (got ${meta.status || '(empty)'})`);
+  const mt = isTranslation(meta);
+  const warnings = [];
+  if (!mt) {
+    if (meta.lang !== undefined && meta.lang !== 'en') fail('meta', 'meta', 'a pl/zh file must be a translation (generatedBy: mt)');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(meta.drafted ?? '')) fail('meta', 'meta', 'drafted must be YYYY-MM-DD');
   } else {
-    if (!/^\S+ \d{4}-\d{2}-\d{2}$/.test(meta.reviewed)) fail('meta', 'review', 'reviewed must be "<initials> <YYYY-MM-DD>"');
-    if (!STATUSES_REVIEWED.includes(meta.status)) fail('meta', 'review', `a reviewed file needs status approved|edited (got ${meta.status || '(empty)'})`);
+    if (meta.lang === 'en') fail('meta', 'meta', 'an en file cannot be a translation');
+    if (meta.translatedFrom !== 'en') fail('meta', 'meta', `translatedFrom must be en, got ${meta.translatedFrom || '(empty)'}`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(meta.translated ?? '')) fail('meta', 'meta', 'translated must be YYYY-MM-DD');
+    if (!SHA256_RE.test(meta.sourceSha256 ?? '')) fail('meta', 'meta', 'sourceSha256 must be the 64-hex scriptHash of the EN text');
+    if (!ctx.enParsed) fail('meta', 'meta', `no EN source file ${meta.poiId}.en.md for this translation`);
+    else {
+      const current = scriptHash(ctx.enParsed);
+      if (SHA256_RE.test(meta.sourceSha256 ?? '') && meta.sourceSha256 !== current) {
+        warnings.push(`STALE: the EN text changed since this translation (sourceSha256 ${meta.sourceSha256.slice(0, 12)}…, EN now ` +
+          `${current.slice(0, 12)}…); ask an agent to refresh it (scripts/pack/review/README.md)`);
+      }
+      for (const s of SECTIONS) {
+        const has = (p) => Array.isArray(p.sections[s]) && p.sections[s].length > 0;
+        if (has(ctx.enParsed) !== has(parsed)) fail(s, 'format', `section "## ${s}" must be present exactly when the EN file has it`);
+        else if (has(parsed) && parsed.sections[s].length !== ctx.enParsed.sections[s].length) {
+          warnings.push(`${s}: ${parsed.sections[s].length} sentences, EN has ${ctx.enParsed.sections[s].length}`);
+        }
+      }
+    }
+  }
+  if (!('reviewed' in meta)) fail('meta', 'meta', 'reviewed line is missing (leave it empty until a human reviews)');
+  else {
+    const st = reviewState(meta);
+    if (st.error) fail('meta', 'review', st.error);
   }
 
-  // Claims.
-  if (parsed.claims.length === 0) fail('claims', 'claims_quote', 'no claims');
+  // Claims (a translation is checked with the EN claims plus its own).
+  const claims = mt ? translationClaims(parsed, ctx.enParsed) : parsed.claims;
+  if (claims.length === 0) fail('claims', 'claims_quote', 'no claims');
   parsed.claims.forEach((c, i) => {
     const where = `claim ${i + 1}`;
     for (const k of ['text', 'source', 'quote']) if (!c[k]) fail(where, 'claims_quote', `"${k}" is missing or empty`);
@@ -397,7 +470,7 @@ export function checkReview(parsed, ctx) {
     }
     words[s] = sizeOf(stripPauses(sentences.join(' ')), meta.lang);
     if (!LANGS.includes(meta.lang)) continue;
-    for (const f of checkSection(s, sentences, meta.lang, parsed.claims, names)) fail(s, f.check, f.detail);
+    for (const f of checkSection(s, sentences, meta.lang, claims, names)) fail(s, f.check, f.detail);
   }
 
   // View hint.
@@ -407,7 +480,7 @@ export function checkReview(parsed, ctx) {
     const raw = parsed.view.feature;
     if (/[#*_`{}[]/.test(raw) || FORBIDDEN_RES.some((r) => r.test(raw))) fail('view hint', 'view', 'feature contains a forbidden pattern');
   }
-  return { failures, words, claims: parsed.claims.length };
+  return { failures, warnings, words, claims: claims.length };
 }
 
 /** Repository-level coverage for one language: every tour stop has a file; >= 3 files have deep. */
@@ -429,11 +502,21 @@ export function reviewFiles(dir = REVIEW_DIR) {
     .map((f) => join(dir, f));
 }
 
+/** The parsed EN file next to a translation (null when there is none). */
+export function enSourceOf(path, parsed) {
+  if (!isTranslation(parsed.meta) || !parsed.meta.poiId) return null;
+  const enPath = join(dirname(path), `${parsed.meta.poiId}.en.md`);
+  return existsSync(enPath) ? parseReviewFile(readFileSync(enPath, 'utf8')) : null;
+}
+
 export function checkFile(path, ctx) {
   const fileName = basename(path);
   const parsed = parseReviewFile(readFileSync(path, 'utf8'));
-  const r = checkReview(parsed, { ...ctx, fileName });
-  return { file: fileName, poiId: parsed.meta.poiId, lang: parsed.meta.lang, status: parsed.meta.status, ...r };
+  const enParsed = enSourceOf(path, parsed);
+  const r = checkReview(parsed, { ...ctx, fileName, enParsed });
+  // A translation's effective review state is its EN source's (the pack tier follows the EN review).
+  const status = enParsed ? `${enParsed.meta.status}*` : parsed.meta.status;
+  return { file: fileName, poiId: parsed.meta.poiId, lang: parsed.meta.lang, status, ...r };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -462,15 +545,19 @@ export function main(argv = process.argv.slice(2), repo = REPO) {
     );
   }
   for (const r of results) for (const f of r.failures) lines.push(`  ${r.file}  [${f.where}] ${f.check}: ${f.detail}`);
+  for (const r of results) for (const w of r.warnings ?? []) lines.push(`  ${r.file}  warning: ${w}`);
+  if (results.some((r) => String(r.status).endsWith('*'))) lines.push('* translation: review state of its EN source (the pack tier follows it)');
   const notes = results.filter((r) => (r.words.full ?? 0) > 200).map((r) => `${r.file} full=${r.words.full}`);
   if (notes.length) lines.push(`note: full above the ~200-word demo target (REVIEW rec. 4, not a failure): ${notes.join(', ')}`);
-  const coverage = all ? checkCoverage(results, ctx.stops, 'en') : [];
+  const coverage = all ? LANGS.flatMap((l) => (l === 'en' || results.some((r) => r.lang === l) ? checkCoverage(results, ctx.stops, l) : [])) : [];
   for (const c of coverage) lines.push(`  coverage: ${c}`);
   const failed = results.filter((r) => r.failures.length).length;
-  const reviewed = results.filter((r) => STATUSES_REVIEWED.includes(r.status)).length;
+  const reviewed = results.filter((r) => STATUSES_REVIEWED.includes(String(r.status).replace(/\*$/, ''))).length;
+  const stale = results.filter((r) => (r.warnings ?? []).some((w) => w.startsWith('STALE'))).length;
   lines.push(
     `${failed === 0 && coverage.length === 0 ? 'PASS' : 'FAIL'}: ${results.length - failed}/${results.length} files pass` +
-      `, ${reviewed} reviewed, ${results.length - reviewed} draft${coverage.length ? `, ${coverage.length} coverage problem(s)` : ''}`,
+      `, ${reviewed} reviewed, ${results.length - reviewed} draft${stale ? `, ${stale} stale translation(s)` : ''}` +
+      `${coverage.length ? `, ${coverage.length} coverage problem(s)` : ''}`,
   );
   return { ok: failed === 0 && coverage.length === 0, output: lines.join('\n'), results, coverage };
 }

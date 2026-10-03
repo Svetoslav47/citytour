@@ -11,7 +11,7 @@ import { readTour } from './lib/http.mjs';
 
 const BUDGET_BYTES = 15 * 1024 * 1024;
 const inputs = loadInputs();
-const first = await buildPack(inputs, { hookPath: null });
+const first = await buildPack(inputs); // with the B7 hook (70-narrate.mjs), exactly as build-pack.sh
 const file = (p) => JSON.parse(first.files.find((f) => f.path === p).bytes.toString('utf8'));
 
 test('builtAt comes from SOURCES.md (newest timestamp), never the clock', () => {
@@ -21,7 +21,7 @@ test('builtAt comes from SOURCES.md (newest timestamp), never the clock', () => 
 });
 
 test('two builds are byte-identical', async () => {
-  const second = await buildPack(inputs, { hookPath: null });
+  const second = await buildPack(inputs);
   assert.deepEqual(second.files.map((f) => [f.path, sha256(f.bytes)]), first.files.map((f) => [f.path, sha256(f.bytes)]));
 });
 
@@ -76,7 +76,8 @@ test('POIs: all of Kraków, unique ids, projected x/y, every source resolves, to
     assert.ok(p, s.poiId);
     assert.deepEqual([p.lat, p.lng, p.kind, p.triggerRadiusM], [s.lat, s.lng, s.kind, s.triggerRadiusM]);
     assert.deepEqual(p.view, { look: s.view.look, feature: s.view.feature });
-    assert.equal(p.tier, 'source-extract');
+    // B7 Historian scripts: reviewed once a human approved the EN file, else an AI draft (grounded-ai).
+    assert.ok(['reviewed', 'grounded-ai'].includes(p.tier), `${p.id} tier ${p.tier}`);
   }
 });
 

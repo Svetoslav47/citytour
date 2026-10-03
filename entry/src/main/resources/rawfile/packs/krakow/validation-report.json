@@ -1,8 +1,8 @@
 {
  "validatorVersion": 1,
  "summary": {
-  "narrations": 12903,
-  "pass": 12903,
+  "narrations": 12906,
+  "pass": 12906,
   "fallback": 0,
   "dropped": 0,
   "rejectedCandidates": 0,
@@ -22,8 +22,8 @@
  "counts": {
   "en": {
    "reviewed": 0,
-   "grounded-ai": 0,
-   "source-extract": 240,
+   "grounded-ai": 25,
+   "source-extract": 218,
    "name-only": 4061
   },
   "pl": {
@@ -39,6 +39,7 @@
    "name-only": 4208
   },
   "narrationsPerLength": {
+   "en:deep": 3,
    "en:full": 11,
    "en:teaser": 4290,
    "pl:full": 11,
@@ -47,8 +48,9 @@
    "zh:teaser": 4290
   },
   "poisPerTier": {
+   "grounded-ai": 11,
    "name-only": 3979,
-   "source-extract": 311
+   "source-extract": 300
   },
   "poisPerKind": {
    "building": 1903,
@@ -68,7 +70,7 @@
  "build": {
   "builtAt": "2026-10-03T14:11:07Z",
   "validatorVersion": 1,
-  "drafts": 0,
+  "drafts": 25,
   "poisExcluded": {
    "city": 1,
    "outsideBox": 5,
