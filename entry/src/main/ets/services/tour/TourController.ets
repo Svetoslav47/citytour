@@ -29,7 +29,7 @@
  */
 import {
   Announcement, AppIssue, Effect, EffectType, EngineEvent, EngineEventType, EngineSnapshot, IssueCode, IssueSeverity,
-  MediaPlayState, PlatformStatus, SignalQuality, StopStatus, TourPhase, TourPlan
+  MediaMeta, MediaPlayState, PlatformStatus, SignalQuality, StopStatus, TourPhase, TourPlan
 } from '../../contracts/EngineTypes';
 import {
   BackgroundListener, BackgroundPort, Clock, Fix, FixSource, HapticsPort, LocationSource, LoggerPort, MediaCommand,
@@ -265,6 +265,7 @@ export class TourController implements TourControl {
   private narrLogged: Set<string> = new Set<string>();
   private deferredInfo: string[] = [];         // NARR_SOURCE kv lines raised inside reduce(), logged after its effects
   private bgUp: boolean = false;
+  private artist: string = 'CityTour · Historian';
   private avsUp: boolean = false;
 
   constructor(deps: TourControllerDeps) {
@@ -450,6 +451,13 @@ export class TourController implements TourControl {
     if (this.running) {
       const ev: EngineEvent = { type: EngineEventType.BG_CANCELLED, nowMs: this.deps.clock.nowMs(), reason: reason };
       this.dispatch(ev);
+      // BackgroundRunner stops the audio with the task (continuous-task guide), which cuts the sentence in flight
+      // without a done callback. Pause the tour so that sentence restarts when the user resumes in the foreground.
+      const st: TourState | undefined = this.state;
+      if (st !== undefined && st.queue.isBusy() && !st.paused) {
+        this.deps.log.warn(LogEvents.BG_CANCEL, `reason=${reason} action=pause_tour`);
+        this.dispatchType(EngineEventType.USER_PAUSE);
+      }
     }
   }
 
@@ -510,6 +518,7 @@ export class TourController implements TourControl {
     const origin: LatLng = this.planningOrigin();
     const p: TourPlan = this.solve(tour, tour.stops.map((s: TourStop) => s.poiId), origin, budgetMin > 0 ? budgetMin * 60 : 0);
     this.tour = tour;
+    this.artist = this.artistFor(tour.personaId);
     this.voicePlan = vp;
     this.lastPlan = p;
     this.buildEngine(tour, vp, p);
@@ -548,6 +557,20 @@ export class TourController implements TourControl {
       `pois=${this.deps.pack.pois().length} narr=${narr} legs=${this.deps.pack.routes().legs.length} ` +
       `tours=${this.deps.pack.tours().length}`);
     return true;
+  }
+
+  private artistFor(personaId: string): string {
+    try {
+      for (const p of this.deps.pack.personas()) {
+        if (p.id === personaId) {
+          const n: string | undefined = p.names.en;
+          return `CityTour · ${n !== undefined && n.length > 0 ? n : personaId}`;
+        }
+      }
+    } catch (e) {
+      this.deps.log.error(LogEvents.UNCAUGHT, `where=TourController.artistFor ${errText(e as Object)}`);
+    }
+    return 'CityTour · Historian';
   }
 
   private findTour(tourId: string): Tour | undefined {
@@ -1124,11 +1147,16 @@ export class TourController implements TourControl {
     if (fx.meta === undefined) {
       return;
     }
-    if (media === undefined || !this.avsUp) {
-      this.noop('meta', LogEvents.AVS_META, `title="${fx.meta.title}" noop=no_session`);
+    if (media === undefined) {
+      this.noop('meta', LogEvents.AVS_META, `title="${fx.meta.title}" noop=no_service`);
       return;
     }
-    media.setMeta(fx.meta);
+    // Artist = "CityTour · <persona>" (the service appends " · Fallback voice" / " · DEMO"); the engine puts the
+    // tour title there, which the card already shows as the album.
+    const m: MediaMeta = {
+      title: fx.meta.title, artist: this.artist, voiceLabel: fx.meta.voiceLabel, demo: fx.meta.demo
+    };
+    media.setMeta(m);                    // a session that is not active yet buffers it (A6)
   }
 
   private mediaState(s: MediaPlayState | undefined): void {
@@ -1136,8 +1164,8 @@ export class TourController implements TourControl {
     if (s === undefined) {
       return;
     }
-    if (media === undefined || !this.avsUp) {
-      this.noop('state', LogEvents.AVS_META, `state=${s} noop=no_session`);
+    if (media === undefined) {
+      this.noop('state', LogEvents.AVS_META, `state=${s} noop=no_service`);
       return;
     }
     media.setState(s);

@@ -368,7 +368,10 @@ class FakeBackground implements BackgroundPort {
     return this.running;
   }
 
+  listener: BackgroundListener | undefined = undefined;
+
   setListener(l: BackgroundListener): void {
+    this.listener = l;
   }
 }
 
@@ -721,6 +724,29 @@ export default function tourControllerTest() {
         expect(h.ctrl.current().platform.demoHold).assertTrue();
         h.ctrl.demoJumpToNext();
         expect(h.demoCtl.jumps).assertEqual(1);
+        h.ctrl.end();
+        done();
+      });
+
+    it('background cancelled mid-sentence pauses the tour; AVSession artist is CityTour + persona', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        await h.ctrl.setSource(FixSource.DEMO);
+        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        h.placeNear(MINI_BARBICAN, 200, 0);
+        await h.ctrl.start();
+        expect(h.media.metas.length > 0).assertTrue();
+        expect(h.media.metas[0].artist).assertEqual('CityTour · Historian');
+        expect(h.media.metas[0].demo).assertTrue();
+        expect(h.media.metas[0].voiceLabel).assertEqual(VoiceLabel.FALLBACK_ZH_READS_EN);
+        h.speech.stopNow();                                            // the runner stops audio with the task
+        (h.bg.listener as BackgroundListener).onCancelled('USER_CANCEL');
+        expect(h.ctrl.current().paused).assertTrue();
+        expect(h.hasIssue(IssueCode.BG_FAIL)).assertTrue();
+        expect(h.log.find('BG_CANCEL', 'action=pause_tour', 0) >= 0).assertTrue();
+        const n: number = h.speech.spoken.length;
+        h.ctrl.resume();
+        expect(h.speech.spoken.length).assertEqual(n + 1);             // the cut sentence restarts
         h.ctrl.end();
         done();
       });

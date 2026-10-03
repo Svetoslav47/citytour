@@ -3,8 +3,8 @@
  * shutdown() in onDestroy. init() builds services but starts nothing. ViewModels read the getters only.
  * A5 wiring: permissions() = PermissionService (location permission + switch), realLocation() = RealLocationSource
  * (Location Kit), demoWalk() = DemoWalkSource (SIMULATED track replay). Built in init(), started by their users.
- * A7 wiring: tourControl() = TourController (engine + Planner + speech + platform ports). Ports whose task is not
- * merged yet (location sources A5, BackgroundRunner/MediaSessionService A6, notifier/haptics A8) are provided as
+ * A7 wiring: tourControl() = TourController (engine + Planner + speech + background() + mediaSession()). Ports whose
+ * task is not merged yet (location sources A5, notifier/haptics A8) are provided as
  * `undefined`, which the controller treats as a logged no-op. ScriptedTourControl stays for UI previews
  * (scriptedTourControl()).
  * A4 wiring: voice() = VoiceManager (listVoices/downloadVoice + pure VoicePolicy), speech() = NarrationPlayer
@@ -94,9 +94,18 @@ export class AppContainer {
   }
 
   static shutdown(): void {
-    // Stop the continuous task (it stops speech first) and destroy the AVSession; both are async, best effort.
+    // The tour first (A7: stops sources and TICK, stops its task and AVSession), then anything a DevPanel button
+    // started outside a tour. Stop the continuous task (it stops speech first) and destroy the AVSession; both are
+    // async, best effort.
     try {
-      if (AppContainer.bgImpl !== undefined) {
+      if (AppContainer.tourImpl !== undefined) {
+        AppContainer.tourImpl.shutdown();
+      }
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=AppContainer.shutdown.tour ${Log.errKv(e as Object)}`);
+    }
+    try {
+      if (AppContainer.bgImpl !== undefined && AppContainer.bgImpl.isRunning()) {
         AppContainer.bgImpl.stop().catch((e: Object) => {
           Log.e(LogEvents.UNCAUGHT, `where=AppContainer.shutdown.bg ${Log.errKv(e)}`);
         });
@@ -110,9 +119,6 @@ export class AppContainer {
       Log.e(LogEvents.UNCAUGHT, `where=AppContainer.shutdown.platform ${Log.errKv(e as Object)}`);
     }
     try {
-      if (AppContainer.tourImpl !== undefined) {
-        AppContainer.tourImpl.shutdown();
-      }
       if (AppContainer.scriptedImpl !== undefined) {
         AppContainer.scriptedImpl.dispose();
       }
@@ -192,8 +198,8 @@ export class AppContainer {
       scheduler: new SystemScheduler(),
       sourceFor: (kind: FixSource): LocationSource | undefined => AppContainer.locationSource(kind),
       demoControls: (): DemoControls | undefined => undefined,          // A5: DemoWalkSource adapter
-      background: (): BackgroundPort | undefined => undefined,          // A6: BackgroundRunner
-      media: (): MediaSessionPort | undefined => undefined,             // A6: MediaSessionService
+      background: (): BackgroundPort | undefined => AppContainer.background(),
+      media: (): MediaSessionPort | undefined => AppContainer.mediaSession(),
       notifier: (): NotifierPort | undefined => undefined,              // A8
       haptics: (): HapticsPort | undefined => undefined,                // A8
       permissions: (): PermissionPort | undefined => AppContainer.permissions()
