@@ -246,14 +246,34 @@ export class MapRenderer {
 
   private drawStops(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camera, ov: MapOverlay,
     pal: MapPalette): void {
-    // Draw upcoming first so next/current plaques sit on top.
-    const order = ov.stops.slice().sort((a: StopMark, b: StopMark) => this.rank(a.state) - this.rank(b.state));
-    for (const st of order) {
+    // Priority: next/current, then the first and last stop, then upcoming, then visited. A plaque that would
+    // overlap one already placed becomes a small dot, so crowded squares (Rynek at overview zoom) stay legible.
+    const last = ov.stops.length - 1;
+    const order = ov.stops.map((st: StopMark, i: number) => i).sort((a: number, b: number) =>
+      this.priority(ov.stops[b], b === 0 || b === last) - this.priority(ov.stops[a], a === 0 || a === last));
+    const placed: number[] = [];
+    const dots: number[] = [];
+    for (const i of order) {
+      const st = ov.stops[i];
       const x = (st.x - cam.cx) * cam.s + w / 2;
       const y = -(st.y - cam.cy) * cam.s + h / 2;
       if (x < -30 || y < -30 || x > w + 30 || y > h + 30) {
         continue;
       }
+      let clash = false;
+      for (let k = 0; k + 1 < placed.length; k += 2) {
+        const dx = placed[k] - x;
+        const dy = placed[k + 1] - y;
+        if (dx * dx + dy * dy < 30 * 30) {
+          clash = true;
+          break;
+        }
+      }
+      if (clash) {
+        dots.push(i);
+        continue;
+      }
+      placed.push(x, y);
       this.drawPlaque(ctx, x, y, st, pal);
       if (ov.labels && st.name !== '' && (st.state === PlaqueState.NEXT || st.state === PlaqueState.CURRENT)) {
         ctx.font = '500 12vp sans-serif';
@@ -266,6 +286,29 @@ export class MapRenderer {
         ctx.fillText(st.name, x + 22, y);
       }
     }
+    // Crowded stops as small dots, under the plaques' halo colours.
+    for (const i of dots) {
+      const st = ov.stops[i];
+      const x = (st.x - cam.cx) * cam.s + w / 2;
+      const y = -(st.y - cam.cy) * cam.s + h / 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = st.state === PlaqueState.VISITED ? pal.tertiary : pal.accent;
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = pal.surface;
+      ctx.stroke();
+    }
+  }
+
+  private priority(st: StopMark, endpoint: boolean): number {
+    if (st.state === PlaqueState.NEXT || st.state === PlaqueState.CURRENT) {
+      return 4;
+    }
+    if (endpoint) {
+      return 3;
+    }
+    return st.state === PlaqueState.UPCOMING ? 2 : 1;
   }
 
   private rank(state: PlaqueState): number {
