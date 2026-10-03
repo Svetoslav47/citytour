@@ -13,9 +13,9 @@
 //   - RouteStep.geomIndex: VERTEX index into RouteLeg.geometry, i.e. the maneuver point is
 //     (geometry[2*geomIndex], geometry[2*geomIndex+1]). Maneuver vertices survive simplification.
 //   - MapFeature.c: flat integer DECIMETRES [x0,y0,x1,y1,...] in the same projected frame.
-//     MapFeature.rings: start offsets into c (array indices, even numbers) of every ring after the first;
-//     absent for lines and single-ring polygons. Ring 0 is the outer ring, the others are holes (fill
-//     with the even-odd rule). Rings do not repeat their first vertex.
+//     MapFeature.rings: polygons only, the start offset into c (array index, even) of every ring, first
+//     always 0; absent for lines. Ring 0 is the outer ring, the others are holes (fill with the even-odd
+//     rule). Rings do not repeat their first vertex.
 //     MapFeature.bb: [minX, minY, maxX, maxY] in decimetres.
 //   - MapData.bounds: [minX, minY, maxX, maxY] in METRES (the area the level covers; features may
 //     extend beyond it). MapData.layers is in draw order, bottom to top.
