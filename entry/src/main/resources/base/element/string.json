@@ -1531,6 +1531,130 @@
     {
       "name": "walk_menu_lang",
       "value": "Continue in %s"
+    },
+    {
+      "name": "home_more_courses",
+      "value": "More courses"
+    },
+    {
+      "name": "home_more_courses_sub",
+      "value": "Download guided walks for other places"
+    },
+    {
+      "name": "courses_title",
+      "value": "Courses"
+    },
+    {
+      "name": "courses_builtin_only",
+      "value": "Only the built-in course"
+    },
+    {
+      "name": "courses_builtin_only_note",
+      "value": "This build has no course server. The built-in course works fully offline."
+    },
+    {
+      "name": "courses_loading",
+      "value": "Checking for courses…"
+    },
+    {
+      "name": "courses_offline",
+      "value": "Offline. Showing the last saved list."
+    },
+    {
+      "name": "courses_offline_empty",
+      "value": "Offline. The course list could not be loaded; downloaded courses still work."
+    },
+    {
+      "name": "courses_unverified",
+      "value": "The course list could not be verified, so it is not shown."
+    },
+    {
+      "name": "courses_retry",
+      "value": "Try again"
+    },
+    {
+      "name": "courses_meta",
+      "value": "%1$d stops · %2$s km · %3$d min"
+    },
+    {
+      "name": "courses_meta_no_km",
+      "value": "%1$d stops · %2$d min"
+    },
+    {
+      "name": "courses_builtin",
+      "value": "Built in"
+    },
+    {
+      "name": "courses_active",
+      "value": "In use"
+    },
+    {
+      "name": "courses_download",
+      "value": "Download · %s"
+    },
+    {
+      "name": "courses_download_plain",
+      "value": "Download"
+    },
+    {
+      "name": "courses_downloading",
+      "value": "Downloading… %s"
+    },
+    {
+      "name": "courses_downloaded",
+      "value": "Downloaded ✓"
+    },
+    {
+      "name": "courses_update",
+      "value": "Update"
+    },
+    {
+      "name": "courses_delete",
+      "value": "Delete"
+    },
+    {
+      "name": "courses_use",
+      "value": "Use"
+    },
+    {
+      "name": "courses_failed",
+      "value": "Download failed. Nothing was changed; try again."
+    },
+    {
+      "name": "courses_switch_failed",
+      "value": "This course could not be opened. The previous one stays in use."
+    },
+    {
+      "name": "courses_tour_running",
+      "value": "End the current tour to switch courses."
+    },
+    {
+      "name": "courses_delete_title",
+      "value": "Delete this course?"
+    },
+    {
+      "name": "courses_delete_msg",
+      "value": "It can be downloaded again later."
+    },
+    {
+      "name": "courses_delete_update_msg",
+      "value": "The built-in version stays on the phone."
+    },
+    {
+      "name": "courses_cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "courses_a11y_open",
+      "value": "More courses"
+    },
+    {
+      "name": "settings_online_voice",
+      "value": "Online studio voice"
+    },
+    {
+      "name": "settings_online_voice_note",
+      "value": "Sentences without a recording are fetched from the CityTour server (within 2.5 s) and kept on the phone. Off or offline: the built-in voice reads them."
     }
   ]
 }

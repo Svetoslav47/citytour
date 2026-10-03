@@ -31,7 +31,7 @@ export struct HomePage {
     this.vm.detach();
   }
 
-  @Monitor('app.packState', 'app.textLang')
+  @Monitor('app.packState', 'app.textLang', 'app.courseRev')
   onPackChanged(): void {
     if (this.app.packState === PackState.READY) {
       this.vm.refresh(this.app.textLang);
@@ -340,6 +340,50 @@ export struct HomePage {
     .accessibilityGroup(true)
   }
 
+  /** SERVER.md §6: Home -> Courses. Hidden when the build has no course server (RemoteConfig.BASE_URL ''). */
+  @Builder
+  coursesRow() {
+    Row({ space: Space.S3 }) {
+      Stack() {
+        SymbolGlyph($r('sys.symbol.arrow_down_circle'))
+          .fontSize(20)
+          .fontColor([$r('app.color.text_primary')])
+      }
+      .width(36)
+      .height(36)
+      .borderRadius(10)
+      .backgroundColor($r('app.color.bg_surface_sunken'))
+
+      Column() {
+        Text($r('app.string.home_more_courses'))
+          .fontSize(Type.BODY)
+          .lineHeight(Type.BODY_LH)
+          .fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.text_primary'))
+        Text($r('app.string.home_more_courses_sub'))
+          .fontSize(Type.CALLOUT)
+          .lineHeight(Type.CALLOUT_LH)
+          .fontColor($r('app.color.text_secondary'))
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      SymbolGlyph($r('sys.symbol.chevron_right'))
+        .fontSize(16)
+        .fontColor([$r('app.color.text_tertiary')])
+    }
+    .id('rowMoreCourses')
+    .width('100%')
+    .constraintSize({ minHeight: Size.TOUCH })
+    .padding({ left: Space.S4, right: Space.S3, top: 10, bottom: 10 })
+    .borderRadius(Radius.LG)
+    .backgroundColor($r('app.color.bg_surface'))
+    .margin({ top: Space.S2 })
+    .accessibilityGroup(true)
+    .accessibilityText($r('app.string.courses_a11y_open'))
+    .onClick(() => this.app.openCourses())
+  }
+
   @Builder
   packError() {
     Column({ space: Space.S2 }) {
@@ -392,6 +436,9 @@ export struct HomePage {
             this.demoButton()
             this.sectionHeader($r('app.string.home_explore'))
             this.exploreRow()
+            if (this.vm.coursesEnabled()) {
+              this.coursesRow()
+            }
           }
         }
         .alignItems(HorizontalAlign.Start)

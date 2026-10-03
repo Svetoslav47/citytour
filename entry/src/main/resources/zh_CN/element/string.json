@@ -1531,6 +1531,130 @@
     {
       "name": "walk_menu_lang",
       "value": "改用%s继续"
+    },
+    {
+      "name": "home_more_courses",
+      "value": "更多路线"
+    },
+    {
+      "name": "home_more_courses_sub",
+      "value": "下载其他地方的导览路线"
+    },
+    {
+      "name": "courses_title",
+      "value": "路线"
+    },
+    {
+      "name": "courses_builtin_only",
+      "value": "仅内置路线"
+    },
+    {
+      "name": "courses_builtin_only_note",
+      "value": "此版本没有路线服务器。内置路线可完全离线使用。"
+    },
+    {
+      "name": "courses_loading",
+      "value": "正在查找路线…"
+    },
+    {
+      "name": "courses_offline",
+      "value": "离线。显示上次保存的列表。"
+    },
+    {
+      "name": "courses_offline_empty",
+      "value": "离线。无法加载路线列表；已下载的路线仍可使用。"
+    },
+    {
+      "name": "courses_unverified",
+      "value": "无法验证路线列表，因此不予显示。"
+    },
+    {
+      "name": "courses_retry",
+      "value": "重试"
+    },
+    {
+      "name": "courses_meta",
+      "value": "%1$d 站 · %2$s 公里 · %3$d 分钟"
+    },
+    {
+      "name": "courses_meta_no_km",
+      "value": "%1$d 站 · %2$d 分钟"
+    },
+    {
+      "name": "courses_builtin",
+      "value": "内置"
+    },
+    {
+      "name": "courses_active",
+      "value": "使用中"
+    },
+    {
+      "name": "courses_download",
+      "value": "下载 · %s"
+    },
+    {
+      "name": "courses_download_plain",
+      "value": "下载"
+    },
+    {
+      "name": "courses_downloading",
+      "value": "正在下载… %s"
+    },
+    {
+      "name": "courses_downloaded",
+      "value": "已下载 ✓"
+    },
+    {
+      "name": "courses_update",
+      "value": "更新"
+    },
+    {
+      "name": "courses_delete",
+      "value": "删除"
+    },
+    {
+      "name": "courses_use",
+      "value": "使用"
+    },
+    {
+      "name": "courses_failed",
+      "value": "下载失败，未作任何更改，请重试。"
+    },
+    {
+      "name": "courses_switch_failed",
+      "value": "无法打开此路线，仍使用之前的路线。"
+    },
+    {
+      "name": "courses_tour_running",
+      "value": "请先结束当前导览再切换路线。"
+    },
+    {
+      "name": "courses_delete_title",
+      "value": "删除此路线？"
+    },
+    {
+      "name": "courses_delete_msg",
+      "value": "以后可以重新下载。"
+    },
+    {
+      "name": "courses_delete_update_msg",
+      "value": "内置版本仍保留在手机上。"
+    },
+    {
+      "name": "courses_cancel",
+      "value": "取消"
+    },
+    {
+      "name": "courses_a11y_open",
+      "value": "更多路线"
+    },
+    {
+      "name": "settings_online_voice",
+      "value": "在线录音室语音"
+    },
+    {
+      "name": "settings_online_voice_note",
+      "value": "没有录音的句子会从 CityTour 服务器获取（2.5 秒内）并保存在手机上。关闭或离线时由内置语音朗读。"
     }
   ]
 }

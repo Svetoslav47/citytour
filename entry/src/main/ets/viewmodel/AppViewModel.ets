@@ -28,6 +28,7 @@ export class Routes {
   static readonly SETTINGS_APP_LANG: string = 'SettingsAppLanguage';
   static readonly SETTINGS_VOICE: string = 'SettingsVoice';
   static readonly SUMMARY: string = 'Summary';                        // B11
+  static readonly COURSES: string = 'Courses';                        // SERVER.md §6: downloadable courses
 }
 
 export enum PackState { LOADING = 'loading', READY = 'ready', ERROR = 'error' }
@@ -58,6 +59,8 @@ export class AppViewModel {
   @Trace demoSpeed: number = AppConfig.DEMO_DEFAULT_SPEED;
   /** One flow at a time: Tour detail -> Route ready -> Before you go. */
   @Trace tourPlan: TourPlanViewModel = new TourPlanViewModel();
+  /** Bumped when the active course changes (Courses screen); Home and About re-read the pack. */
+  @Trace courseRev: number = 0;
   private loadStarted: boolean = false;
 
   /**
@@ -101,6 +104,24 @@ export class AppViewModel {
     if (!res.ok) {
       Log.e(LogEvents.PACK_ERR, `where=ui issues=${res.issues.length}`);
     }
+  }
+
+  /** SERVER.md §6: the active course changed (the pack is already loaded by CourseRepository). */
+  courseChanged(): void {
+    this.courseRev++;
+    AppContainer.packRepository().load().then((res: PackLoadResult) => {
+      if (res.manifest !== undefined) {
+        this.packVersion = res.manifest.version;
+        this.packBuiltAt = res.manifest.builtAt.substring(0, 10);
+        this.packPois = res.manifest.counts.pois;
+      }
+    }).catch((e: Object) => {
+      Log.e(LogEvents.UNCAUGHT, `where=AppViewModel.courseChanged ${Log.errKv(e)}`);
+    });
+  }
+
+  openCourses(): void {
+    this.push(Routes.COURSES, '');
   }
 
   openTour(tourId: string): void {
