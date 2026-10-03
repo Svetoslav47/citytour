@@ -1675,6 +1675,38 @@
     {
       "name": "route_budget_exact",
       "value": "精确求解"
+    },
+    {
+      "name": "widget_display_name",
+      "value": "下一站"
+    },
+    {
+      "name": "widget_desc",
+      "value": "游览途中的下一站、距离和进度。"
+    },
+    {
+      "name": "widget_next",
+      "value": "下一站 · %1$d/%2$d"
+    },
+    {
+      "name": "widget_here",
+      "value": "已到达 · %1$d/%2$d"
+    },
+    {
+      "name": "widget_at_stop",
+      "value": "本站讲解"
+    },
+    {
+      "name": "widget_stops_heard",
+      "value": "已听站点"
+    },
+    {
+      "name": "widget_idle_title",
+      "value": "克拉科夫步行游览"
+    },
+    {
+      "name": "widget_idle_foot",
+      "value": "点按开始游览"
     }
   ]
 }

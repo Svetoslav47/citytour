@@ -1675,6 +1675,38 @@
     {
       "name": "route_budget_exact",
       "value": "solved exactly"
+    },
+    {
+      "name": "widget_display_name",
+      "value": "Next stop"
+    },
+    {
+      "name": "widget_desc",
+      "value": "Your next stop, distance and progress during a tour."
+    },
+    {
+      "name": "widget_next",
+      "value": "Next · %1$d/%2$d"
+    },
+    {
+      "name": "widget_here",
+      "value": "Here · %1$d/%2$d"
+    },
+    {
+      "name": "widget_at_stop",
+      "value": "Story at this stop"
+    },
+    {
+      "name": "widget_stops_heard",
+      "value": "stops heard"
+    },
+    {
+      "name": "widget_idle_title",
+      "value": "Kraków walking tours"
+    },
+    {
+      "name": "widget_idle_foot",
+      "value": "Tap to start a tour"
     }
   ]
 }

@@ -28,6 +28,9 @@ if [ -f "$SCAFFOLD_INDEX" ] && [ "$(git hash-object "$SCAFFOLD_INDEX")" = "$SCAF
   echo "test.sh: V1 guard skips $SCAFFOLD_INDEX (unmodified DevEco scaffold, replaced by task B4)"
   V1_HITS="$(printf '%s\n' "$V1_HITS" | grep -v "^$SCAFFOLD_INDEX:")"
 fi
+# ArkTS cards support state management V2 only from API 23 (doc arkts-v1-v2-migration-card); the app's minimum is
+# API 20, so the home-screen card page (B14) stays on V1 (@Entry(LocalStorage) + @Component + @LocalStorageProp).
+V1_HITS="$(printf '%s\n' "$V1_HITS" | grep -v '^entry/src/main/ets/widget/pages/' || true)"
 if [ -n "$V1_HITS" ]; then
   printf '%s\n' "$V1_HITS"
   fail "V1 state-management decorator found (use V2: @ComponentV2, @Local, @Param, @ObservedV2, @Trace ...)"

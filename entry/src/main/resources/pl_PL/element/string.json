@@ -1675,6 +1675,38 @@
     {
       "name": "route_budget_exact",
       "value": "wyliczone dokładnie"
+    },
+    {
+      "name": "widget_display_name",
+      "value": "Następny przystanek"
+    },
+    {
+      "name": "widget_desc",
+      "value": "Następny przystanek, odległość i postęp podczas trasy."
+    },
+    {
+      "name": "widget_next",
+      "value": "Dalej · %1$d/%2$d"
+    },
+    {
+      "name": "widget_here",
+      "value": "Jesteś tu · %1$d/%2$d"
+    },
+    {
+      "name": "widget_at_stop",
+      "value": "Opowieść o tym miejscu"
+    },
+    {
+      "name": "widget_stops_heard",
+      "value": "wysłuchane przystanki"
+    },
+    {
+      "name": "widget_idle_title",
+      "value": "Spacery po Krakowie"
+    },
+    {
+      "name": "widget_idle_foot",
+      "value": "Dotknij, aby zacząć"
     }
   ]
 }

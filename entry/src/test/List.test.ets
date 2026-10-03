@@ -26,6 +26,7 @@ import settingsTest from './Settings.test';
 import systemLinesTest from './SystemLines.test';
 import hudRowsTest from './HudRows.test';
 import langSwitchTest from './LangSwitch.test';
+import cardModelTest from './CardModel.test';
 import tourSummaryTest from './TourSummary.test';
 import remoteEnvelopeTest from './RemoteEnvelope.test';
 import courseRulesTest from './CourseRules.test';
@@ -57,6 +58,7 @@ export default function testsuite() {
   systemLinesTest();
   hudRowsTest();
   langSwitchTest();
+  cardModelTest();
   tourSummaryTest();
   remoteEnvelopeTest();
   courseRulesTest();
