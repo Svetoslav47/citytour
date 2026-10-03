@@ -30,6 +30,11 @@ done <<<"$STAGED"
 
 # 3. Keys and tokens in added lines. Reports file names only, never the matched text.
 KEY_RE='sk-ant-[A-Za-z0-9_-]{8,}|ANTHROPIC_API_KEY=["'\'']?[A-Za-z0-9_-]{8,}|BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY'
+# ElevenLabs (A13): the key lives only in the user's shell env. Block a literal value after ELEVENLABS_API_KEY=,
+# a literal xi-api-key header value, and the sk_<hex> key shape. A variable (xi-api-key: apiKey) is not a hit.
+KEY_RE="$KEY_RE"'|ELEVENLABS_API_KEY[[:space:]]*[:=][[:space:]]*["'\'']?[A-Za-z0-9_-]{16,}'
+KEY_RE="$KEY_RE"'|[Xx][Ii]-[Aa][Pp][Ii]-[Kk][Ee][Yy]["'\'']?[[:space:]]*[:=][[:space:]]*["'\'']?[A-Za-z0-9_-]{16,}'
+KEY_RE="$KEY_RE"'|sk_[a-f0-9]{32,}'
 hits="$(git diff --cached -U0 --diff-filter=ACMR --no-color |
   awk -v re="$KEY_RE" '/^\+\+\+ /{f=substr($0,7); next} /^\+/{if (substr($0,2) ~ re) n[f]++}
     END{for (k in n) print "  " k " (" n[k] " line(s))"}')"
