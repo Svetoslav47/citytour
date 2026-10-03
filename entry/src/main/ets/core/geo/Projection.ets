@@ -54,6 +54,3 @@ export class Projection {
     return ll;
   }
 }
-
-/** The Kraków pack projection (origin Rynek Główny). */
-export const KRAKOW_PROJECTION: Projection = new Projection(PACK_ORIGIN_LAT, PACK_ORIGIN_LNG);

@@ -55,9 +55,12 @@ export class SourcePackRepository implements PackRepository {
   private maps: Map<string, MapData> = new Map<string, MapData>();
   private narr: NarrationRepository;
   private prefetched: Map<string, string> = new Map<string, string>();
+  /** A city places pack (data/city/<id>/): no tours.json, no routes, no personas (SERVER.md §3, R7). */
+  private readonly placesOnly: boolean;
 
-  constructor(src: PackSource) {
+  constructor(src: PackSource, placesOnly: boolean = false) {
     this.src = src;
+    this.placesOnly = placesOnly;
     this.narr = new NarrationRepository((lang: Lang) => this.readTextSync(`narrations/${lang}.json`),
       (id: string) => this.poiById.get(id), (id: string) => this.sourceById.has(id));
   }
@@ -71,6 +74,26 @@ export class SourcePackRepository implements PackRepository {
 
   pois(): Poi[] {
     return this.poiList;
+  }
+
+  /** The loaded pack manifest (undefined before a successful load). */
+  manifest(): PackManifest | undefined {
+    return this.manifestData;
+  }
+
+  /** The pack's own manifest lists `path` (e.g. 'map-detail.json', 'demo-walk.json'). */
+  hasFile(path: string): boolean {
+    return this.fileIndex.has(path);
+  }
+
+  /** A pack file as text, verified against the pack manifest (size + SHA-256); undefined when missing or bad. */
+  readVerifiedText(path: string): Promise<string | undefined> {
+    return this.fileIndex.has(path) ? this.readText(path, true) : Promise.resolve(undefined);
+  }
+
+  /** The persona fallback chain for this pack's narrations (a city pack has none of its own: the course's). */
+  usePersonas(p: Persona[]): void {
+    this.narr.setPersonas(p);
   }
 
   poi(id: string): Poi | undefined {
@@ -109,7 +132,7 @@ export class SourcePackRepository implements PackRepository {
       }
     }
     if (data === undefined) {
-      const fallbackOrigin: LatLng = { lat: 50.06143, lng: 19.93658 };
+      const fallbackOrigin: LatLng = { lat: 0, lng: 0 };   // only before a successful load (nothing to draw)
       const origin = this.manifestData !== undefined ? this.manifestData.origin : fallbackOrigin;
       data = { level: level, origin: origin, bounds: [0, 0, 0, 0], layers: [] };
     }
@@ -164,17 +187,20 @@ export class SourcePackRepository implements PackRepository {
         this.poiById.set(p.id, p);
       }
 
-      const ttext = await this.readText('tours.json', true);
+      const ttext = this.placesOnly ? '[]' : await this.readText('tours.json', true);
       const tours = ttext === undefined ? undefined : parseTours(ttext);
-      if (tours === undefined || tours.error !== '' || tours.items.length === 0) {
+      if (this.placesOnly) {
+        this.tourList = [];
+      } else if (tours === undefined || tours.error !== '' || tours.items.length === 0) {
         return this.fail(issues, 'tours.json', tours === undefined ? 'missing_or_integrity' : tours.error || 'empty');
+      } else {
+        const pruned = pruneTourStops(tours.items, (id: string) => this.poiById.has(id));
+        NarrationRepository.logDrops(tours.drops.length + pruned.length,
+          pruned.length > 0 ? pruned[0].reason : (tours.drops.length > 0 ? tours.drops[0].reason : ''), 'tours.json');
+        this.tourList = tours.items.filter((t: Tour) => t.stops.length > 0);
       }
-      const pruned = pruneTourStops(tours.items, (id: string) => this.poiById.has(id));
-      NarrationRepository.logDrops(tours.drops.length + pruned.length,
-        pruned.length > 0 ? pruned[0].reason : (tours.drops.length > 0 ? tours.drops[0].reason : ''), 'tours.json');
-      this.tourList = tours.items.filter((t: Tour) => t.stops.length > 0);
 
-      const petext = await this.readText('personas.json', true);
+      const petext = this.placesOnly ? undefined : await this.readText('personas.json', true);
       const personas = petext === undefined ? undefined : parsePersonas(petext);
       this.personaList = personas === undefined ? [] : personas.items;
       this.narr.setPersonas(this.personaList);
@@ -190,9 +216,11 @@ export class SourcePackRepository implements PackRepository {
           'sources.json');
       }
 
-      const rtext = await this.readText('routes.json', true);
+      const rtext = this.placesOnly ? undefined : await this.readText('routes.json', true);
       const routes = rtext === undefined ? undefined : parseRoutes(rtext);
-      if (routes === undefined || routes.error !== '') {
+      if (this.placesOnly) {
+        this.routeData = emptyRoutes();
+      } else if (routes === undefined || routes.error !== '') {
         // Not blocking: the planner falls back to straight-line estimates (§9 rows 19-20).
         Log.w(LogEvents.ROUTE_FALLBACK, `file=routes.json reason=${routes === undefined ? 'missing' : routes.error}`);
         issues.push({ code: IssueCode.ROUTE_FALLBACK, severity: IssueSeverity.WARN, detail: 'routes.json' });

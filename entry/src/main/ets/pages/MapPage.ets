@@ -2,14 +2,15 @@
  * Full map (B6 P1, DESIGN §3.7, tour mode): the whole native map, interactive (pan, pinch, double-tap zoom,
  * recenter), north-up. Opened from Now Walking (menu "Full map": live walk overlay) or from Tour detail (tap the
  * map: the planned route). The SIMULATED pill shows while the Demo walk drives the dot.
- * B13 explore mode (Home "All places in Kraków"): every place in the pack as dots (PoiLayer), fitted to the
- * course map (the Old Town without one); the layers button toggles the same dots on the tour maps. Tapping a dot opens the place card sheet
+ * B13 explore mode (Home "All places in {city}"): every place of the course's city as dots (PoiLayer), fitted to the
+ * course map (the city's default bounds from its city.json without one); the layers button toggles the same dots on the tour maps. Tapping a dot opens the place card sheet
  * (bindSheet, map stays interactive, doc ts-universal-attributes-sheet-transition) -> Details -> Place detail.
  */
 import { EngineSnapshot } from '../contracts/EngineTypes';
 import { MapData } from '../contracts/Model';
 import { FixSource } from '../contracts/Ports';
-import { KRAKOW_PROJECTION } from '../core/geo/Projection';
+import { Projection } from '../core/geo/Projection';
+import { worldBox } from '../core/content/CityPack';
 import { mapOpenBounds } from '../core/map/Camera';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
@@ -31,9 +32,11 @@ export class MapMode {
   static readonly EXPLORE: string = 'explore';
 }
 
-/** Explore mode opens on the course map's bounds; without a map, on the Old Town (the pre-rendered base image). */
-const OLD_TOWN_BOUNDS: number[] = [KRAKOW_PROJECTION.x(19.929), KRAKOW_PROJECTION.y(50.0525),
-  KRAKOW_PROJECTION.x(19.947), KRAKOW_PROJECTION.y(50.0675)];
+/** Explore mode opens on the course map's bounds; without a map, on the city's default bounds (city.json). */
+function cityDefaultBounds(): number[] {
+  const c = AppContainer.activeCity();
+  return c === undefined ? [] : worldBox(c.defaultBounds, Projection.fromOrigin(c.origin));
+}
 
 @ComponentV2
 export struct MapPage {
@@ -60,7 +63,7 @@ export struct MapPage {
       this.loadPlaces();
     }
     if (this.mode === MapMode.EXPLORE) {
-      this.bounds = mapOpenBounds(this.map?.bounds, OLD_TOWN_BOUNDS);
+      this.bounds = mapOpenBounds(this.map?.bounds, cityDefaultBounds());
     } else if (this.mode === MapMode.WALK) {
       try {
         this.unsubscribe = AppContainer.tourControl().subscribe((s: EngineSnapshot) => {
