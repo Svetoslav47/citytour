@@ -178,8 +178,11 @@ export default function hudRowsTest() {
       expect(contains(find(r, 'route').value, 'OFF ROUTE')).assertTrue();
       expect(find(r, 'route').tone).assertEqual(HudTone.WARN);
       expect(find(r, 'location').tone).assertEqual(HudTone.OFF);
-      expect(find(r, 'voice').value).assertEqual('Studio voice (pre-recorded) · Core Speech zh-CN/13 · paused');
+      expect(find(r, 'voice').value).assertEqual('Studio voice (pre-recorded) · Core Speech zh-CN/13 for other lines · paused');
       expect(find(r, 'session').value).assertEqual('AVSession active · paused');
+      s.platform.ttsEngine = 'clips';
+      expect(find(rows(s), 'voice').value).assertEqual('Studio voice (pre-recorded) · clips only, no TTS · paused');
+      s.platform.ttsEngine = 'zh-CN/13';
       s.voiceLabel = VoiceLabel.TEXT_ONLY_USER;
       s.paused = false;
       s.speechText = true;

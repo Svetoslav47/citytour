@@ -191,10 +191,23 @@ function voiceName(label: VoiceLabel): string {
   }
 }
 
+/**
+ * PlatformStatus.ttsEngine: 'zh-CN/13' style, 'clips' (A13: a clips-only plan, e.g. spoken Polish), 'none' (text).
+ * While a studio clip plays, the Core Speech engine still voices the lines without a clip (directions).
+ */
+function engineText(engine: string, label: VoiceLabel): string {
+  if (engine === '' || engine === 'none') {
+    return `Core Speech ${NA}`;
+  }
+  if (engine === 'clips') {
+    return 'clips only, no TTS';
+  }
+  return label === VoiceLabel.PRERENDERED ? `Core Speech ${engine} for other lines` : `Core Speech ${engine}`;
+}
+
 function voiceRow(s: EngineSnapshot): HudRow {
   const parts: string[] = [voiceName(s.voiceLabel)];
-  parts.push(s.platform.ttsEngine !== '' && s.platform.ttsEngine !== 'none' ? `Core Speech ${s.platform.ttsEngine}` :
-    `Core Speech ${NA}`);
+  parts.push(engineText(s.platform.ttsEngine, s.voiceLabel));
   parts.push(s.nowPlaying === undefined ? 'idle' : s.paused ? 'paused' : s.speechText ? 'showing text' : 'speaking');
   let tone: HudTone = HudTone.OK;
   if (s.voiceLabel === VoiceLabel.FALLBACK_ZH_READS_EN) {
