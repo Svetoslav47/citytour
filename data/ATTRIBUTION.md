@@ -5,14 +5,14 @@
 Narration voice generated with ElevenLabs (eleven_multilingual_v2, voice 'George'); scripts AI-drafted, see review status.
 
 - Provider: ElevenLabs, model `eleven_multilingual_v2`, premade voice "George" (voice id `JBFqnCBsd6RMkjVDRZzb`), output `mp3_44100_64`.
-- What: one clip per sentence of the Historian teaser and full stop stories, in English, Polish and Chinese (489 clips, 22.4 MB) in `entry/src/main/resources/rawfile/audio/`, listed in `audio/manifest.json`. Deep stories, directions and other live lines have no clip and use the on-device HarmonyOS voice (Core Speech Kit) or text.
+- What: one clip per sentence of the Historian teaser and full stop stories, in English, Polish and Chinese, plus the fixed system, arrival and turn-by-turn lines (1155 clips in total) in `data/course/krakow/audio/`, listed in `audio/manifest.json`. They are part of the Kraków course that the app downloads from the course server (the HAP contains no clips). Deep stories and lines with a live number have no clip and use the on-device HarmonyOS voice (Core Speech Kit) or text.
 - How: rendered once at build time by `scripts/voice/render-elevenlabs.mjs`. The app makes no network call to ElevenLabs and contains no API key.
 - Scripts: the story texts are AI-drafted (Claude, from the cited sources; Polish and Chinese are machine translations). Each story shows its own review status in the app (Place detail, Tour detail).
 - The app labels this audio "Studio voice" and discloses it in About & licences.
 
 ## Map and place data
 
-Shown in the app under **Settings › About › Sources and licences**, and per place under **Place detail › Sources**. Full provenance (endpoints, queries, retrieval times, counts) is in [`raw/SOURCES.md`](raw/SOURCES.md); the pack ships one record per source in `entry/src/main/resources/rawfile/packs/krakow/sources.json`. All snapshots were retrieved on 2026-10-03.
+Shown in the app under **Settings › About › Sources and licences**, and per place under **Place detail › Sources**. Full provenance (endpoints, queries, retrieval times, counts) is in [`raw/SOURCES.md`](raw/SOURCES.md); the course pack (downloaded by the app) carries one record per source in `data/course/krakow/packs/krakow/sources.json`. All snapshots were retrieved on 2026-10-03.
 
 - **OpenStreetMap**: © OpenStreetMap contributors, [ODbL 1.0](https://www.openstreetmap.org/copyright). The offline Old Town map (`map-detail.json`); the credit is drawn on every map in the app.
 - **OSRM** (foot profile, FOSSGIS server `routing.openstreetmap.de`): the 110 walking legs between the tour stops (distances, durations, turn-by-turn steps). Derived from OSM data, ODbL 1.0.

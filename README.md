@@ -6,6 +6,8 @@
 
 CityTour is a mobile tour guide that follows you through the city. It tracks where you are and which way you are walking. When you reach a place of historic or cultural significance, it explains that place to you.
 
+**The app ships no built-in course.** On first start Home says "Download your first walk"; the Kraków course (pack + 1155 studio-voice clips, ~40 MB, 1167 signed files) is downloaded once from the course server ([`server/`](server/README.md), deployed at `https://citytour-server.onrender.com`). After that everything works offline: the downloaded pack, the downloaded clips, and the built-in voice only as the last resort. See [Courses](#courses-and-online-voice).
+
 Project scope and decisions are recorded in [`HACKATHON_BRIEF.md`](HACKATHON_BRIEF.md).
 
 ## Challenge area
@@ -20,9 +22,9 @@ _Updated as each capability lands. Every entry links to the code that uses it._
 | --- | --- | --- | --- |
 | — | — | — | planned |
 | Next-stop notification (glanceable with the screen off; text-only arrival line) | Notification Kit `notificationManager` (`requestEnableNotification`, `publish` id 1001 `isAlertOnce` SERVICE_INFORMATION slot, `cancel`) | [`services/notify/TourNotifier.ets`](entry/src/main/ets/services/notify/TourNotifier.ets), text rules in [`core/notify/NotifyText.ets`](entry/src/main/ets/core/notify/NotifyText.ets) | verified on emulator (sdk24) |
-| Pre-rendered stop-story clips (studio voice, offline) with native-TTS fallback per sentence | Media Kit `AVPlayer` (`fdSrc` from Localization Kit `resourceManager.getRawFd`, `STREAM_USAGE_AUDIOBOOK`) | [`services/audio/ClipPlayer.ets`](entry/src/main/ets/services/audio/ClipPlayer.ets), selection in [`core/speech/ClipSelection.ets`](entry/src/main/ets/core/speech/ClipSelection.ets), used by [`services/speech/NarrationPlayer.ets`](entry/src/main/ets/services/speech/NarrationPlayer.ets) | **489 clips ship** (Historian, teaser + full, en/pl/zh, 22.4 MB, voice "George", `eleven_multilingual_v2`). A tour whose story language has clips runs on them (`NARR_AUDIO event=story_voice clips=yes`, then `src=prerendered reason=hash_match` per sentence); deep stories and dynamic lines stay native TTS (en/zh) or text (pl). Unit-tested; emulator run of the phase 2 tour path not yet verified |
-| Downloadable courses (optional server) | Network Kit `http` (timeouts + overall deadline per call; `ohos.permission.INTERNET`), Crypto Architecture Kit Ed25519 `createVerify` over the signed catalog/manifest, async SHA-256 `createMd` per blob, Core File Kit `fileIo` (temp folder + one atomic `rename`), TaskPool (clip manifest parse) | [`services/remote/`](entry/src/main/ets/services/remote/), rules in [`core/remote/`](entry/src/main/ets/core/remote/), UI [`pages/CoursesPage.ets`](entry/src/main/ets/pages/CoursesPage.ets) | unit-tested (canonical JSON vs the server's signed seed, course merge rules); not run against a live server yet |
-| Runtime studio voice (optional server) | Network Kit `http` `POST /v1/tts` (2.5 s budget), Media Kit `AVPlayer` with `fd://` sandbox files (cache `filesDir/tts/<sha>.mp3`) | [`services/speech/RemoteVoice.ets`](entry/src/main/ets/services/speech/RemoteVoice.ets), chain in [`core/remote/VoiceChain.ets`](entry/src/main/ets/core/remote/VoiceChain.ets) | unit-tested decision chain; on-device playback unverified |
+| Pre-rendered stop-story clips (studio voice, offline once downloaded) with native-TTS fallback per sentence | Media Kit `AVPlayer` (`url = fd://` of the downloaded sandbox file, `STREAM_USAGE_AUDIOBOOK`) | [`services/audio/ClipPlayer.ets`](entry/src/main/ets/services/audio/ClipPlayer.ets), selection in [`core/speech/ClipSelection.ets`](entry/src/main/ets/core/speech/ClipSelection.ets), used by [`services/speech/NarrationPlayer.ets`](entry/src/main/ets/services/speech/NarrationPlayer.ets) | **489 clips ship** (Historian, teaser + full, en/pl/zh, 22.4 MB, voice "George", `eleven_multilingual_v2`). A tour whose story language has clips runs on them (`NARR_AUDIO event=story_voice clips=yes`, then `src=prerendered reason=hash_match` per sentence); deep stories and dynamic lines stay native TTS (en/zh) or text (pl). Unit-tested; emulator run of the phase 2 tour path not yet verified |
+| Downloadable courses (the only source of a course) | Network Kit `http` (timeouts + overall deadline per call; `ohos.permission.INTERNET`), Crypto Architecture Kit Ed25519 `createVerify` over the signed catalog/manifest, async SHA-256 `createMd` per blob, Core File Kit `fileIo` (temp folder + one atomic `rename`), TaskPool (clip manifest parse) | [`services/remote/`](entry/src/main/ets/services/remote/), rules in [`core/remote/`](entry/src/main/ets/core/remote/), UI [`pages/CoursesPage.ets`](entry/src/main/ets/pages/CoursesPage.ets) | unit-tested (canonical JSON vs the server's signed seed, course merge rules); not run against a live server yet |
+| Runtime studio voice (course server) | Network Kit `http` `POST /v1/tts` (2.5 s budget), Media Kit `AVPlayer` with `fd://` sandbox files (cache `filesDir/tts/<sha>.mp3`) | [`services/speech/RemoteVoice.ets`](entry/src/main/ets/services/speech/RemoteVoice.ets), chain in [`core/remote/VoiceChain.ets`](entry/src/main/ets/core/remote/VoiceChain.ets) | unit-tested decision chain; on-device playback unverified |
 | Home-screen "Next stop" card (2×2): next stop, distance, progress, SIMULATED pill; tap opens the app | Form Kit: `FormExtensionAbility` + ArkTS card, `formProvider.getPublishedRunningFormInfos` (API 20) + `updateForm`, `postCardAction` router | [`formability/EntryFormAbility.ets`](entry/src/main/ets/formability/EntryFormAbility.ets), [`widget/pages/NextStopCard.ets`](entry/src/main/ets/widget/pages/NextStopCard.ets), push logic [`viewmodel/WidgetBridge.ets`](entry/src/main/ets/viewmodel/WidgetBridge.ets) + [`core/widget/CardModel.ets`](entry/src/main/ets/core/widget/CardModel.ets) | verified on emulator: added from the launcher, updated live during the Demo walk (`WIDGET event=push forms=1 mode=heading ...`), [screenshot](docs/img/widget-active.png) |
 | Arrival haptic | Sensor Service Kit `vibrator` (`isSupportEffectSync` preset, timed fallback; `ohos.permission.VIBRATE`) | [`services/haptics/Haptics.ets`](entry/src/main/ets/services/haptics/Haptics.ets) | called and logged; the emulator has no motor (`14600101`, logged, no crash) |
 
@@ -30,7 +32,7 @@ _Updated as each capability lands. Every entry links to the code that uses it._
 
 _Every simulated input is labelled in the app UI and listed here._
 
-- **Demo walk (simulated location).** Replays a recorded walk along the Royal Route (`entry/src/main/resources/rawfile/demo/royal-route-walk.json`) through the same pipeline instead of GPS. The track is generated by `scripts/demo/make-demo-walk.mjs` along the pack's own legs in the planner's order, with one deliberate ~80 m detour off Grodzka (it triggers the off-route warning and a re-plan), a pass-by stop and 10 s of 60 m accuracy. Switch it in **Settings › Demo › Demo walk (simulated location)** (replay speed 1×/2×/4×/8×, persisted), or one tap with **Try a demo walk** on Home (8×). Every walking surface shows the amber **SIMULATED** pill; logs say `LOC_SOURCE kind=demo simulated=true`.
+- **Demo walk (simulated location).** Offered only while the downloaded Kraków course is active. Replays a recorded walk along the Royal Route (`entry/src/main/resources/rawfile/demo/royal-route-walk.json`, the only content still in the HAP) through the same pipeline instead of GPS. The track is generated by `scripts/demo/make-demo-walk.mjs` along the pack's own legs in the planner's order, with one deliberate ~80 m detour off Grodzka (it triggers the off-route warning and a re-plan), a pass-by stop and 10 s of 60 m accuracy. Switch it in **Settings › Demo › Demo walk (simulated location)** (replay speed 1×/2×/4×/8×, persisted), or one tap with **Try a demo walk** on Home (8×). Every walking surface shows the amber **SIMULATED** pill; logs say `LOC_SOURCE kind=demo simulated=true`.
 - **Tour summary time for the Demo walk.** After a tour, the summary (B11) shows stops heard, distance walked and total time. "Walked" is the route length along the pack's legs from the first stop to the last stop heard (the engine's own GPS distance also adds up position jitter while standing at stops, so it isn't used; it is still logged as `engineWalkedM`). On real GPS the total is the elapsed time. For the Demo walk (replayed at up to 8×) it is a *walking-pace* time: walked metres at the engine's 1.3 m/s plus the real time spent at stops. The summary shows the amber **SIMULATED** pill and "Simulated walk: distances and times come from a recorded route."; the log line is `TOUR_SUMMARY ... time=walking_pace src=demo`.
 
 ## Languages
@@ -41,7 +43,7 @@ The Polish and Chinese UI strings were **machine-drafted by an AI agent** from t
 
 `scripts/pack/strings.test.mjs` runs as part of `scripts/test.sh`. It fails if a locale is missing a key, has an extra one, or changes a value's `%s`/`%d` placeholders.
 
-Story languages are separate from the UI language. They come from the offline pack: see [Data pipeline](#data-pipeline).
+Story languages are separate from the UI language. They come from the downloaded course pack: see [Data pipeline](#data-pipeline).
 
 ## Screenshots
 
@@ -69,7 +71,7 @@ Taken on the Pura 90 emulator (API 24 image, `devecocli ui screenshot`). The amb
 
 ## Data sources and licences
 
-All data is fetched once at build time, committed under [`data/raw/`](data/raw/) and compiled into the offline pack (see [Data pipeline](#data-pipeline)). The app makes no network call for content. Full provenance (endpoints, queries, retrieval times, record counts, what each layer contains) is in [`data/raw/SOURCES.md`](data/raw/SOURCES.md); per-source records ship in the pack as [`sources.json`](entry/src/main/resources/rawfile/packs/krakow/sources.json), and the app shows them in **Settings › About › Sources and licences** and per place in **Place detail › Sources**.
+All data is fetched once at build time, committed under [`data/raw/`](data/raw/) and compiled into the Kraków course pack (see [Data pipeline](#data-pipeline)), which the app downloads once from the course server; after that it makes no network call for content. Full provenance (endpoints, queries, retrieval times, record counts, what each layer contains) is in [`data/raw/SOURCES.md`](data/raw/SOURCES.md); per-source records ship in the course pack as [`sources.json`](data/course/krakow/packs/krakow/sources.json), and the app shows them in **Settings › About › Sources and licences** and per place in **Place detail › Sources**.
 
 | Source | Used for | Retrieved | Licence |
 |---|---|---|---|
@@ -80,7 +82,7 @@ All data is fetched once at build time, committed under [`data/raw/`](data/raw/)
 | City of Kraków ArcGIS (Zintegrowana Platforma GIS: heritage register, UNESCO zone) | Register facts and the UNESCO World Heritage outline | 2026-10-03 | **Unverified**: no published terms; used for coordinates and register facts only, cited with service URL and date ([docs/RISKS.md](docs/RISKS.md) T14) |
 | ElevenLabs (`eleven_multilingual_v2`, voice "George") | Pre-rendered studio-voice clips of the stories and fixed lines | build time | AI-generated audio, see [`data/ATTRIBUTION.md`](data/ATTRIBUTION.md) |
 
-Narration tiers in the pack (from [`validation-report.json`](entry/src/main/resources/rawfile/packs/krakow/validation-report.json)): every place has a teaser in en/pl/zh. 25 per language are **grounded-AI** Historian scripts for the 11 tour stops (drafted by Claude from the cited Wikipedia text, labelled "AI-drafted, not yet reviewed" in the app); the rest are verbatim Wikipedia extracts or a labelled name-only template. All 12,912 narrations pass the validator.
+Narration tiers in the pack (from [`validation-report.json`](data/course/krakow/packs/krakow/validation-report.json)): every place has a teaser in en/pl/zh. 25 per language are **grounded-AI** Historian scripts for the 11 tour stops (drafted by Claude from the cited Wikipedia text, labelled "AI-drafted, not yet reviewed" in the app); the rest are verbatim Wikipedia extracts or a labelled name-only template. All 12,912 narrations pass the validator.
 
 ## Known limitations
 
@@ -136,7 +138,7 @@ The debug `.hap` is written to `entry/build/default/outputs/default/`.
 
 ### Pre-rendered stop-story voice (ElevenLabs, build time)
 
-The app never calls ElevenLabs and ships no key. Narration voice generated with ElevenLabs (eleven_multilingual_v2, voice 'George'); scripts AI-drafted, see review status. The build-time script rendered one mp3 per story sentence into `entry/src/main/resources/rawfile/audio/` plus `audio/manifest.json` (committed: 489 clips, teaser + full, en/pl/zh, 22.4 MB; deep stories have none). At runtime a sentence plays from its clip only when the manifest's `textSha256` equals the SHA-256 of the exact sentence text (same language and persona), otherwise native TTS speaks it (`NARR_AUDIO src=prerendered|tts|text`). Without the folder the app behaves exactly as before.
+The app never calls ElevenLabs and ships no key. Narration voice generated with ElevenLabs (eleven_multilingual_v2, voice 'George'); scripts AI-drafted, see review status. The build-time script rendered one mp3 per sentence into `data/course/krakow/audio/` plus `audio/manifest.json` (committed; stories teaser + full and the system/arrival/nav lines, en/pl/zh, 1155 clips; deep stories have none). They are part of the downloaded course, not the HAP. At runtime a sentence plays from its clip only when the manifest's `textSha256` equals the SHA-256 of the exact sentence text (same language and persona), otherwise native TTS speaks it (`NARR_AUDIO src=prerendered|tts|text`). Without a downloaded course (or without its clips) every sentence uses native TTS or text.
 
 How the voice is chosen (`core/speech/ClipSelection.ets`, `storyVoicePlan`):
 
@@ -163,30 +165,37 @@ Model `eleven_multilingual_v2`, mono `mp3_44100_64` by default (`--output-format
 
 ### Course server (optional, `server/`)
 
-Course downloads and runtime studio voice for lines without a clip come from an optional server ([`docs/SERVER.md`](docs/SERVER.md), Express + TypeScript, Node 22). The app works fully without it. Run it locally, publish the Kraków course and smoke-test it without any ElevenLabs call:
+Course downloads and runtime studio voice for lines without a clip come from the course server ([`docs/SERVER.md`](docs/SERVER.md), Express + TypeScript, Node 22). The app ships no course, so the first run needs it once; afterwards the app works offline. The course files it serves live in [`data/course/krakow/`](data/course/krakow/) (`packs/krakow/...`, `audio/...`, exactly the signed manifest's paths). Run it locally, publish the Kraków course and smoke-test it without any ElevenLabs call:
 
 ```bash
 cd server && npm ci && npm test
 npm run keygen
-npm run publish-course -- --course krakow --pack ../entry/src/main/resources/rawfile/packs/krakow --audio ../entry/src/main/resources/rawfile/audio --data ./data --seed ./seed
+npm run publish-course -- --course krakow --pack ../data/course/krakow/packs/krakow --audio ../data/course/krakow/audio --data ./data --seed ./seed
 ```
 
 Environment, Docker, Render deploy and the smoke test: [`server/README.md`](server/README.md). After a template change in `Phrases.ets`, re-run `publish-course --seed` too (the allowed-lines set holds the exact sentences).
 
-### Courses and online voice (optional server)
+### Courses and online voice
 
-The app is complete without any server: the bundled Kraków course, its pre-rendered clips and the built-in voice work
-offline, exactly as before. A small server ([`docs/SERVER.md`](docs/SERVER.md), `server/`) adds two optional things:
+The app ships **no built-in course** (product decision: a thin client, and the download flow is part of the demo). A
+small server ([`docs/SERVER.md`](docs/SERVER.md), `server/`) provides:
 
-- **More courses.** Home › **More courses** lists the server's catalog: title, city, stops · km · minutes, languages
-  and size, with **Download**, progress, **Downloaded ✓**, **Update**, **Delete** and **Use**. The catalog and each
+- **First run.** Home shows **Download your first walk** › **Browse walks**, which opens Courses; the catalog loads on
+  open. The first course downloaded becomes the active course on its own and Home shows its tour. If the server cannot
+  be reached the Courses screen says so with **Try again** (every call has a timeout; no endless spinner). Deleting the
+  active course switches to another downloaded one, or back to the empty state. Onboarding works without a course (its
+  voice sample falls back to a built-in-voice line).
+- **Courses.** Home › **More courses** lists the server's catalog: title, city, stops · km · minutes, languages
+  and size, with **Download**, progress with **Cancel**, **Downloaded ✓**, **Update**, **Try again**, **Delete** and **Use**. The catalog and each
   course manifest are Ed25519-signed; the app verifies them with the public key in
   [`app/RemoteConfig.ets`](entry/src/main/ets/app/RemoteConfig.ets) and rejects anything unsigned. Every file is checked
   against its SHA-256 and size, written to a temp folder, and swapped into `filesDir/courses/<id>/<version>/` with one
-  rename, so a failed download never breaks a working course. The last good catalog is kept for offline use ("Offline"
-  note). The bundled course is always listed first and cannot be deleted. **Use** makes a downloaded course the active
-  one for Home, Tour detail and the tour (not during a running tour).
-- **Online studio voice** (Settings › Narration, on by default). A sentence with no pre-rendered clip is requested from
+  rename, so a failed download never breaks a working course. Six files download in parallel, each up to three times
+  with a backoff; after a failure the verified files stay in the temp folder, so **Try again** resumes; **Cancel**
+  discards them. Hashing and file IO are asynchronous (off the UI thread). The last good catalog is kept for offline use
+  ("Offline" note). **Use** makes a downloaded course the active one for Home, Tour detail and the tour (not during a
+  running tour).
+- **Online studio voice** (always on). A sentence with no pre-rendered clip is requested from
   `POST /v1/tts` within 2.5 s. The reply must carry `X-Text-Sha256` equal to the sentence's own SHA-256, or it is
   dropped. Accepted audio is cached forever in `filesDir/tts/` and plays as "Studio voice". On a timeout, 429 (daily
   budget), 403, 5xx or no network the sentence uses the built-in voice ("Fallback voice"), or text for Polish. The app
@@ -195,9 +204,9 @@ offline, exactly as before. A small server ([`docs/SERVER.md`](docs/SERVER.md), 
   **Server** row: online, offline, budget or disabled.
 
 Configure it in `RemoteConfig.ets`: `BASE_URL` is the server's HTTPS origin (the committed value is a placeholder;
-an **empty string turns every remote feature off**: no request, no Home entry, the Courses screen says "Only the
-built-in course"), and `SIGNING_PUBLIC_KEY_SPKI_B64` is the server's Ed25519 public key. No secret is ever in the app.
-Limitation: the Demo walk replays the Kraków track, so it only fits the Kraków course.
+an **empty string turns every remote feature off**: no request, and with no course the app can only show "This build has
+no course server"), and `SIGNING_PUBLIC_KEY_SPKI_B64` is the server's Ed25519 public key. No secret is ever in the app.
+The Demo walk replays the Kraków track, so it is offered only while the Kraków course is active.
 
 ### Signing
 
@@ -303,7 +312,7 @@ _To be written as the implementation lands._
 
 ## Data pipeline
 
-The app ships an offline Kraków pack in `entry/src/main/resources/rawfile/packs/krakow/` (generated, never hand-edited). `scripts/pack/build-pack.sh` (Node 22+, standard library only) builds it from the committed snapshots in `data/raw/` and the curated tour `data/tours/royal-route.json`, with the network disabled; two runs give byte-identical files (`manifest.json` lists each file's bytes and sha256).
+The Kraków course pack is built into `data/course/krakow/packs/krakow/` (generated, never hand-edited); the server publishes it and the app downloads it (the HAP bundles no course). `scripts/pack/build-pack.sh` (Node 22+, standard library only) builds it from the committed snapshots in `data/raw/` and the curated tour `data/tours/royal-route.json`, with the network disabled; two runs give byte-identical files (`manifest.json` lists each file's bytes and sha256).
 
 ```bash
 scripts/pack/build-pack.sh           # ~1 s; prints file sizes, counts per language and tier, validation summary
@@ -315,5 +324,5 @@ Content: 4,290 Wikidata places, the Royal Route, 110 OSRM walking legs, the Old 
 ## Pre-existing and third-party components
 
 - Project scaffold: DevEco CLI `devecocli create` (Empty Ability template).
-- Narration voice generated with ElevenLabs (`eleven_multilingual_v2`, premade voice "George"); scripts AI-drafted, see review status. Rendered at build time, shipped as mp3 clips in `rawfile/audio/`; see [`data/ATTRIBUTION.md`](data/ATTRIBUTION.md).
+- Narration voice generated with ElevenLabs (`eleven_multilingual_v2`, premade voice "George"); scripts AI-drafted, see review status. Rendered at build time, published with the course as mp3 clips in `data/course/krakow/audio/` (downloaded by the app); see [`data/ATTRIBUTION.md`](data/ATTRIBUTION.md).
 - Hackathon starter files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `AI_WORKFLOW.md`, `HACKATHON_BRIEF.md`, `hackathon-resources/`) come from https://github.com/onirodeveloper/hackyeah2026-challenge (`default_template/`).

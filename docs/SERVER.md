@@ -1,8 +1,11 @@
 # CityTour server: courses + studio voice
 
 Status: design, agreed Sat 2026-10-03 evening. Implementation: `server/` (Express + TypeScript) and the app's
-`services/remote/`. **The app must work with no server at all**: the bundled Kraków course and the built-in voice
-stay, so the jury build is fully offline-capable.
+`services/remote/`. **Update (Sat night, product decision): the app ships no built-in course.** The Kraków course
+(pack + 1155 clips, 1167 files, ~40 MB) lives in `data/course/krakow/` and is downloaded from the server on first
+use; after that the app is fully offline-capable (downloaded pack, downloaded clips, built-in voice as the last
+resort). Without the server and without a downloaded course the app shows a clear empty/offline state, never a
+crash.
 
 ## 1. What the server does
 
@@ -16,8 +19,8 @@ There are no user accounts, no personal data and no location upload. The server 
 
 ## 2. Fallback chain in the app (per sentence)
 
-1. A clip in the **bundled** or **downloaded** course manifest (sha256 of the exact sentence) gives Studio voice.
-2. Otherwise, if online and "Online studio voice" is on: **`POST /v1/tts`**, with a 2.5 s budget. The first request for a line also has an on-device cache (filesDir/tts/<sha>.mp3) and prefetch of the next sentence. This gives Studio voice.
+1. A clip in the **downloaded** course manifest (sha256 of the exact sentence) gives Studio voice.
+2. Otherwise, if online: **`POST /v1/tts`**, with a 2.5 s budget. The first request for a line also has an on-device cache (filesDir/tts/<sha>.mp3) and prefetch of the next sentence. This gives Studio voice.
 3. Otherwise **built-in TTS** (Core Speech Kit) gives "Fallback voice". For Polish with no clip and no server, the line is text only.
 
 The label always shows the voice actually speaking.
@@ -69,8 +72,8 @@ what it serves (the files are signed once at publish time). Reference implementa
 **Public key encodings.** `npm run keygen` prints the same key three ways: raw 32 bytes (base64), SPKI DER
 (base64, `MCowBQYDK2VwAyEA` + raw) and PEM. HarmonyOS `cryptoFramework` `Ed25519` `convertKey` takes the SPKI DER.
 
-**Manifest `files[].path`.** Paths are relative to the app's `rawfile/` layout, so a downloaded course mirrors the
-bundled one: `packs/<packId>/<file>` (every file of the pack, including `manifest.json` and
+**Manifest `files[].path`.** Paths are relative to the course root (repo `data/course/<id>/`, the server's
+`SEED_FILES_DIR`; on the device `filesDir/courses/<id>/<version>/`): `packs/<packId>/<file>` (every file of the pack, including `manifest.json` and
 `narrations/<lang>.json`), `audio/manifest.json`, and every clip under the path the clip manifest already uses
 (`audio/<lang>/<group-or-poi>/<hash>.mp3`). Download each `files[i]` from `/v1/blobs/<sha256>`, check
 `sha256(bytes) == files[i].sha256` and `bytes.length == files[i].bytes`, then write it to `<courseDir>/<path>`.
@@ -92,7 +95,7 @@ is up to 3 bytes per char, so the limit is 2 KB, not 1 KB), 429 `rate_limited` o
 Shipped clips are pre-seeded in `tts-index.json` at publish time, so they are always cache hits (no credits).
 
 **Deploy data.** `publish-course --seed server/seed` also writes the signed metadata to `server/seed/`
-(committed). The Docker image bundles it plus the pack/clip files, and on boot copies anything missing to
+(committed). The Docker image bundles it plus the pack/clip files from `data/course/krakow/`, and on boot copies anything missing to
 `DATA_DIR` (verifying every sha256). See `server/README.md`.
 
 ## 4. Security
@@ -146,10 +149,10 @@ The server runs on one instance with a persistent volume. That is enough for a h
 
 ## 6. App changes
 - `ohos.permission.INTERNET`. Calls go through Network Kit `http`; large downloads use `@ohos.request` agent with progress.
-- `CourseRepository` merges the **bundled** course (rawfile, always present) with **downloaded** courses (`filesDir/courses/<id>/<version>/`). `PackRepository` reads from whichever course is active.
-- **Courses screen:** shows catalog rows with *Download* (size), progress, *Downloaded*, *Update*, and *Delete*. The last good catalog is kept for offline use.
+- `CourseRepository` manages the **downloaded** courses (`filesDir/courses/<id>/<version>/`); there is no bundled course. `PackRepository` (ActivePackRepository) reads from the active course, or from an empty pack until the first download (Home: "Download your first walk"). The first download becomes active; deleting the active course activates another downloaded one or none.
+- **Courses screen:** shows catalog rows with *Download* (size), progress + *Cancel*, *Downloaded*, *Update*, *Try again* (resumes: verified files in the temp folder are kept after a failure), and *Delete*. The last good catalog is kept for offline use.
 - `RemoteVoice` (SpeechPort decorator) implements step 2 of the fallback chain. It checks `X-Text-Sha256` against the sha of its own text, and drops the audio on any mismatch.
-- Settings has an "Online studio voice" toggle (default on). The HUD shows `server: online|offline|budget`.
+- The online studio voice is always on (no toggle). The HUD shows `server: online|offline|budget`.
 
 ## 7. Deploy
 The server ships as a Docker image (`server/Dockerfile`, node:22-alpine, non-root, healthcheck). Any host with a
