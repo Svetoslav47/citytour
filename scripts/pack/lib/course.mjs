@@ -23,6 +23,23 @@ export const DEFAULT_TOUR_ID = 'royal-route';
 export const TOURS_DIR = join(REPO_ROOT, 'data', 'tours');
 export const COURSE_ROOT = join(REPO_ROOT, 'data', 'course');
 export const REVIEW_ROOT = join(REPO_ROOT, 'scripts', 'pack', 'review');
+
+/**
+ * Which city each course belongs to (city packs, scripts/pack/split-city.mjs). The city pack data/city/<cityId>/
+ * carries the city's places (pois, narrations, sources, map); the course's own overlay pack data/course/<id>/tour/
+ * carries only its tour. A course missing here belongs to no city and gets no overlay. Explicit on purpose: add a
+ * new course here when it is built (and data/city/<cityId>.json when it is a new city).
+ */
+export const COURSE_CITY = Object.freeze({
+  krakow: 'krakow',
+  'krakow-scholars': 'krakow',
+  'krakow-kazimierz': 'krakow',
+});
+
+/** The city id of a course, or null. */
+export function cityOfCourse(courseId) {
+  return Object.prototype.hasOwnProperty.call(COURSE_CITY, courseId) ? COURSE_CITY[courseId] : null;
+}
 const ID_RE = /^[a-z0-9][a-z0-9-]*$/;
 
 /** Every tour file in data/tours: [{ tourId, courseId, file }] sorted by tourId. */
