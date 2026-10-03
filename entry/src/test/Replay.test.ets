@@ -56,7 +56,8 @@ const ARRIVAL_SLACK_MS: number = 10000;
  * while the walker is still approaching. The engine then waits in silence (LINGER, `STORY_LINGER action=wait`) and
  * decides on a later fix: full once the walker has stood still for 4 s (dwell stops 8, 10, 11), teaser only once
  * they have got no closer for 20 s or walked 15 m past (pass-by stop 9, which has a 3 s slow-down at the corner).
- * Before the fix the x1 runs gave dwell stops 8, 10 and 11 only the teaser; now every run asserts the same outcome.
+ * Before the fix the x1 runs gave dwell stops 8, 10 and 11 only the teaser (x4: 10 and 11); now every run asserts
+ * the same outcome.
  */
 
 // ---------------------------------------------------------------- pack built from the fixture stops

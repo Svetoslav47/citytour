@@ -19,7 +19,7 @@
  *   and asks again on every fix. Why: at walking pace the geofence (R + accuracy allowance) is entered ~25-50 s
  *   before the walker reaches the stop, so a decision taken the moment the teaser ends saw a walker who was still
  *   approaching and gave every dwell stop the teaser only. A guide waits to see whether you stop at the monument.
- *   Interpretation (flagged for review): §4.3 lists `insideExit || slow || dwell >= 8 s`, but a walker is
+ *   Interpretation (A3, flagged for review): §4.3 first said `insideExit || slow || dwell >= 8 s`, but a walker is
  *   still inside 1.6 * R when a 20 s teaser ends and spends ~50 s inside R, so "inside" and plain dwell
  *   would make every walk-through FULL. Here leaving the stop forces TEASER_ONLY and dwell counts slow time only.
  * Pure: no platform imports.
