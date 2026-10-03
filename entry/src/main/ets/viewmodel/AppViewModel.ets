@@ -27,6 +27,7 @@ export class Routes {
   static readonly SETTINGS_STORY_LANG: string = 'SettingsStoryLanguage';
   static readonly SETTINGS_APP_LANG: string = 'SettingsAppLanguage';
   static readonly SETTINGS_VOICE: string = 'SettingsVoice';
+  static readonly SUMMARY: string = 'Summary';                        // B11
 }
 
 export enum PackState { LOADING = 'loading', READY = 'ready', ERROR = 'error' }
@@ -119,6 +120,36 @@ export class AppViewModel {
       Log.e(LogEvents.UNCAUGHT, `where=AppViewModel.openNowWalking ${Log.errKv(e as Object)}`);
     }
     this.push(Routes.NOW_WALKING, '');
+  }
+
+  /** B11: the Tour summary replaces Now Walking and sits directly on Home, so back or Done returns Home. */
+  openSummary(): void {
+    try {
+      this.stack.clear(false);
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=AppViewModel.openSummary ${Log.errKv(e as Object)}`);
+    }
+    this.push(Routes.SUMMARY, '');
+  }
+
+  /** Back to Home (the Navigation root). */
+  home(): void {
+    try {
+      this.stack.clear();
+      Log.i(LogEvents.APP_PAGE, 'page=Home');
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=AppViewModel.home ${Log.errKv(e as Object)}`);
+    }
+  }
+
+  /** B11 "Start again": the tour's detail page on top of Home, where the usual plan -> Route ready -> Start runs. */
+  startTourAgain(tourId: string): void {
+    try {
+      this.stack.clear(false);
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=AppViewModel.startTourAgain ${Log.errKv(e as Object)}`);
+    }
+    this.openTour(tourId);
   }
 
   /** Full map; `mode` is 'walk' (live tour) or 'tour' (planned route). */

@@ -6,6 +6,7 @@
  * is read by the zh-CN voice. Back (chevron down) returns Home and the tour keeps running.
  * Ids: btnMinimise, btnWalkMenu, badgeSimulated, chipFallbackVoice, btnReplay, btnPlayPause, btnSkip,
  * btnStops, btnNextStopText, btnBackHome, btnJumpNext, segSpeedN.
+ * B11: when the tour ends (FINISHED or ABORTED) the page hands over to the Tour summary (SummaryPage).
  * B12: the ⋯ menu toggles the "How it works" HUD (views/walk/HowItWorksHud, id hudHowItWorks) over the map.
  */
 import { IssueCode } from '../contracts/EngineTypes';
@@ -46,6 +47,7 @@ export struct NowWalkingPage {
   @Local overlayH: number = 0;
 
   aboutToAppear(): void {
+    this.vm.onTourEnded = () => this.app.openSummary();   // B11: Tour summary when the tour ends
     this.vm.attach(this.app.textLang);
   }
 

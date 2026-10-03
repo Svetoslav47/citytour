@@ -26,6 +26,7 @@ import settingsTest from './Settings.test';
 import systemLinesTest from './SystemLines.test';
 import hudRowsTest from './HudRows.test';
 import langSwitchTest from './LangSwitch.test';
+import tourSummaryTest from './TourSummary.test';
 
 export default function testsuite() {
   harnessTest();
@@ -53,4 +54,5 @@ export default function testsuite() {
   systemLinesTest();
   hudRowsTest();
   langSwitchTest();
+  tourSummaryTest();
 }

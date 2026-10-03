@@ -14,8 +14,10 @@ import { NowWalkingPage } from './NowWalkingPage';
 import { OnboardingPage } from './OnboardingPage';
 import { RouteReadyPage } from './RouteReadyPage';
 import { SettingsPage } from './SettingsPage';
+import { SummaryPage } from './SummaryPage';
 import { TourDetailPage } from './TourDetailPage';
 import { SettingsViewModel } from '../viewmodel/SettingsViewModel';
+import { SummaryViewModel } from '../viewmodel/SummaryViewModel';
 import { AppLanguagePage } from '../views/settings/AppLanguagePage';
 import { StoryLanguagePage } from '../views/settings/StoryLanguagePage';
 import { VoicePage } from '../views/settings/VoicePage';
@@ -31,6 +33,7 @@ struct Index {
     this.app.applySupportedUiLanguage();
     SettingsViewModel.applyAll(this.app);   // B9: narration (A12 restore), voice strategy, UI language, tour, source
     this.app.loadPack();
+    SummaryViewModel.startRecording();   // B11: times every tour for its summary
   }
 
   @Builder
@@ -60,6 +63,8 @@ struct Index {
       AppLanguagePage()
     } else if (name === Routes.SETTINGS_VOICE) {
       VoicePage()
+    } else if (name === Routes.SUMMARY) {
+      SummaryPage()
     }
   }
 
