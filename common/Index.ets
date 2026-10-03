@@ -15,6 +15,7 @@ export * from './src/main/ets/core/geo/FixFilter';
 export * from './src/main/ets/core/geo/GeoMath';
 export * from './src/main/ets/core/geo/GridIndex';
 export * from './src/main/ets/core/geo/Projection';
+export * from './src/main/ets/core/haptics/CueMap';
 export * from './src/main/ets/core/hud/HudRows';
 export * from './src/main/ets/core/map/Camera';
 export * from './src/main/ets/core/map/PoiDots';

@@ -37,6 +37,7 @@ import cityPackTest from './CityPack.test';
 import streamRulesTest from './StreamRules.test';
 import svgPathTest from './SvgPath.test';
 import homeRulesTest from './HomeRules.test';
+import cueMapTest from './CueMap.test';
 
 export default function testsuite() {
   harnessTest();
@@ -75,4 +76,5 @@ export default function testsuite() {
   streamRulesTest();
   svgPathTest();
   homeRulesTest();
+  cueMapTest();
 }
