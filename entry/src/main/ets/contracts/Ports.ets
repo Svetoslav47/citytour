@@ -136,6 +136,8 @@ export interface TourControl {
   // T0 additions: Demo walk controls (labelled "Demo assist" in the UI)
   setDemoSpeed(mult: number): void;              // 1 | 2 | 4 | 8
   demoJumpToNext(): void;
+  // X2 addition (issue #37): story language, live. The queued stories continue at the next sentence in `lang`.
+  setStoryLang(lang: Lang): void;
 }
 
 // ---------- Platform ports (T0) ----------

@@ -136,6 +136,11 @@ export class ScriptedTourControl implements TourControl {
     this.jumpToNextStop();
   }
 
+  /** X2: the scripted stand-in has no stories to switch; logged only. */
+  setStoryLang(lang: Lang): void {
+    Log.i(LogEvents.LANG_SWITCH, `to=${lang} action=none where=scripted`);
+  }
+
   /** Stops the timer and drops listeners. Called from AppContainer.shutdown(). */
   dispose(): void {
     this.stopTimer();
