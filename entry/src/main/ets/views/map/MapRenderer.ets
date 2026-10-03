@@ -69,6 +69,8 @@ function clampPx(metres: number, s: number, minPx: number, maxPx: number): numbe
 export class MapRenderer {
   private layers: LayerPath[] = [];
   private source: MapData | undefined = undefined;
+  private static cacheSource: MapData | undefined = undefined;
+  private static cacheLayers: LayerPath[] = [];
 
   /** Builds the layer paths once per MapData object. */
   setMap(data: MapData | undefined): void {
@@ -80,10 +82,19 @@ export class MapRenderer {
     if (data === undefined) {
       return;
     }
+    // Building the Path2Ds for the whole detail map takes seconds on the emulator; every MapCanvas (Home, Tour
+    // detail, Route ready, Now Walking, Place detail, Full map) used to rebuild it and Now Walking froze the UI
+    // thread (THREAD_BLOCK_6S). Paths are immutable once built, so they are shared per MapData object.
+    if (MapRenderer.cacheSource === data) {
+      this.layers = MapRenderer.cacheLayers;
+      return;
+    }
     for (const l of data.layers) {
       this.layers.push(new LayerPath(l.id, l.geom === 'polygon', l.minScale > 0 ? l.minScale : defaultMinScale(l.id),
         MapRenderer.buildPath(l)));
     }
+    MapRenderer.cacheSource = data;
+    MapRenderer.cacheLayers = this.layers;
   }
 
   hasBase(): boolean {
