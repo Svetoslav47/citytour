@@ -10,6 +10,7 @@ This project uses AI-assisted development. Keep this document current and public
 | DevEco CLI `devecocli` | `@deveco/deveco-cli` 1.3.4, patched with the challenge repo's `scripts/apply-devecocli-patches.mjs` | Project creation, build, install, launch, emulator control, logs |
 | `deveco-cli` Agent Skill | installed by `devecocli init --skill` | Teaches the agent how to use `devecocli` |
 | Hackathon Agent Skills: `ohos-app-scaffold`, `ohos-app-dev`, `ohos-system-app-dev`, `ohos-system-dev`, `conductor-dev`, `hmos-arkts-knowledge-retriever`, `hmos-arkui-scenario-development`, `hmos-arkui-develop-skill`, `hmos-arkui-mvvm-pattern` | https://github.com/onirodeveloper/hackyeah2026-challenge/tree/main/skills, installed with `npx skills add -g` | ArkTS/ArkUI grounding, dev loop, UI development (`conductor-dev` installed but not used, per `AGENTS.md`) |
+| Local commit-discipline instruction (`CLAUDE.local.md` + a local Agent Skill) | Written by the team for this project; kept local and not published | Tells the agent to commit after each small working step, push regularly, keep feature work on branches/worktrees and check for secrets before committing |
 
 ## Important prompts and instructions
 
