@@ -10,7 +10,7 @@
 import { gunzipSync, gzipSync } from 'node:zlib';
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const USER_AGENT = 'CityTour-HackYeah2026 (+https://github.com/Svetoslav47/citytour)';
 export const DEFAULT_TIMEOUT_MS = 30_000;
@@ -270,6 +270,11 @@ export function nowIso(d = new Date()) {
 export function readTour() {
   if (!existsSync(TOUR_FILE)) throw new Error(`missing ${relative(REPO_ROOT, TOUR_FILE)}`);
   return JSON.parse(readFileSync(TOUR_FILE, 'utf8'));
+}
+
+/** True when the module at `metaUrl` is the script node was started with (not an import from a test). */
+export function isMain(metaUrl) {
+  return Boolean(process.argv[1]) && metaUrl === pathToFileURL(resolve(process.argv[1])).href;
 }
 
 /** Runs a script's async main and maps any error to exit code 1 with a one-line reason. */
