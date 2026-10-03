@@ -5,8 +5,10 @@
  * (`fast`) only water, green, major streets and the overlays are drawn. Returns the frame time in ms
  * (logged as MAP_FRAME by MapCanvas). Canvas: doc ts-components-canvas-canvas (CanvasRenderingContext2D, Path2D).
  */
-import { MapData, MapFeature, MapLayer } from '../../contracts/Model';
+import { MapData } from '../../contracts/Model';
 import { Camera } from '../../core/map/Camera';
+import { svgPathOf } from '../../core/map/SvgPath';
+import { Log } from '../../app/Log';
 import { PlaqueState } from '../common/Plaque';
 import { defaultMinScale, LineWidth, MapPalette } from './MapStyle';
 import { PoiLayer } from './PoiLayer';
@@ -61,17 +63,18 @@ class LayerPath {
   }
 }
 
-const DM: number = 10;   // pack geometry: decimetres
 
 function clampPx(metres: number, s: number, minPx: number, maxPx: number): number {
   return Math.max(minPx, Math.min(maxPx, metres * s));
 }
 
+const MAP_FRAME: string = 'MAP_FRAME';
+
 export class MapRenderer {
   private layers: LayerPath[] = [];
   private source: MapData | undefined = undefined;
-  private static cacheSource: MapData | undefined = undefined;
-  private static cacheLayers: LayerPath[] = [];
+  /** Built paths per MapData object (a few maps per session: the city map, a course's own map). */
+  private static cache: Map<MapData, LayerPath[]> = new Map<MapData, LayerPath[]>();
 
   /** Builds the layer paths once per MapData object. */
   setMap(data: MapData | undefined): void {
@@ -86,16 +89,21 @@ export class MapRenderer {
     // Building the Path2Ds for the whole detail map takes seconds on the emulator; every MapCanvas (Home, Tour
     // detail, Route ready, Now Walking, Place detail, Full map) used to rebuild it and Now Walking froze the UI
     // thread (THREAD_BLOCK_6S). Paths are immutable once built, so they are shared per MapData object.
-    if (MapRenderer.cacheSource === data) {
-      this.layers = MapRenderer.cacheLayers;
+    const hit = MapRenderer.cache.get(data);
+    if (hit !== undefined) {
+      this.layers = hit;
       return;
     }
+    const t0 = Date.now();
     for (const l of data.layers) {
       this.layers.push(new LayerPath(l.id, l.geom === 'polygon', l.minScale > 0 ? l.minScale : defaultMinScale(l.id),
-        MapRenderer.buildPath(l)));
+        new Path2D(svgPathOf(l))));
     }
-    MapRenderer.cacheSource = data;
-    MapRenderer.cacheLayers = this.layers;
+    if (MapRenderer.cache.size >= 4) {
+      MapRenderer.cache.clear();
+    }
+    MapRenderer.cache.set(data, this.layers);
+    Log.i(MAP_FRAME, `event=paths_built layers=${this.layers.length} ms=${Date.now() - t0}`);
   }
 
   hasBase(): boolean {
@@ -104,35 +112,6 @@ export class MapRenderer {
 
   layerCount(): number {
     return this.layers.length;
-  }
-
-  private static buildPath(l: MapLayer): Path2D {
-    const p = new Path2D();
-    const polygon = l.geom === 'polygon';
-    for (const f of l.features) {
-      MapRenderer.addFeature(p, f, polygon);
-    }
-    return p;
-  }
-
-  /** `rings` are start offsets into `c` (flat index, even); one ring when absent. */
-  private static addFeature(p: Path2D, f: MapFeature, polygon: boolean): void {
-    const c = f.c;
-    const starts: number[] = f.rings !== undefined && f.rings !== null && f.rings.length > 0 ? f.rings : [0];
-    for (let r = 0; r < starts.length; r++) {
-      const from = starts[r];
-      const to = r + 1 < starts.length ? starts[r + 1] : c.length;
-      if (from < 0 || from + 1 >= c.length) {
-        continue;
-      }
-      p.moveTo(c[from] / DM, c[from + 1] / DM);
-      for (let i = from + 2; i + 1 < to; i += 2) {
-        p.lineTo(c[i] / DM, c[i + 1] / DM);
-      }
-      if (polygon) {
-        p.closePath();
-      }
-    }
   }
 
   /** `transparentLand`: clear instead of painting the land, so a base image under the canvas shows through. */

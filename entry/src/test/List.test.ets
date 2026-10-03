@@ -35,6 +35,7 @@ import poiDotsTest from './PoiDots.test';
 import coverRulesTest from './CoverRules.test';
 import cityPackTest from './CityPack.test';
 import streamRulesTest from './StreamRules.test';
+import svgPathTest from './SvgPath.test';
 
 export default function testsuite() {
   harnessTest();
@@ -71,4 +72,5 @@ export default function testsuite() {
   coverRulesTest();
   cityPackTest();
   streamRulesTest();
+  svgPathTest();
 }
