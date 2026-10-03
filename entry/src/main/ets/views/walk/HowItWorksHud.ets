@@ -67,7 +67,15 @@ function nextTrigger(snap: EngineSnapshot | undefined): TriggerRadii | undefined
 
 /** Builds the HUD rows for one snapshot; never throws (all rows "n/a" on error). */
 export function hudRowsFor(snap: EngineSnapshot | undefined, nextName: string, demoSpeed: number): HudRow[] {
-  const input: HudInput = { snap: snap, nextName: nextName, demoSpeed: demoSpeed, trigger: nextTrigger(snap) };
+  let server: string | undefined = undefined;
+  try {
+    server = AppContainer.remoteVoice().hudText();
+  } catch (e) {
+    server = undefined;
+  }
+  const input: HudInput = {
+    snap: snap, nextName: nextName, demoSpeed: demoSpeed, trigger: nextTrigger(snap), server: server
+  };
   try {
     return hudRows(input);
   } catch (e) {

@@ -3,7 +3,8 @@
 // state; the trigger radii match what TourEngine actually builds (cross-check against the reducer).
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  HudRow, HudTone, hudDegrees, hudDistance, hudRows, hudSignedDegrees, hudSpeed, NA, TriggerRadii, triggerRadii
+  HudInput, HudRow, HudTone, hudDegrees, hudDistance, hudRows, hudSignedDegrees, hudSpeed, NA, serverRow, TriggerRadii,
+  triggerRadii
 } from '../main/ets/core/hud/HudRows';
 import { TourConfig } from '../main/ets/core/tour/TourConfig';
 import { TourEngine, TourInput, TourState } from '../main/ets/core/tour/TourEngine';
@@ -97,6 +98,19 @@ export default function hudRowsTest() {
       expect(hudSignedDegrees(Number.NaN)).assertEqual(NA);
       expect(hudSpeed(1.34)).assertEqual('1.3 m/s');
       expect(hudSpeed(Number.NaN)).assertEqual(NA);
+    });
+    it('server_row_optional', 0, () => {
+      const base: HudInput = { snap: snap(), nextName: 'x', demoSpeed: 4, trigger: undefined };
+      expect(hudRows(base).length).assertEqual(8);
+      const on: HudInput = { snap: snap(), nextName: 'x', demoSpeed: 4, trigger: undefined,
+        server: 'server online · online voice on · 3 lines cached' };
+      const r = hudRows(on);
+      expect(r.length).assertEqual(9);
+      expect(find(r, 'server').tone).assertEqual(HudTone.OK);
+      expect(serverRow('server offline · online voice on · 0 lines cached').tone).assertEqual(HudTone.WARN);
+      expect(serverRow('server budget reached · online voice on · 0 lines cached').tone).assertEqual(HudTone.WARN);
+      expect(serverRow('server disabled').tone).assertEqual(HudTone.OFF);
+      expect(serverRow('').value).assertEqual(NA);
     });
     it('no_snapshot_is_all_na', 0, () => {
       const r = rows(undefined);

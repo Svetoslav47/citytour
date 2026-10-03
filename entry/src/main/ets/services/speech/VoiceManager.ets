@@ -55,7 +55,8 @@ export class VoiceManager implements VoicePort {
     return this.refresh();
   }
 
-  plan(textLang: Lang): VoicePlan {
+  /** quiet: no VOICE_PLAN log line (RemoteVoice's look-ahead; the real job logs its own plan). */
+  plan(textLang: Lang, quiet: boolean = false): VoicePlan {
     const opts: VoicePolicyOptions = { voiceLang: this.voiceLangValue, fallbackEnContext: this.fallbackCtx };
     let p: VoicePlan;
     try {
@@ -68,7 +69,9 @@ export class VoiceManager implements VoicePort {
       };
       p = t;
     }
-    Log.i(LogEvents.VOICE_PLAN, `${planLogKv(p)} caps_known=${this.capsKnown}`);
+    if (!quiet) {
+      Log.i(LogEvents.VOICE_PLAN, `${planLogKv(p)} caps_known=${this.capsKnown}`);
+    }
     return p;
   }
 

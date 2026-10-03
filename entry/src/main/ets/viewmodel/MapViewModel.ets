@@ -18,6 +18,12 @@ export class MapCache {
   private static detail: MapData | undefined = undefined;
   private static tried: boolean = false;
 
+  /** Remote courses: the active course changed, the next detailMap() reads the new pack's map. */
+  static reset(): void {
+    MapCache.tried = false;
+    MapCache.detail = undefined;
+  }
+
   /** The detail map, or undefined when the pack has none (then only the overlay is drawn). */
   static detailMap(): MapData | undefined {
     if (!MapCache.tried) {

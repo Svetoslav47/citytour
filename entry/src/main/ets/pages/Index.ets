@@ -7,6 +7,8 @@ import { UserSettings } from '../contracts/Settings';
 import { AppViewModel, Routes } from '../viewmodel/AppViewModel';
 import { OnboardingViewModel } from '../viewmodel/OnboardingViewModel';
 import { AboutSourcesPage } from './AboutSourcesPage';
+import { CoursesPage } from './CoursesPage';
+import { RemoteSettings } from '../viewmodel/CoursesViewModel';
 import { HomePage } from './HomePage';
 import { MapPage } from './MapPage';
 import { PlaceDetailPage } from './PlaceDetailPage';
@@ -32,6 +34,7 @@ struct Index {
   aboutToAppear(): void {
     this.app.applySupportedUiLanguage();
     SettingsViewModel.applyAll(this.app);   // B9: narration (A12 restore), voice strategy, UI language, tour, source
+    RemoteSettings.apply();                  // SERVER.md §2: Online studio voice on/off
     this.app.loadPack();
     SummaryViewModel.startRecording();   // B11: times every tour for its summary
   }
@@ -65,6 +68,8 @@ struct Index {
       VoicePage()
     } else if (name === Routes.SUMMARY) {
       SummaryPage()
+    } else if (name === Routes.COURSES) {
+      CoursesPage()
     }
   }
 

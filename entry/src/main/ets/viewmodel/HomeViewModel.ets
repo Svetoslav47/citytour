@@ -95,6 +95,15 @@ export class HomeViewModel {
     }
   }
 
+  /** SERVER.md §6: the "More courses" entry exists only when a course server is configured. */
+  coursesEnabled(): boolean {
+    try {
+      return AppContainer.courses().serverEnabled();
+    } catch (e) {
+      return false;
+    }
+  }
+
   /** A tour is running (or paused) and can be reopened. */
   sessionActive(): boolean {
     const s = this.snap;

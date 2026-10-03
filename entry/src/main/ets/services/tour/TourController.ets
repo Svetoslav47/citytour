@@ -675,6 +675,15 @@ export class TourController implements TourControl {
     return p;
   }
 
+  /**
+   * Remote courses (docs/SERVER.md §6): the active course changed (ActivePackRepository now forwards to another
+   * pack), so the next plan() reloads the pack facts (bbox, counts). Not called while a tour runs.
+   */
+  onPackSwitched(): void {
+    this.packLoaded = false;
+    this.packBbox = [];
+  }
+
   private async ensurePack(): Promise<boolean> {
     if (this.packLoaded) {
       return true;

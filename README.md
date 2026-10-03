@@ -21,6 +21,8 @@ _Updated as each capability lands. Every entry links to the code that uses it._
 | — | — | — | planned |
 | Next-stop notification (glanceable with the screen off; text-only arrival line) | Notification Kit `notificationManager` (`requestEnableNotification`, `publish` id 1001 `isAlertOnce` SERVICE_INFORMATION slot, `cancel`) | [`services/notify/TourNotifier.ets`](entry/src/main/ets/services/notify/TourNotifier.ets), text rules in [`core/notify/NotifyText.ets`](entry/src/main/ets/core/notify/NotifyText.ets) | verified on emulator (sdk24) |
 | Pre-rendered stop-story clips (studio voice, offline) with native-TTS fallback per sentence | Media Kit `AVPlayer` (`fdSrc` from Localization Kit `resourceManager.getRawFd`, `STREAM_USAGE_AUDIOBOOK`) | [`services/audio/ClipPlayer.ets`](entry/src/main/ets/services/audio/ClipPlayer.ets), selection in [`core/speech/ClipSelection.ets`](entry/src/main/ets/core/speech/ClipSelection.ets), used by [`services/speech/NarrationPlayer.ets`](entry/src/main/ets/services/speech/NarrationPlayer.ets) | **489 clips ship** (Historian, teaser + full, en/pl/zh, 22.4 MB, voice "George", `eleven_multilingual_v2`). A tour whose story language has clips runs on them (`NARR_AUDIO event=story_voice clips=yes`, then `src=prerendered reason=hash_match` per sentence); deep stories and dynamic lines stay native TTS (en/zh) or text (pl). Unit-tested; emulator run of the phase 2 tour path not yet verified |
+| Downloadable courses (optional server) | Network Kit `http` (timeouts + overall deadline per call; `ohos.permission.INTERNET`), Crypto Architecture Kit Ed25519 `createVerify` over the signed catalog/manifest, async SHA-256 `createMd` per blob, Core File Kit `fileIo` (temp folder + one atomic `rename`), TaskPool (clip manifest parse) | [`services/remote/`](entry/src/main/ets/services/remote/), rules in [`core/remote/`](entry/src/main/ets/core/remote/), UI [`pages/CoursesPage.ets`](entry/src/main/ets/pages/CoursesPage.ets) | unit-tested (canonical JSON vs the server's signed seed, course merge rules); not run against a live server yet |
+| Runtime studio voice (optional server) | Network Kit `http` `POST /v1/tts` (2.5 s budget), Media Kit `AVPlayer` with `fd://` sandbox files (cache `filesDir/tts/<sha>.mp3`) | [`services/speech/RemoteVoice.ets`](entry/src/main/ets/services/speech/RemoteVoice.ets), chain in [`core/remote/VoiceChain.ets`](entry/src/main/ets/core/remote/VoiceChain.ets) | unit-tested decision chain; on-device playback unverified |
 | Arrival haptic | Sensor Service Kit `vibrator` (`isSupportEffectSync` preset, timed fallback; `ohos.permission.VIBRATE`) | [`services/haptics/Haptics.ets`](entry/src/main/ets/services/haptics/Haptics.ets) | called and logged; the emulator has no motor (`14600101`, logged, no crash) |
 
 ## Mocked or simulated behavior
@@ -164,6 +166,32 @@ npm run publish-course -- --course krakow --pack ../entry/src/main/resources/raw
 ```
 
 Environment, Docker, Render deploy and the smoke test: [`server/README.md`](server/README.md). After a template change in `Phrases.ets`, re-run `publish-course --seed` too (the allowed-lines set holds the exact sentences).
+
+### Courses and online voice (optional server)
+
+The app is complete without any server: the bundled Kraków course, its pre-rendered clips and the built-in voice work
+offline, exactly as before. A small server ([`docs/SERVER.md`](docs/SERVER.md), `server/`) adds two optional things:
+
+- **More courses.** Home › **More courses** lists the server's catalog: title, city, stops · km · minutes, languages
+  and size, with **Download**, progress, **Downloaded ✓**, **Update**, **Delete** and **Use**. The catalog and each
+  course manifest are Ed25519-signed; the app verifies them with the public key in
+  [`app/RemoteConfig.ets`](entry/src/main/ets/app/RemoteConfig.ets) and rejects anything unsigned. Every file is checked
+  against its SHA-256 and size, written to a temp folder, and swapped into `filesDir/courses/<id>/<version>/` with one
+  rename, so a failed download never breaks a working course. The last good catalog is kept for offline use ("Offline"
+  note). The bundled course is always listed first and cannot be deleted. **Use** makes a downloaded course the active
+  one for Home, Tour detail and the tour (not during a running tour).
+- **Online studio voice** (Settings › Narration, on by default). A sentence with no pre-rendered clip is requested from
+  `POST /v1/tts` within 2.5 s. The reply must carry `X-Text-Sha256` equal to the sentence's own SHA-256, or it is
+  dropped. Accepted audio is cached forever in `filesDir/tts/` and plays as "Studio voice". On a timeout, 429 (daily
+  budget), 403, 5xx or no network the sentence uses the built-in voice ("Fallback voice"), or text for Polish. The app
+  skips the server for 60 s after a network error and for 10 min after a 429. Logs: `NARR_AUDIO src=remote|remote_cache|tts|text
+  reason=...`, `REMOTE_TTS ...`, `COURSE ...`, `REMOTE ...` (never the token or the text). The Now Walking HUD has a
+  **Server** row: online, offline, budget or disabled.
+
+Configure it in `RemoteConfig.ets`: `BASE_URL` is the server's HTTPS origin (the committed value is a placeholder;
+an **empty string turns every remote feature off**: no request, no Home entry, the Courses screen says "Only the
+built-in course"), and `SIGNING_PUBLIC_KEY_SPKI_B64` is the server's Ed25519 public key. No secret is ever in the app.
+Limitation: the Demo walk replays the Kraków track, so it only fits the Kraków course.
 
 ### Signing
 

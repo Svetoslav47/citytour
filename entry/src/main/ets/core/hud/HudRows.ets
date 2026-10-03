@@ -36,6 +36,8 @@ export interface HudInput {
   nextName: string;            // '' = unknown
   demoSpeed: number;           // Demo walk speed multiplier; NaN = unknown
   trigger: TriggerRadii | undefined;
+  /** SERVER.md §6: 'server online|offline|budget|disabled ...' (RemoteVoice.hudText); undefined = no row. */
+  server?: string;
 }
 
 /**
@@ -249,5 +251,18 @@ export function hudRows(input: HudInput): HudRow[] {
     voiceRow(s),
     sessionRow(s),
     backgroundRow(s)
-  ];
+  ].concat(input.server !== undefined ? [serverRow(input.server)] : []);
+}
+
+/** Voice/Server row: the optional course + studio-voice server (tone from its state word). */
+export function serverRow(text: string): HudRow {
+  let tone: HudTone = HudTone.NA;
+  if (text.startsWith('server online')) {
+    tone = HudTone.OK;
+  } else if (text.startsWith('server offline') || text.startsWith('server budget') || text.startsWith('server not')) {
+    tone = HudTone.WARN;
+  } else if (text.startsWith('server disabled')) {
+    tone = HudTone.OFF;
+  }
+  return row('server', 'Server', text === '' ? NA : text, tone);
 }

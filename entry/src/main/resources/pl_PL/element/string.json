@@ -1531,6 +1531,130 @@
     {
       "name": "walk_menu_lang",
       "value": "Kontynuuj: %s"
+    },
+    {
+      "name": "home_more_courses",
+      "value": "Więcej tras"
+    },
+    {
+      "name": "home_more_courses_sub",
+      "value": "Pobierz spacery z przewodnikiem po innych miejscach"
+    },
+    {
+      "name": "courses_title",
+      "value": "Trasy"
+    },
+    {
+      "name": "courses_builtin_only",
+      "value": "Tylko wbudowana trasa"
+    },
+    {
+      "name": "courses_builtin_only_note",
+      "value": "Ta wersja nie ma serwera tras. Wbudowana trasa działa w pełni offline."
+    },
+    {
+      "name": "courses_loading",
+      "value": "Sprawdzanie tras…"
+    },
+    {
+      "name": "courses_offline",
+      "value": "Brak połączenia. Pokazuję ostatnio zapisaną listę."
+    },
+    {
+      "name": "courses_offline_empty",
+      "value": "Brak połączenia. Nie udało się wczytać listy tras; pobrane trasy nadal działają."
+    },
+    {
+      "name": "courses_unverified",
+      "value": "Nie udało się zweryfikować listy tras, więc nie jest wyświetlana."
+    },
+    {
+      "name": "courses_retry",
+      "value": "Spróbuj ponownie"
+    },
+    {
+      "name": "courses_meta",
+      "value": "%1$d przystanków · %2$s km · %3$d min"
+    },
+    {
+      "name": "courses_meta_no_km",
+      "value": "%1$d przystanków · %2$d min"
+    },
+    {
+      "name": "courses_builtin",
+      "value": "Wbudowana"
+    },
+    {
+      "name": "courses_active",
+      "value": "W użyciu"
+    },
+    {
+      "name": "courses_download",
+      "value": "Pobierz · %s"
+    },
+    {
+      "name": "courses_download_plain",
+      "value": "Pobierz"
+    },
+    {
+      "name": "courses_downloading",
+      "value": "Pobieranie… %s"
+    },
+    {
+      "name": "courses_downloaded",
+      "value": "Pobrano ✓"
+    },
+    {
+      "name": "courses_update",
+      "value": "Aktualizuj"
+    },
+    {
+      "name": "courses_delete",
+      "value": "Usuń"
+    },
+    {
+      "name": "courses_use",
+      "value": "Wybierz"
+    },
+    {
+      "name": "courses_failed",
+      "value": "Pobieranie nie powiodło się. Nic nie zmieniono; spróbuj ponownie."
+    },
+    {
+      "name": "courses_switch_failed",
+      "value": "Nie udało się otworzyć tej trasy. Poprzednia pozostaje w użyciu."
+    },
+    {
+      "name": "courses_tour_running",
+      "value": "Zakończ bieżącą wycieczkę, aby zmienić trasę."
+    },
+    {
+      "name": "courses_delete_title",
+      "value": "Usunąć tę trasę?"
+    },
+    {
+      "name": "courses_delete_msg",
+      "value": "Można ją później pobrać ponownie."
+    },
+    {
+      "name": "courses_delete_update_msg",
+      "value": "Wbudowana wersja zostaje w telefonie."
+    },
+    {
+      "name": "courses_cancel",
+      "value": "Anuluj"
+    },
+    {
+      "name": "courses_a11y_open",
+      "value": "Więcej tras"
+    },
+    {
+      "name": "settings_online_voice",
+      "value": "Głos studyjny online"
+    },
+    {
+      "name": "settings_online_voice_note",
+      "value": "Zdania bez nagrania są pobierane z serwera CityTour (do 2,5 s) i zapisywane w telefonie. Wyłączone lub offline: czyta je wbudowany głos."
     }
   ]
 }

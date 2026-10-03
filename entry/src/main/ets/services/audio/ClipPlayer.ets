@@ -16,6 +16,10 @@
  *   audioRendererInfo 12+ settable in 'initialized', on('stateChange'|'error'|'audioInterrupt') 9+), API参考/
  *   Localization_Kit/resourceManager getRawFd/closeRawFd 9+, 开发指南/Media_Kit/音频播放/使用AVPlayer播放音频.
  *   All at or below our minimum API 20, so no canIUse guard is needed.
+ * Remote courses (docs/SERVER.md §2, §6): a path starting with '/' is an absolute sandbox file (a downloaded
+ * course's clip, or a runtime studio line cached in filesDir/tts/). It is opened with fileIo.open and played through
+ * `url = 'fd://<fd>'` (Media Kit guide 使用AVPlayer设置播放URL, "应用沙箱文件播放"); the fd is closed after the player is
+ * released. Everything else (prefetch, pause, resume, watchdog, errors) is identical to a rawfile clip.
  */
 import { media } from '@kit.MediaKit';
 import { audio } from '@kit.AudioKit';
@@ -23,6 +27,7 @@ import { common } from '@kit.AbilityKit';
 import { resourceManager } from '@kit.LocalizationKit';
 import { util } from '@kit.ArkTS';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { fileIo as fs } from '@kit.CoreFileKit';
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
 
@@ -50,6 +55,7 @@ class ClipSlot {
   path: string;
   player: media.AVPlayer | undefined = undefined;
   fdHeld: boolean = false;
+  file: fs.File | undefined = undefined;     // absolute sandbox path: our own fd
   prepared: boolean = false;
   armed: boolean = false;
   paused: boolean = false;
@@ -224,6 +230,10 @@ export class ClipPlayer {
   // ---------- internals ----------
 
   private openFd(ctx: common.Context, slot: ClipSlot, p: media.AVPlayer): void {
+    if (slot.path.startsWith('/')) {
+      this.openSandboxFile(slot, p);
+      return;
+    }
     let fdP: Promise<resourceManager.RawFileDescriptor>;
     try {
       fdP = ctx.resourceManager.getRawFd(slot.path);
@@ -241,6 +251,36 @@ export class ClipPlayer {
       p.fdSrc = src;   // -> 'initialized'
     }).catch((e: Object) => {
       this.fail(slot, codeOf(e) === ClipErr.PLAYER ? ClipErr.OPEN : codeOf(e), 'open_rawfile');
+    });
+  }
+
+  private openSandboxFile(slot: ClipSlot, p: media.AVPlayer): void {
+    let fileP: Promise<fs.File>;
+    try {
+      fileP = fs.open(slot.path, fs.OpenMode.READ_ONLY);
+    } catch (e) {
+      fileP = Promise.reject(e);
+    }
+    fileP.then((f: fs.File) => {
+      slot.file = f;
+      if (slot.ended) {
+        this.closeFile(slot);
+        return;
+      }
+      p.url = `fd://${f.fd}`;   // -> 'initialized'
+    }).catch((e: Object) => {
+      this.fail(slot, ClipErr.OPEN, 'open_file');
+    });
+  }
+
+  private closeFile(slot: ClipSlot): void {
+    const f = slot.file;
+    slot.file = undefined;
+    if (f === undefined) {
+      return;
+    }
+    fs.close(f).catch((e: BusinessError) => {
+      Log.w(LogEvents.NARR_AUDIO, `where=close_file ${Log.errKv(e)}`);
     });
   }
 
@@ -348,6 +388,7 @@ export class ClipPlayer {
   }
 
   private releaseFd(slot: ClipSlot): void {
+    this.closeFile(slot);
     if (!slot.fdHeld) {
       return;
     }
