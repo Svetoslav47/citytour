@@ -58,8 +58,15 @@ export default function cueMapTest() {
       expect(g.allow(Cue.ARRIVAL, 0)).assertTrue();
       expect(g.allow(Cue.OFF_ROUTE, ANY_CUE_GAP_MS - 1)).assertFalse();
       expect(g.allow(Cue.OFF_ROUTE, ANY_CUE_GAP_MS)).assertTrue();
-      expect(g.allow(Cue.ARRIVAL, SAME_CUE_GAP_MS - 1)).assertFalse();
-      expect(g.allow(Cue.ARRIVAL, SAME_CUE_GAP_MS)).assertTrue();
+      expect(g.allow(Cue.OFF_ROUTE, ANY_CUE_GAP_MS + SAME_CUE_GAP_MS - 1)).assertFalse();
+      expect(g.allow(Cue.OFF_ROUTE, ANY_CUE_GAP_MS + SAME_CUE_GAP_MS)).assertTrue();
+    });
+
+    it('gate: two stops close together both get their arrival (demo walk: 8 s apart)', 0, () => {
+      const g: CueGate = new CueGate();
+      expect(g.allow(Cue.ARRIVAL, 0)).assertTrue();
+      expect(g.allow(Cue.ARRIVAL, 8000)).assertTrue();
+      expect(g.allow(Cue.ARRIVAL, 8000 + ANY_CUE_GAP_MS - 1)).assertFalse();
     });
   });
 }

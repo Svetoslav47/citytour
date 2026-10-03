@@ -40,6 +40,11 @@ export default class WatchAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
+    try {
+      WatchContainer.attachWindow(windowStage.getMainWindowSync());
+    } catch (e) {
+      Log.e('WATCH_UNCAUGHT', `where=getMainWindowSync ${Log.errKv(e as Object)}`);
+    }
     windowStage.loadContent('pages/WatchHome', (err) => {
       if (err && err.code) {
         Log.e('WATCH_UNCAUGHT', `where=loadContent ${Log.errKv(err)}`);

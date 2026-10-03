@@ -11,6 +11,9 @@ import {
 import { relAngleDeg } from '../geo/GeoMath';
 import { relDirAngle } from '../map/WalkDisplay';
 
+/** "Here" needs a known distance at most this far (the engine also says HERE when it has no usable fix). */
+export const HERE_MAX_M: number = 30;
+
 export class GlanceArrow {
   known: boolean = false;
   /** Clockwise degrees from "straight ahead" (-180..180]. */
@@ -25,7 +28,7 @@ export function glanceArrow(next: NextInfo | undefined, user: UserPos | undefine
     return a;
   }
   if (next.relDir === RelDir.HERE) {
-    a.here = true;
+    a.here = Number.isFinite(next.distanceM) && next.distanceM <= HERE_MAX_M;
     return a;
   }
   const course: number = user !== undefined ? user.courseDeg : Number.NaN;
@@ -41,6 +44,17 @@ export function glanceArrow(next: NextInfo | undefined, user: UserPos | undefine
   return a;
 }
 
+/**
+ * The stop the glance names: while AT_STOP the stop being visited (its story is playing; the engine's next/target
+ * may already point past it, e.g. when the walk passes one stop on the way to another), otherwise the next stop.
+ */
+export function glanceStopId(s: EngineSnapshot): string {
+  if (s.phase === TourPhase.AT_STOP && s.currentStopIdx >= 0 && s.currentStopIdx < s.stops.length) {
+    return s.stops[s.currentStopIdx].poiId;
+  }
+  return s.next !== undefined ? s.next.poiId : '';
+}
+
 /** Stops already done (visited, heard as a teaser, or skipped). */
 export function stopsDone(stops: StopProgress[]): number {
   let n: number = 0;
@@ -54,7 +68,7 @@ export function stopsDone(stops: StopProgress[]): number {
 
 export enum GlanceStatus {
   NONE = 'none', PACK_ERROR = 'packError', PERMISSION = 'permission', LOCATION_OFF = 'locationOff',
-  NO_FIX = 'noFix', OFF_ROUTE = 'offRoute', FINISHED = 'finished'
+  NO_FIX = 'noFix', OUT_OF_AREA = 'outOfArea', OFF_ROUTE = 'offRoute', FINISHED = 'finished'
 }
 
 function has(issues: AppIssue[], code: IssueCode): boolean {
@@ -66,7 +80,7 @@ function has(issues: AppIssue[], code: IssueCode): boolean {
   return false;
 }
 
-/** The single status line of the glance, most important first. */
+/** The single status line of the glance, most important first (far from Kraków: out of area, not off route). */
 export function glanceStatus(s: EngineSnapshot): GlanceStatus {
   if (s.phase === TourPhase.FINISHED) {
     return GlanceStatus.FINISHED;
@@ -82,6 +96,9 @@ export function glanceStatus(s: EngineSnapshot): GlanceStatus {
   }
   if (s.user === undefined || s.signal === SignalQuality.LOST || has(s.issues, IssueCode.LOC_NOFIX)) {
     return GlanceStatus.NO_FIX;
+  }
+  if (has(s.issues, IssueCode.LOC_OUT_OF_AREA)) {
+    return GlanceStatus.OUT_OF_AREA;
   }
   if (s.offRoute) {
     return GlanceStatus.OFF_ROUTE;

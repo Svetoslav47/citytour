@@ -2,7 +2,7 @@
 // Arrow = bearing to the stop minus the walking course; relDir fallback without a course; "here" at the stop;
 // the ring's progress count; the status line priority.
 import { describe, it, expect } from '@ohos/hypium';
-import { GlanceArrow, GlanceStatus, glanceArrow, glanceStatus, stopsDone } from 'common';
+import { GlanceArrow, GlanceStatus, glanceArrow, glanceStatus, glanceStopId, stopsDone } from 'common';
 import {
   AppIssue, EngineSnapshot, IssueCode, IssueSeverity, NextInfo, PlatformStatus, RelDir, SignalQuality, StopProgress,
   StopStatus, TourPhase, UserPos
@@ -64,6 +64,10 @@ export default function glanceTest() {
       const a: GlanceArrow = glanceArrow(next(90, RelDir.HERE, 3), user(0));
       expect(a.here).assertTrue();
       expect(a.known).assertFalse();
+      // The engine also reports HERE without a usable fix (e.g. a fix 7000 km away was filtered): no "here", no arrow.
+      const far: GlanceArrow = glanceArrow(next(Number.NaN, RelDir.HERE, Number.NaN), undefined);
+      expect(far.here).assertFalse();
+      expect(far.known).assertFalse();
     });
 
     it('progress counts visited, teaser-only and skipped stops', 0, () => {
@@ -78,6 +82,22 @@ export default function glanceTest() {
       expect(stopsDone([])).assertEqual(0);
     });
 
+    it('names the stop being visited while at a stop, the next stop otherwise', 0, () => {
+      const s: EngineSnapshot = snap(TourPhase.AT_STOP, [], user(0), false);
+      s.stops = [
+        { poiId: 'barbican', order: 0, status: StopStatus.PENDING },
+        { poiId: 'florian', order: 1, status: StopStatus.VISITED }
+      ];
+      s.currentStopIdx = 1;
+      s.next = next(10, RelDir.AHEAD, 80);
+      s.next.poiId = 'barbican';
+      expect(glanceStopId(s)).assertEqual('florian');
+      s.phase = TourPhase.WALKING;
+      expect(glanceStopId(s)).assertEqual('barbican');
+      s.next = undefined;
+      expect(glanceStopId(s)).assertEqual('');
+    });
+
     it('status line: finished, pack, permission, location off, no fix, off route, in that order', 0, () => {
       expect(glanceStatus(snap(TourPhase.FINISHED, [issue(IssueCode.PERM_DENIED)], user(0), true)))
         .assertEqual(GlanceStatus.FINISHED);
@@ -88,6 +108,8 @@ export default function glanceTest() {
       expect(glanceStatus(snap(TourPhase.WALKING, [issue(IssueCode.LOC_SWITCH_OFF)], undefined, false)))
         .assertEqual(GlanceStatus.LOCATION_OFF);
       expect(glanceStatus(snap(TourPhase.WALKING, [], undefined, false))).assertEqual(GlanceStatus.NO_FIX);
+      expect(glanceStatus(snap(TourPhase.WALKING, [issue(IssueCode.LOC_OUT_OF_AREA)], user(0), true)))
+        .assertEqual(GlanceStatus.OUT_OF_AREA);
       expect(glanceStatus(snap(TourPhase.WALKING, [], user(0), true))).assertEqual(GlanceStatus.OFF_ROUTE);
       expect(glanceStatus(snap(TourPhase.WALKING, [], user(0), false))).assertEqual(GlanceStatus.NONE);
     });

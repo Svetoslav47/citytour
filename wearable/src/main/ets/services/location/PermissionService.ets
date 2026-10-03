@@ -1,4 +1,4 @@
-// Copied unchanged from entry/src/main/ets/services/location/PermissionService.ets for the watch HAP (watch config: app/WatchConfig).
+// Copied from entry/src/main/ets/services/location/PermissionService.ets (one watch change: requestLocationSwitch) for the watch HAP (watch config: app/WatchConfig).
 /*
  * PermissionPort implementation (task A5, docs/ARCHITECTURE.md §2.3 and §9 rows 1-3).
  * Location permission (precise vs approximate), the re-request after a denial and the system location switch.
@@ -141,8 +141,11 @@ export class PermissionService implements PermissionPort {
         if (errCode(e) === ERR_SWITCH_ALREADY_OPEN) {
           return true;
         }
-        Log.e(LogEvents.LOC_SWITCH_OFF, `where=requestGlobalSwitch ${Log.errKv(e)}`);
-        return false;
+        // Watch: dismissing the switch dialog with a swipe rejects with 12100009 even when the user turned
+        // location on, so the real switch state decides.
+        const enabled = this.isLocationSwitchOn();
+        Log.w(LogEvents.LOC_SWITCH_OFF, `where=requestGlobalSwitch enabled=${enabled} ${Log.errKv(e)}`);
+        return enabled;
       });
   }
 

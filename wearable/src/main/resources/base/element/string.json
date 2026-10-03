@@ -107,6 +107,10 @@
     {
       "name": "a11y_arrow",
       "value": "Direction to the next stop"
+    },
+    {
+      "name": "status_out_of_area",
+      "value": "You're far from the tour. Try the Demo walk"
     }
   ]
 }

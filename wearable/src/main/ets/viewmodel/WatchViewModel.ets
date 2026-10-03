@@ -6,7 +6,7 @@
  */
 import {
   Cue, EngineSnapshot, FixSource, GlanceArrow, GlanceStatus, Lang, PackLoadResult, Poi, RoundedDistance, Tour,
-  TourController, TourPhase, glanceArrow, glanceStatus, localized, roundWalkDistance, stopsDone
+  TourController, TourPhase, glanceArrow, glanceStatus, glanceStopId, localized, roundWalkDistance, stopsDone
 } from 'common';
 import { Log } from '../app/Log';
 import { WatchConfig } from '../app/WatchConfig';
@@ -40,6 +40,8 @@ export class WatchViewModel {
   private unsubscribe: (() => void) | undefined = undefined;
   private cueTimer: number = -1;
   private lastStatus: GlanceStatus = GlanceStatus.NONE;
+  /** The new tour has reached WALKING: until then a snapshot of the previous (ended) tour is ignored. */
+  private live: boolean = false;
 
   async load(): Promise<void> {
     const pack: WatchPackRepository | undefined = WatchContainer.pack();
@@ -87,13 +89,17 @@ export class WatchViewModel {
     this.status = GlanceStatus.NO_FIX;
     this.total = this.stopCount;
     this.done = 0;
+    this.live = false;
     Log.i('WATCH_UI', `action=start source=${kind}`);
+    WatchContainer.keepScreenOn(true);
     WatchContainer.startTour(kind);
   }
 
   end(): void {
     Log.i('WATCH_UI', `action=end screen=${this.screen}`);
+    this.live = false;
     WatchContainer.endTour();
+    WatchContainer.keepScreenOn(false);
     this.screen = WatchScreen.START;
     this.cue = undefined;
   }
@@ -103,31 +109,40 @@ export class WatchViewModel {
       return;
     }
     if (s.phase === TourPhase.ABORTED) {
-      this.screen = WatchScreen.START;
+      if (this.live && this.screen === WatchScreen.GLANCE) {
+        this.live = false;
+        this.screen = WatchScreen.START;
+        WatchContainer.keepScreenOn(false);
+      }
       return;
     }
+    this.live = true;
     const pack: WatchPackRepository | undefined = WatchContainer.pack();
     this.simulated = s.source === FixSource.DEMO;
     this.total = s.stops.length;
     this.done = stopsDone(s.stops);
-    if (s.next !== undefined && pack !== undefined) {
-      const poi: Poi | undefined = pack.poi(s.next.poiId);
+    const atStop: boolean = s.phase === TourPhase.AT_STOP;
+    if (pack !== undefined) {
+      const poi: Poi | undefined = pack.poi(glanceStopId(s));
       this.nextName = poi !== undefined ? localized(poi.names, this.lang) : '';
+    }
+    if (s.next !== undefined) {
       const r: RoundedDistance = roundWalkDistance(s.next.distanceM);
       this.distValue = Number.isFinite(s.next.distanceM) ? (r.km ? r.value.toFixed(1) : `${r.value}`) : '';
       this.distUnit = r.km ? 'km' : 'm';
     }
     const a: GlanceArrow = glanceArrow(s.next, s.user);
-    this.arrowKnown = a.known;
+    this.arrowKnown = a.known && !atStop;
     this.arrowDeg = a.deg;
-    this.here = a.here;
+    this.here = a.here || atStop;
     this.status = glanceStatus(s);
     if (this.status !== this.lastStatus) {
       Log.i('WATCH_UI', `status=${this.status} done=${this.done}/${this.total}`);
       this.lastStatus = this.status;
     }
-    if (this.status === GlanceStatus.FINISHED) {
+    if (this.status === GlanceStatus.FINISHED && this.screen !== WatchScreen.FINISHED) {
       this.screen = WatchScreen.FINISHED;
+      WatchContainer.keepScreenOn(false);
     }
   }
 

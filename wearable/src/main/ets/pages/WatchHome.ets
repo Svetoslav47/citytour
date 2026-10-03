@@ -2,7 +2,7 @@
  * The watch's screens (docs/research/WATCH.md, task W5; user decisions 2026-10-04):
  *   START     tour name, stops and time, "Start walk" (Location Kit) and "Demo walk" (SIMULATED replay).
  *   GLANCE    progress ring on the bezel (stops done / total), arrow to the next stop relative to the walking
- *             direction, distance, n / N, stop name, SIMULATED pill, one status line, and a 2.5 s flash of each
+ *             direction, distance, n / N, stop name (at a stop: "Here" and the visited stop's name, no distance), SIMULATED pill, one status line, and a 2.5 s flash of each
  *             haptic cue (the emulator has no motor). Long-press ends the tour.
  *   FINISHED  tour complete, stops done, Done.
  * Round screen 466 x 466 px = 233 x 233 vp; content stays inside the inscribed square, dark theme.
@@ -130,7 +130,7 @@ struct WatchHome {
             .textAlign(TextAlign.Center)
             .width(150)
             .maxLines(2)
-        } else {
+        } else if (!this.vm.here) {
           Row({ space: 3 }) {
             Text(this.vm.distValue)
               .fontSize(30)
@@ -221,6 +221,8 @@ struct WatchHome {
         return $r('app.string.status_location_off');
       case GlanceStatus.NO_FIX:
         return $r('app.string.status_no_fix');
+      case GlanceStatus.OUT_OF_AREA:
+        return $r('app.string.status_out_of_area');
       case GlanceStatus.OFF_ROUTE:
         return $r('app.string.status_off_route');
       default:

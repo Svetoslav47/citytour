@@ -9,6 +9,7 @@
  * Not wired yet (the controller treats them as absent ports): continuous task, AVSession, notifications.
  */
 import { common } from '@kit.AbilityKit';
+import { window } from '@kit.ArkUI';
 import {
   DemoControls, EngineSnapshot, FixSource, HapticsPort, LocationSource, PermissionPort, RelDir, SystemClock,
   SystemScheduler, TourController, TourControllerDeps, TourOptions
@@ -55,6 +56,7 @@ export class WatchContainer {
   private static ctrl: TourController | undefined = undefined;
   private static hapticsImpl: WatchHaptics | undefined = undefined;
   private static packImpl: WatchPackRepository | undefined = undefined;
+  private static mainWindow: window.Window | undefined = undefined;
 
   /** Builds everything; touches no platform API until a tour is planned. Call once from WatchAbility.onCreate. */
   static init(ctx: common.UIAbilityContext): void {
@@ -90,6 +92,32 @@ export class WatchContainer {
     o.demoSpeed = WatchConfig.DEMO_DEFAULT_SPEED;
     ctrl.setOptions(o);
     WatchContainer.ctrl = ctrl;
+  }
+
+  static attachWindow(w: window.Window | undefined): void {
+    WatchContainer.mainWindow = w;
+  }
+
+  /**
+   * Keeps the glance visible while a tour runs. A watch turns its screen off after a few seconds and then shows the
+   * watch face, so a raised wrist would not show the next stop. Huawei's watch guidance allows keep-screen-on for
+   * navigation only (docs/research/WATCH.md §2): on while walking, off on the start and finished screens.
+   */
+  static keepScreenOn(on: boolean): void {
+    const w: window.Window | undefined = WatchContainer.mainWindow;
+    if (w === undefined) {
+      Log.w('WATCH_SCREEN', `keepOn=${on} ok=0 reason=no_window`);
+      return;
+    }
+    try {
+      w.setWindowKeepScreenOn(on).then(() => {
+        Log.i('WATCH_SCREEN', `keepOn=${on} ok=1`);
+      }).catch((e: Object) => {
+        Log.w('WATCH_SCREEN', `keepOn=${on} ok=0 ${Log.errKv(e)}`);
+      });
+    } catch (e) {
+      Log.w('WATCH_SCREEN', `keepOn=${on} ok=0 ${Log.errKv(e as Object)}`);
+    }
   }
 
   static tour(): TourController | undefined {

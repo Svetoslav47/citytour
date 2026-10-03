@@ -153,7 +153,26 @@ devecocli emulator start "Watch 5"
 devecocli run --module wearable --device "Watch 5"   # builds wearable-default-unsigned.hap, installs, launches WatchAbility
 ```
 
-Watch log lines use the app's hilog domain and the `WATCH_` prefix (`WATCH_APP_START`, `WATCH_PAGE`). The watch HAP is
+Watch emulator notes (all checked on "Watch 5", HarmonyOS 6.1.1(24)):
+
+- **Language.** A new watch emulator may start in Arabic and has no language page in its Settings. Set the
+  emulator's image language before the *first* boot: after `emulator create`, write
+  `image.language.name=1` (0 Chinese, 1 English, 2 Traditional Chinese, 3 Arabic) into
+  `~/.Huawei/Emulator/deployed/Watch 5/huawei-settings.cfg`, then `emulator start`. The app itself forces a
+  left-to-right layout and Latin digits on unsupported languages.
+- **Logs.** A fresh watch image logs only warnings: run `hdc -t <serial> shell hilog -b I` once (and
+  `hilog -Q pidoff`) to see the app's info lines.
+- **Screen.** The watch turns its screen off after a few seconds and returns to the watch face; launching while the
+  screen is off leaves the app in the background (devecocli then reports `FAIL_CRASH` without a crash log). Wake it
+  first: `hdc -t <serial> shell power-shell wakeup`. During a tour the app keeps the screen on (`WATCH_SCREEN`).
+- **GPS.** `devecocli emulator geolocation` needs Emulator 7.0; on 6.1.1 the watch reports its built-in position
+  (Beijing), so a real-GPS walk shows "You're far from the tour" (`LOC_OUT_OF_AREA`). Use the Demo walk.
+- **Haptics.** The emulator has no vibration motor: every cue logs `WATCH_CUE ... vibrate=fail code=14600101` and is
+  shown on screen instead.
+
+Watch log lines use the app's hilog domain and the `WATCH_` prefix (`WATCH_APP_START`, `WATCH_UI`, `WATCH_CUE`,
+`WATCH_SCREEN`); the shared tour pipeline logs the same events as on the phone (`PACK_LOAD`, `ROUTE_PLAN`, `STATE`,
+`POI_ENTER`). The watch HAP is
 written to `wearable/build/default/outputs/default/`.
 
 ### Pre-rendered stop-story voice (ElevenLabs, build time)

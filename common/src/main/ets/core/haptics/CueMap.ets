@@ -6,8 +6,9 @@
  *   OFF_ROUTE  2 long buzzes (300 ms)                 the engine's off-route warning
  * Left and right differ by count, so they can be told apart without looking. The engine's APPROACH haptic is not
  * mapped (no buzz while merely getting close: too many buzzes and users stop noticing them).
- * CueGate rate-limits cues so they never stack: the same cue at most once per SAME_CUE_GAP_MS, any cue at most
- * once per ANY_CUE_GAP_MS (an arrival's look cue is part of the same sequence, not a second cue).
+ * CueGate rate-limits cues so they never stack: any cue at most once per ANY_CUE_GAP_MS, and the same non-arrival
+ * cue at most once per SAME_CUE_GAP_MS (arrivals are always distinct stops; an arrival's look cue is part of the same
+ * sequence, not a second cue).
  * Pure: no platform imports (unit-tested in entry/src/test/CueMap.test.ets).
  */
 import { HapticKind, RelDir } from '../../contracts/EngineTypes';
@@ -116,7 +117,8 @@ export class CueGate {
       return false;
     }
     const last: number | undefined = this.lastByCue.get(first);
-    if (last !== undefined && nowMs - last < SAME_CUE_GAP_MS) {
+    // Each arrival is a different stop (the engine fires a stop once), so only stacking limits it.
+    if (first !== Cue.ARRIVAL && last !== undefined && nowMs - last < SAME_CUE_GAP_MS) {
       return false;
     }
     this.lastAnyMs = nowMs;
