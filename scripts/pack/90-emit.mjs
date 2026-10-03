@@ -32,6 +32,7 @@ import { gunzipSync } from 'node:zlib';
 import { pathToFileURL } from 'node:url';
 import { isMain, RAW_DIR, readSnapshot, REPO_ROOT } from './lib/http.mjs';
 import { resolveCourse, takeCourseArgs } from './lib/course.mjs';
+import { copyCover } from './lib/cover.mjs';
 import { assertRecords, checkRecord, LANGS, SCHEMA_VERSION, TIER_ORDER } from './schema.mjs';
 import { PACK_ORIGIN } from './projection.mjs';
 import {
@@ -360,6 +361,9 @@ async function main() {
   const t0 = performance.now();
   const { files, report, counts, merged } = await buildPack(loadInputs(RAW_DIR, course));
   writePack(outDir, files);
+  // The cover photo (lib/cover.mjs): copied as is next to the pack files, not listed in manifest.json.
+  const cover = copyCover(course.courseDir, outDir);
+  console.log(cover ? `  cover.jpg + cover.json   ${fmt(cover.jpg.length).padStart(10)} (${cover.meta.author}, ${cover.meta.license})` : '  no cover photo');
   const total = files.reduce((s, f) => s + f.bytes.length, 0);
   for (const f of files) console.log(`  ${f.path.padEnd(24)} ${fmt(f.bytes.length).padStart(10)}`);
   console.log(`course ${course.courseId} (tour ${course.tourId})`);
