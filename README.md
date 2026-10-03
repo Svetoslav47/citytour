@@ -40,6 +40,51 @@ The Polish and Chinese UI strings were **machine-drafted by an AI agent** from t
 
 Story languages are separate from the UI language. They come from the offline pack: see [Data pipeline](#data-pipeline).
 
+## Screenshots
+
+Taken on the Pura 90 emulator (API 24 image, `devecocli ui screenshot`). The amber **SIMULATED** pill marks the Demo walk.
+
+| Home | Tour detail | Route ready |
+|---|---|---|
+| <img src="docs/img/home.png" width="220" alt="Home: the Royal Route card and Try a demo walk"> | <img src="docs/img/tour-detail.png" width="220" alt="Tour detail: route map, stats, guide and stop list"> | <img src="docs/img/route-ready.png" width="220" alt="Route ready: optimised order and distance"> |
+
+| Now Walking (heading) | Now Walking (at a stop) | Place detail |
+|---|---|---|
+| <img src="docs/img/walk-heading.png" width="220" alt="Now Walking: next stop, distance, Look cue, directions"> | <img src="docs/img/walk-at-stop.png" width="220" alt="Now Walking at a stop: the story being read"> | <img src="docs/img/place.png" width="220" alt="Place detail with sources"> |
+
+| Lock screen (AVSession) | Settings | About & licences |
+|---|---|---|
+| <img src="docs/img/lockscreen.png" width="220" alt="Lock screen playback card"> | <img src="docs/img/settings.png" width="220" alt="Settings"> | <img src="docs/img/about.png" width="220" alt="About and licences"> |
+
+| Polish UI | Chinese UI |
+|---|---|
+| <img src="docs/img/home-pl.png" width="220" alt="Home in Polish"> | <img src="docs/img/home-zh.png" width="220" alt="Home in Chinese"> |
+
+## Data sources and licences
+
+All data is fetched once at build time, committed under [`data/raw/`](data/raw/) and compiled into the offline pack (see [Data pipeline](#data-pipeline)). The app makes no network call for content. Full provenance (endpoints, queries, retrieval times, record counts, what each layer contains) is in [`data/raw/SOURCES.md`](data/raw/SOURCES.md); per-source records ship in the pack as [`sources.json`](entry/src/main/resources/rawfile/packs/krakow/sources.json), and the app shows them in **Settings › About › Sources and licences** and per place in **Place detail › Sources**.
+
+| Source | Used for | Retrieved | Licence |
+|---|---|---|---|
+| [Wikidata](https://www.wikidata.org) (SPARQL, items located in Kraków) | 4,290 places: coordinates, names en/pl/zh, type, heritage status, dating | 2026-10-03 | CC0 1.0 |
+| [Wikipedia](https://www.wikipedia.org) en / pl / zh (REST summaries, article extracts) | Place summaries (218 en, 297 pl, 71 zh) and the source text of the 11 tour stories | 2026-10-03 | CC BY-SA 4.0 (attributed per text in the app) |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) (API 0.6, Old Town tiles) | Offline vector map (streets, buildings, water, green) | 2026-10-03 | ODbL 1.0, "© OpenStreetMap contributors" shown on every map |
+| [OSRM](https://routing.openstreetmap.de) foot profile (FOSSGIS server) | 110 walking legs between the tour stops (distances, times, turn-by-turn steps) | 2026-10-03 | ODbL 1.0 (derived from OSM) |
+| City of Kraków ArcGIS (Zintegrowana Platforma GIS: heritage register, UNESCO zone) | Register facts and the UNESCO World Heritage outline | 2026-10-03 | **Unverified**: no published terms; used for coordinates and register facts only, cited with service URL and date ([docs/RISKS.md](docs/RISKS.md) T14) |
+| ElevenLabs (`eleven_multilingual_v2`, voice "George") | Pre-rendered studio-voice clips of the stories and fixed lines | build time | AI-generated audio, see [`data/ATTRIBUTION.md`](data/ATTRIBUTION.md) |
+
+Narration tiers in the pack (from [`validation-report.json`](entry/src/main/resources/rawfile/packs/krakow/validation-report.json)): every place has a teaser in en/pl/zh. 25 per language are **grounded-AI** Historian scripts for the 11 tour stops (drafted by Claude from the cited Wikipedia text, labelled "AI-drafted, not yet reviewed" in the app); the rest are verbatim Wikipedia extracts or a labelled name-only template. All 12,912 narrations pass the validator.
+
+## Known limitations
+
+- **One city, one tour.** The pack covers Kraków (4,290 places on the map data, the Old Town map); there is one guided tour, the Royal Route (11 stops).
+- **The emulator cannot move.** Its GPS is a fixed point and can't be driven from the command line, so tours on the emulator use the SIMULATED Demo walk. The real Location Kit path is wired in and selectable in Settings.
+- **Voices on the emulator.** The emulator has no English or Polish system voice: English is read by the Chinese voice (labelled "Fallback voice"), and Polish lines without a studio clip are shown as text. Stories with studio clips play in all three languages.
+- **AI-drafted content, not yet reviewed.** The Historian stories (English, then machine-translated to Polish and Chinese) and the Polish and Chinese UI strings were drafted by AI and have not been checked by a historian or native speakers. The app labels unreviewed stories.
+- **Sparse Chinese sources.** Only 71 places have a Chinese Wikipedia summary; most Chinese place texts are the name-only template.
+- **Kraków ArcGIS licence unverified** (see the table above).
+- **No vibration on the emulator.** Arrival haptics are called and logged, but the emulator has no motor (`14600101`, no crash).
+
 ## Requirements (tested versions)
 
 | Tool | Version |
