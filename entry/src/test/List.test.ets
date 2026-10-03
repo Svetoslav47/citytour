@@ -24,6 +24,7 @@ import onboardingTest from './Onboarding.test';
 import clipSelectionTest from './ClipSelection.test';
 import settingsTest from './Settings.test';
 import hudRowsTest from './HudRows.test';
+import langSwitchTest from './LangSwitch.test';
 
 export default function testsuite() {
   harnessTest();
@@ -49,4 +50,5 @@ export default function testsuite() {
   clipSelectionTest();
   settingsTest();
   hudRowsTest();
+  langSwitchTest();
 }
