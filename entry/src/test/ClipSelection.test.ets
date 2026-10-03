@@ -222,6 +222,33 @@ export default function clipSelectionTest() {
       expect(again.src).assertEqual(AUDIO_SRC_PRERENDERED);
     });
 
+    it('system_line_clips_play_by_hash_but_do_not_make_a_studio_story_language', 0, () => {
+      // Phase 3: system-lines.mjs writes poiId '' and length system|arrival|nav.
+      const nav: string = 'Teraz skręć w lewo (Grodzka).';
+      const welcome: string = 'Welcome! Today\'s walk: The Royal Route.';
+      const m: string = '{"schemaVersion":1,"clips":[' +
+        `{"lang":"pl","poiId":"","personaId":"historian","length":"nav","n":0,` +
+        `"file":"audio/pl/_nav/${sha256Hex(nav).substring(0, 16)}.mp3","textSha256":"${sha256Hex(nav)}"},` +
+        `{"lang":"zh","personaId":"historian","length":"system","n":0,` +
+        `"file":"audio/zh/_system/abc.mp3","textSha256":"${sha256Hex('欢迎！今天的路线是皇家之路。')}"},` +
+        `{"lang":"en","poiId":"","personaId":"historian","length":"system","n":0,` +
+        `"file":"audio/en/_system/def.mp3","textSha256":"${sha256Hex(welcome)}"}]}`;
+      const parsed = parseClipManifest(m);
+      expect(parsed.entries.length).assertEqual(3);
+      const ix = new ClipIndex(parsed.entries.concat([entry('en', 'historian', SHA_BARBICAN, 'audio/en/b/full_0.mp3')]));
+      expect(ix.systemSize()).assertEqual(3);
+      expect(ix.hasLang('pl')).assertFalse();          // nav cues alone are no "Studio voice" story language
+      expect(ix.hasLang('zh')).assertFalse();
+      expect(ix.hasLang('en')).assertTrue();
+      const pl = selectAudio(ix, query(nav, 'pl', 'text', VoiceLabel.TEXT_ONLY_PLATFORM));
+      expect(pl.src).assertEqual(AUDIO_SRC_PRERENDERED);  // Polish directions become spoken
+      const en = selectAudio(ix, query(welcome, 'en', 'voice', VoiceLabel.FALLBACK_ZH_READS_EN));
+      expect(en.src).assertEqual(AUDIO_SRC_PRERENDERED);  // the welcome no longer goes to the zh voice
+      const live = selectAudio(ix, query('Next stop: Barbican, about 300 metres from here.', 'en', 'voice',
+        VoiceLabel.FALLBACK_ZH_READS_EN));
+      expect(live.src).assertEqual(AUDIO_SRC_TTS);      // live numbers stay on TTS
+    });
+
     it('no_manifest_keeps_current_behaviour', 0, () => {
       const a = selectAudio(undefined, query('This is Barbican.', 'en', 'voice', VoiceLabel.NATIVE));
       expect(a.src).assertEqual(AUDIO_SRC_TTS);

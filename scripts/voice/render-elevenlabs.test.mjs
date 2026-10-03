@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  FIXTURE_NARRATIONS_DIR, buildManifest, clipKey, clipRelPath, collectClips, main, manifestEntry, parseArgs,
-  parseOutputFormat, planRender, sha256Hex, stripPauseMarkup, summarize, toElevenLabsText
+  FIXTURE_NARRATIONS_DIR, buildManifest, clipKey, clipRelPath, collectClips, isSystemGroup, main, manifestEntry,
+  parseArgs, parseOutputFormat, planRender, sha256Hex, stripPauseMarkup, summarize, systemClipRelPath, systemClips,
+  toElevenLabsText
 } from './render-elevenlabs.mjs';
 
 // Shared with entry/src/test/ClipSelection.test.ets: the ArkTS SHA-256 must give the same hex for these.
@@ -127,4 +128,61 @@ test('dry run on the fixture needs no key and exits 0', async () => {
   }
   assert.ok(out.some((l) => l.startsWith('DRY RUN')));
   assert.ok(out.some((l) => /^\s+en\s+3\s+15\s/.test(l)));
+});
+
+const SYS_LINES = [
+  { lang: 'en', group: 'system', text: 'That\'s the end of our walk.', textSha256: sha256Hex('That\'s the end of our walk.') },
+  { lang: 'pl', group: 'nav', text: 'Teraz skręć w lewo (Grodzka).', textSha256: sha256Hex('Teraz skręć w lewo (Grodzka).') },
+];
+
+test('systemClips: hash-keyed paths, no stop, manifest-compatible', () => {
+  const clips = systemClips(SYS_LINES, 'historian');
+  assert.equal(clips[1].file, `audio/pl/_nav/${SYS_LINES[1].textSha256.slice(0, 16)}.mp3`);
+  assert.equal(clips[1].file, systemClipRelPath('pl', 'nav', SYS_LINES[1].textSha256));
+  assert.match(clips[0].file, /^audio\/[A-Za-z0-9_./-]+\.mp3$/);   // ClipSelection FILE_RE
+  assert.equal(clips[0].poiId, '');
+  assert.equal(clips[0].textSha256, sha256Hex(clips[0].text));
+  assert.ok(isSystemGroup('nav') && !isSystemGroup('full'));
+  assert.equal(clipKey(clips[1]), `pl|historian|nav|${SYS_LINES[1].textSha256}`);
+  const e = manifestEntry(clips[1], { voiceId: 'v', model: 'm', outputFormat: 'mp3_44100_64', kbps: 64 }, 800, 't');
+  assert.equal(clipKey(e), clipKey(clips[1]));
+});
+
+test('planRender: entries outside the run scope are kept, never pruned', () => {
+  const cfg = { voiceId: 'v1', model: 'm', outputFormat: 'mp3_44100_64', kbps: 64 };
+  const stories = collectClips(NARR, { langs: ['en'], lengths: ['teaser'], persona: 'historian', poiIds: null });
+  const sys = systemClips(SYS_LINES, 'historian');
+  const m = buildManifest(stories.concat(sys).map((c) => manifestEntry(c, cfg, 8000, 't')), cfg);
+  const onlySystem = (e) => isSystemGroup(e.length);
+  const p = planRender(sys, m, cfg, () => true, false, onlySystem);
+  assert.equal(p.reuse.length, 2);
+  assert.equal(p.toRender.length, 0);
+  assert.deepEqual(p.stale, []);
+  assert.equal(p.keep.length, stories.length);
+  const s = summarize(stories.concat(sys), 64);
+  assert.ok(s.groups.some((g) => g.lang === 'pl' && g.kind === 'nav' && g.clips === 1));
+  assert.equal(s.rows.find((r) => r.lang === 'pl').pois, 0);
+});
+
+test('parseArgs: system options', () => {
+  assert.equal(parseArgs([]).system, null);
+  assert.equal(parseArgs(['--no-system']).system, false);
+  const o = parseArgs(['--system-only', '--system-groups', 'system,nav', '--nav-legs', 'tour']);
+  assert.ok(o.systemOnly && o.system);
+  assert.deepEqual(o.systemGroups, ['system', 'nav']);
+  assert.throws(() => parseArgs(['--system-groups', 'bogus']));
+  assert.throws(() => parseArgs(['--nav-legs', 'some']));
+});
+
+test('dry run with system lines on the real pack needs no key', async () => {
+  const log = console.log;
+  const out = [];
+  console.log = (...a) => out.push(a.join(' '));
+  try {
+    assert.equal(await main(['--dry-run', '--system-only', '--out', '/nonexistent-citytour-out']), 0);
+  } finally {
+    console.log = log;
+  }
+  assert.ok(out.some((l) => /system=system,arrival,nav navLegs=all lines=\d+/.test(l)));
+  assert.ok(out.some((l) => /credits to spend per language: en=\d+ pl=\d+ zh=\d+/.test(l)));
 });
