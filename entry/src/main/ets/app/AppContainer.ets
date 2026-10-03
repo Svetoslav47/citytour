@@ -4,14 +4,21 @@
  * T0 wiring: tourControl() = ScriptedTourControl (SIMULATED) until A7; permissions() returns a safe stub until A5.
  * A4 wiring: voice() = VoiceManager (listVoices/downloadVoice + pure VoicePolicy), speech() = NarrationPlayer
  * (TTS playType 0 -> PcmPlayer AudioRenderer). Both share one TtsEngines, so each engine exists once per app.
+ * A6 wiring: background() = BackgroundRunner (one continuous task ['location','audioPlayback']; it stops speech
+ * before stopping the task, as the continuous-task guide requires), mediaSession() = MediaSessionService (AVSession
+ * 'audio'). Both are constructed lazily and only touch the platform when start()/init() is called. shutdown()
+ * stops the task and destroys the session.
  * UIAbilityContext: doc 开发指南/Ability_Kit_程序框架服务/应用模型/应用组件/UIAbility组件/
  * 启动应用内的UIAbility组件/uiability-intra-device-interaction.
  */
 import { common } from '@kit.AbilityKit';
 import {
-  Clock, LoggerPort, PackRepository, PermissionPort, PermissionState, SpeechPort, TourControl, VoicePort
+  BackgroundPort, Clock, LoggerPort, MediaSessionPort, PackRepository, PermissionPort, PermissionState, SpeechPort,
+  TourControl, VoicePort
 } from '../contracts/Ports';
 import { PcmPlayer } from '../services/audio/PcmPlayer';
+import { BackgroundRunner } from '../services/background/BackgroundRunner';
+import { MediaSessionService } from '../services/media/MediaSessionService';
 import { PackFactory } from '../services/pack/PackFactory';
 import { NarrationPlayer } from '../services/speech/NarrationPlayer';
 import { TtsEngines } from '../services/speech/TtsEngines';
@@ -53,6 +60,8 @@ export class AppContainer {
   private static voiceImpl: VoiceManager | undefined = undefined;
   private static speechImpl: NarrationPlayer | undefined = undefined;
   private static permImpl: PermissionPort | undefined = undefined;
+  private static bgImpl: BackgroundRunner | undefined = undefined;
+  private static avsImpl: MediaSessionService | undefined = undefined;
 
   /** Idempotent. Builds services; starts nothing. */
   static init(ctx: common.UIAbilityContext): void {
@@ -71,6 +80,21 @@ export class AppContainer {
   }
 
   static shutdown(): void {
+    // Stop the continuous task (it stops speech first) and destroy the AVSession; both are async, best effort.
+    try {
+      if (AppContainer.bgImpl !== undefined) {
+        AppContainer.bgImpl.stop().catch((e: Object) => {
+          Log.e(LogEvents.UNCAUGHT, `where=AppContainer.shutdown.bg ${Log.errKv(e)}`);
+        });
+      }
+      if (AppContainer.avsImpl !== undefined) {
+        AppContainer.avsImpl.destroy().catch((e: Object) => {
+          Log.e(LogEvents.UNCAUGHT, `where=AppContainer.shutdown.avs ${Log.errKv(e)}`);
+        });
+      }
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=AppContainer.shutdown.platform ${Log.errKv(e as Object)}`);
+    }
     try {
       if (AppContainer.tourImpl !== undefined) {
         AppContainer.tourImpl.dispose();
@@ -86,6 +110,8 @@ export class AppContainer {
     AppContainer.voiceImpl = undefined;
     AppContainer.speechImpl = undefined;
     AppContainer.permImpl = undefined;
+    AppContainer.bgImpl = undefined;
+    AppContainer.avsImpl = undefined;
     AppContainer.ctx = undefined;
   }
 
@@ -160,5 +186,33 @@ export class AppContainer {
       AppContainer.permImpl = new StubPermissionPort();
     }
     return AppContainer.permImpl;
+  }
+
+  static background(): BackgroundPort {
+    return AppContainer.backgroundRunner();
+  }
+
+  /** Concrete BackgroundRunner for the DevPanel / HUD extras (lastIssueLine()). */
+  static backgroundRunner(): BackgroundRunner {
+    if (AppContainer.bgImpl === undefined) {
+      AppContainer.bgImpl = new BackgroundRunner(() => AppContainer.context(), () => {
+        if (AppContainer.speechImpl !== undefined) {
+          AppContainer.speechImpl.stopNow();
+        }
+      });
+    }
+    return AppContainer.bgImpl;
+  }
+
+  static mediaSession(): MediaSessionPort {
+    return AppContainer.mediaSessionService();
+  }
+
+  /** Concrete MediaSessionService for the DevPanel extras (lastCommandLine()). */
+  static mediaSessionService(): MediaSessionService {
+    if (AppContainer.avsImpl === undefined) {
+      AppContainer.avsImpl = new MediaSessionService(() => AppContainer.context());
+    }
+    return AppContainer.avsImpl;
   }
 }

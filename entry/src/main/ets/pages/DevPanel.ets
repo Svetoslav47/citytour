@@ -1,7 +1,7 @@
 /*
  * Developer-only page (A-owned). Opened with:
  *   hdc shell aa start -a EntryAbility -b com.hackyeah.citytour --ps page dev
- * Later tasks add buttons for location sources (A5) and background/AVSession (A6).
+ * Later tasks add buttons for location sources (A5).
  *
  * A4 speech buttons exercise the real stack through AppContainer.speech() / voice():
  *   "EN sample (3 sentences)"  English text, voice chosen by the strategy (emulator: zh voice = "Fallback voice")
@@ -12,11 +12,22 @@
  *   "Download English voice"   real downloadVoice path (emulator: 1002300008, plan stays fallback-zh)
  *   "Pause" / "Resume" / "Stop"
  * The sample runner below plays the role TourController (A7) will have: speak n, prefetch n+1, next on done.
+ *
+ * A6 background + AVSession buttons (AppContainer.background() / mediaSession()):
+ *   "Start continuous task" / "Stop continuous task"   ['location','audioPlayback'] (BG_START / BG_STOP)
+ *   "Start AVSession" / "Destroy AVSession"            Control Center + lock-screen card (AVS_META event=active)
+ *   "Meta: ... (toggle)"                               "Walking to Cloth Hall" <-> "Next: Cloth Hall · 120 m"
+ *   "Narration loop"                                   EN sample every 45 s, for the screen-off test (UTT_START)
+ * Card commands (AVS_CMD) drive the speech stack the way TourController (A7) will drive the engine:
+ *   play -> resume, pause/stop -> pause, playNext -> skip the sentence, playPrevious -> replay the sample,
+ *   toggleFavorite ("Tell me more") -> the "more" sample. The card text is DEV TEST DATA, so the artist line
+ *   carries " · DEMO".
  * Developer page: literal strings on purpose (resource strings are B-owned and this page is not user-facing).
  */
 import { Lang } from '../contracts/Model';
 import { EnVoiceStrategy, VoiceLabel } from '../contracts/Settings';
-import { SpeechCapabilities, SpeechListener, Utterance, VoicePlan } from '../contracts/Ports';
+import { BackgroundListener, MediaCommand, SpeechCapabilities, SpeechListener, Utterance, VoicePlan } from '../contracts/Ports';
+import { MediaMeta, MediaPlayState } from '../contracts/EngineTypes';
 import { stripPauseMarkup } from '../core/speech/VoicePolicy';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
@@ -35,6 +46,14 @@ const PL_SAMPLE: string[] = [
   'Witamy na Rynku Głównym w Krakowie.',
   'Spójrz w lewo: to Bazylika Mariacka z XIV wieku.'
 ];
+
+const EN_MORE: string[] = [
+  'Tell me more: the trumpeter\'s tune, the Hejnał, breaks off to remember a watchman who, legend says, was shot ' +
+    'while sounding the alarm.'
+];
+
+const AVS_TITLES: string[] = ['Walking to Cloth Hall', 'Next: Cloth Hall · 120 m'];
+const NARRATION_LOOP_MS: number = 45000;
 
 const STRATEGY_CYCLE: EnVoiceStrategy[] = [
   EnVoiceStrategy.AUTO_NATIVE_THEN_ZH, EnVoiceStrategy.AUTO_NATIVE_THEN_TEXT, EnVoiceStrategy.FORCE_ZH,
@@ -58,12 +77,19 @@ function labelText(l: VoiceLabel): string {
 class SampleRunner implements SpeechListener {
   onLine: (line: string) => void = (line: string) => {};
   onCaption: (text: string) => void = (text: string) => {};
+  onFinished: () => void = () => {};
   private items: Utterance[] = [];
+  private lastName: string = '';
+  private lastTexts: string[] = [];
+  private lastLang: Lang = Lang.EN;
   private idx: number = -1;
   private run: number = 0;
 
   start(name: string, texts: string[], lang: Lang): void {
     this.run++;
+    this.lastName = name;
+    this.lastTexts = texts;
+    this.lastLang = lang;
     const items: Utterance[] = [];
     for (let i = 0; i < texts.length; i++) {
       const u: Utterance = {
@@ -82,6 +108,30 @@ class SampleRunner implements SpeechListener {
     this.run++;
     this.items = [];
     this.idx = -1;
+  }
+
+  isActive(): boolean {
+    return this.idx >= 0 && this.idx < this.items.length;
+  }
+
+  /** AVSession playNext: drop the rest of the current sentence and go on with the next one. */
+  skip(): void {
+    if (!this.isActive()) {
+      return;
+    }
+    AppContainer.speech().stopNow();
+    this.onLine(`skipped ${this.items[this.idx].id}`);
+    this.next();
+  }
+
+  /** AVSession playPrevious: replay the last sample from its start. */
+  replay(): boolean {
+    if (this.lastTexts.length === 0) {
+      return false;
+    }
+    AppContainer.speech().stopNow();
+    this.start(this.lastName, this.lastTexts, this.lastLang);
+    return true;
   }
 
   onUtteranceStart(id: string): void {
@@ -125,6 +175,7 @@ class SampleRunner implements SpeechListener {
       if (this.items.length > 0) {
         this.onLine(`sample finished (${this.items.length} sentences)`);
         this.onCaption('');
+        this.onFinished();
       }
       return;
     }
@@ -133,6 +184,25 @@ class SampleRunner implements SpeechListener {
     if (this.idx + 1 < this.items.length) {
       sp.prefetch(this.items[this.idx + 1]);
     }
+  }
+}
+
+/** Refreshes the A6 status lines when the system cancels or suspends the continuous task. */
+class DevBgListener implements BackgroundListener {
+  private readonly cancelled: () => void;
+  private readonly suspended: () => void;
+
+  constructor(cancelled: () => void, suspended: () => void) {
+    this.cancelled = cancelled;
+    this.suspended = suspended;
+  }
+
+  onCancelled(reason: string): void {
+    this.cancelled();
+  }
+
+  onSuspended(reason: string): void {
+    this.suspended();
   }
 }
 
@@ -147,7 +217,13 @@ struct DevPanel {
   @Local strategy: string = '';
   @Local ctx: string = '';
   @Local dlLine: string = '';
+  @Local bgLine: string = 'bg: stopped';
+  @Local avsLine: string = 'avs: inactive';
+  @Local avsCmdLine: string = '';
+  @Local metaIdx: number = 0;
+  @Local loopOn: boolean = false;
   private runner: SampleRunner = new SampleRunner();
+  private loopTimer: number = -1;
 
   aboutToAppear(): void {
     this.runner.onLine = (l: string) => {
@@ -156,6 +232,15 @@ struct DevPanel {
     this.runner.onCaption = (t: string) => {
       this.caption = t;
     };
+    this.runner.onFinished = () => {
+      // Between stories the tour is still "playing" while the loop runs; otherwise the card shows paused.
+      AppContainer.mediaSession().setState(this.loopOn ? MediaPlayState.PLAY : MediaPlayState.PAUSE);
+    };
+    AppContainer.background().setListener(new DevBgListener(() => {
+      this.stopLoop();
+      this.refreshPlatformLines();
+    }, () => this.refreshPlatformLines()));
+    this.refreshPlatformLines();
     try {
       AppContainer.speech().setListener(this.runner);
       this.refreshVoiceLines();
@@ -168,6 +253,142 @@ struct DevPanel {
       });
     } catch (e) {
       this.status = `speech init threw ${Log.errKv(e as Object)}`;
+    }
+  }
+
+  aboutToDisappear(): void {
+    this.stopLoop();
+  }
+
+  // ---------- A6: continuous task + AVSession ----------
+
+  private refreshPlatformLines(): void {
+    const bg = AppContainer.backgroundRunner();
+    const issue = bg.lastIssueLine();
+    this.bgLine = `bg: ${bg.isRunning() ? 'running [location,audioPlayback]' : 'stopped'}` +
+      (issue !== '' ? ` | last: ${issue}` : '');
+    const avs = AppContainer.mediaSessionService();
+    this.avsLine = `avs: ${avs.isActive() ? 'active' : 'inactive'} | title: ${AVS_TITLES[this.metaIdx]}`;
+    const cmd = avs.lastCommandLine();
+    this.avsCmdLine = cmd !== '' ? `last card command: ${cmd}` : 'last card command: -';
+  }
+
+  private startBg(): void {
+    this.bgLine = 'bg: starting...';
+    AppContainer.background().start().then((ok: boolean) => {
+      this.refreshPlatformLines();
+      if (!ok) {
+        this.bgLine = `${this.bgLine} (start failed, see BG_FAIL; the tour would continue in the foreground)`;
+      }
+    }).catch((e: Object) => {
+      this.bgLine = `bg: start error ${Log.errKv(e)}`;
+    });
+  }
+
+  private stopBg(): void {
+    this.stopLoop();
+    this.runner.stop();
+    AppContainer.background().stop().then(() => {
+      this.refreshPlatformLines();
+    }).catch((e: Object) => {
+      this.bgLine = `bg: stop error ${Log.errKv(e)}`;
+    });
+  }
+
+  private currentMeta(): MediaMeta {
+    const label = AppContainer.voiceManager().plan(Lang.EN).label;
+    const m: MediaMeta = { title: AVS_TITLES[this.metaIdx], artist: '', voiceLabel: label, demo: true };
+    return m;
+  }
+
+  private startAvs(): void {
+    this.avsLine = 'avs: starting...';
+    const avs = AppContainer.mediaSession();
+    avs.setMeta(this.currentMeta());
+    avs.setState(AppContainer.speech().isSpeaking() || this.loopOn ? MediaPlayState.PLAY : MediaPlayState.PAUSE);
+    avs.init((cmd: MediaCommand) => this.onCardCommand(cmd)).then((ok: boolean) => {
+      this.refreshPlatformLines();
+      if (!ok) {
+        this.avsLine = 'avs: failed (see AVS_FAIL); in-app controls only';
+      }
+    }).catch((e: Object) => {
+      this.avsLine = `avs: error ${Log.errKv(e)}`;
+    });
+  }
+
+  private destroyAvs(): void {
+    AppContainer.mediaSession().destroy().then(() => {
+      this.refreshPlatformLines();
+    }).catch((e: Object) => {
+      this.avsLine = `avs: destroy error ${Log.errKv(e)}`;
+    });
+  }
+
+  private toggleMeta(): void {
+    this.metaIdx = (this.metaIdx + 1) % AVS_TITLES.length;
+    AppContainer.mediaSession().setMeta(this.currentMeta());
+    this.refreshPlatformLines();
+  }
+
+  /** What TourController (A7) will do with USER_* events, done here on the speech stack. */
+  private onCardCommand(cmd: MediaCommand): void {
+    const sp = AppContainer.speech();
+    const avs = AppContainer.mediaSession();
+    if (cmd === MediaCommand.PLAY) {
+      sp.resume();
+      avs.setState(MediaPlayState.PLAY);
+      this.status = 'card: resume';
+    } else if (cmd === MediaCommand.PAUSE || cmd === MediaCommand.STOP) {
+      sp.pause();
+      avs.setState(MediaPlayState.PAUSE);
+      this.status = `card: ${cmd} -> paused`;
+    } else if (cmd === MediaCommand.NEXT) {
+      this.runner.skip();
+      avs.setState(MediaPlayState.PLAY);
+    } else if (cmd === MediaCommand.PREVIOUS) {
+      if (this.runner.replay()) {
+        avs.setState(MediaPlayState.PLAY);
+        this.status = 'card: replay';
+      }
+    } else if (cmd === MediaCommand.FAVORITE) {
+      this.play('more', EN_MORE, Lang.EN);
+      this.status = 'card: tell me more';
+    }
+    this.refreshPlatformLines();
+  }
+
+  private toggleLoop(): void {
+    if (this.loopOn) {
+      this.stopLoop();
+      AppContainer.mediaSession().setState(MediaPlayState.PAUSE);
+      return;
+    }
+    this.loopOn = true;
+    this.loopTick();
+    this.loopTimer = setInterval(() => this.loopTick(), NARRATION_LOOP_MS);
+    Log.i(LogEvents.STORY_QUEUE, `event=dev_loop on=1 everyMs=${NARRATION_LOOP_MS}`);
+  }
+
+  private stopLoop(): void {
+    if (this.loopTimer !== -1) {
+      clearInterval(this.loopTimer);
+      this.loopTimer = -1;
+      Log.i(LogEvents.STORY_QUEUE, 'event=dev_loop on=0');
+    }
+    this.loopOn = false;
+  }
+
+  private loopTick(): void {
+    try {
+      const sp = AppContainer.speech();
+      if (this.runner.isActive() || sp.isSpeaking()) {
+        return; // the previous sample is still running (or paused from the card)
+      }
+      this.play('en', EN_SAMPLE, Lang.EN);
+      AppContainer.mediaSession().setState(MediaPlayState.PLAY);
+      this.refreshPlatformLines();
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=DevPanel.loopTick ${Log.errKv(e as Object)}`);
     }
   }
 
@@ -265,6 +486,24 @@ struct DevPanel {
           Button('Resume').id('btnResume').layoutWeight(1).onClick(() => AppContainer.speech().resume())
           Button('Stop').id('btnStop').layoutWeight(1).onClick(() => this.stopAll())
         }.width('100%')
+        Text('Background + lock screen (A6)').fontSize(18).fontWeight(FontWeight.Medium).margin({ top: 12 })
+        Text(this.bgLine).id('bgStatus').fontSize(12)
+        Text(this.avsLine).id('avsStatus').fontSize(12)
+        Text(this.avsCmdLine).id('avsCmd').fontSize(12)
+        Row({ space: 8 }) {
+          Button('Start continuous task').id('btnBgStart').layoutWeight(1).onClick(() => this.startBg())
+          Button('Stop continuous task').id('btnBgStop').layoutWeight(1).onClick(() => this.stopBg())
+        }.width('100%')
+        Row({ space: 8 }) {
+          Button('Start AVSession').id('btnAvsStart').layoutWeight(1).onClick(() => this.startAvs())
+          Button('Destroy AVSession').id('btnAvsStop').layoutWeight(1).onClick(() => this.destroyAvs())
+        }.width('100%')
+        Button(`Meta: ${AVS_TITLES[this.metaIdx]} (toggle)`).id('btnAvsMeta').width('100%')
+          .onClick(() => this.toggleMeta())
+        Button(this.loopOn ? 'Narration loop: ON (tap to stop)' : 'Narration loop: OFF (EN sample every 45 s)')
+          .id('btnNarrLoop').width('100%')
+          .onClick(() => this.toggleLoop())
+        Text('Card text is dev test data (SIMULATED), artist line shows DEMO.').fontSize(11).fontColor('#888888')
       }
       .width('100%')
       .padding({ left: 16, right: 16, bottom: 32 })
