@@ -451,7 +451,10 @@ export class TourController implements TourControl {
       s.source = this.sourceKind;
     }
     if (this.ctrlIssues.length > 0) {
-      s.issues = s.issues.concat(this.ctrlIssues);
+      // "You're far from Kraków … try a demo walk" is moot while the Demo walk is the active source (issue #20).
+      const demo: boolean = this.sourceKind === FixSource.DEMO;
+      s.issues = s.issues.concat(demo ?
+        this.ctrlIssues.filter((i: AppIssue) => i.code !== IssueCode.LOC_OUT_OF_AREA) : this.ctrlIssues);
     }
     return s;
   }
