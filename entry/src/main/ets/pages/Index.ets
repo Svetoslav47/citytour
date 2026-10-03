@@ -3,9 +3,12 @@
  * other screens as NavDestinations from the navDestination builder (doc: ts-basic-components-navigation).
  * No tab bar in the MVP. Each screen draws its own header, so the system title bar is hidden.
  */
+import { UserSettings } from '../contracts/Settings';
 import { AppViewModel, Routes } from '../viewmodel/AppViewModel';
+import { OnboardingViewModel } from '../viewmodel/OnboardingViewModel';
 import { HomePage } from './HomePage';
 import { NowWalkingPage } from './NowWalkingPage';
+import { OnboardingPage } from './OnboardingPage';
 import { RouteReadyPage } from './RouteReadyPage';
 import { TourDetailPage } from './TourDetailPage';
 
@@ -13,9 +16,12 @@ import { TourDetailPage } from './TourDetailPage';
 @ComponentV2
 struct Index {
   @Local app: AppViewModel = AppViewModel.get();
+  /** A12: persisted UserSettings (PersistenceV2); onboarding shows until onboardingDone. */
+  @Local settings: UserSettings = OnboardingViewModel.settings();
 
   aboutToAppear(): void {
     this.app.applySupportedUiLanguage();
+    OnboardingViewModel.restoreNarration(this.app);
     this.app.loadPack();
   }
 
@@ -27,12 +33,21 @@ struct Index {
       RouteReadyPage()
     } else if (name === Routes.NOW_WALKING) {
       NowWalkingPage()
+    } else if (name === Routes.ONBOARDING) {
+      NavDestination() {
+        OnboardingPage({ asRoute: true })
+      }
+      .hideTitleBar(true)
     }
   }
 
   build() {
     Navigation(this.app.stack) {
-      HomePage()
+      if (this.settings.onboardingDone) {
+        HomePage()
+      } else {
+        OnboardingPage({ asRoute: false })
+      }
     }
     .navDestination(this.pageMap)
     .mode(NavigationMode.Stack)

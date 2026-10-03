@@ -18,6 +18,7 @@ export class Routes {
   static readonly TOUR_DETAIL: string = 'TourDetail';
   static readonly ROUTE_READY: string = 'RouteReady';
   static readonly NOW_WALKING: string = 'NowWalking';
+  static readonly ONBOARDING: string = 'Onboarding';   // A12: first run is Index's root; Settings can reopen it here
 }
 
 export enum PackState { LOADING = 'loading', READY = 'ready', ERROR = 'error' }

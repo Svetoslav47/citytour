@@ -1,0 +1,462 @@
+/*
+ * Onboarding view model (task A12, DESIGN §2.3 Flow A, §3.1). Three button-driven steps; every step can be
+ * skipped and nothing blocks. Decisions about what each row shows live in the pure core/onboarding/OnboardingRules.
+ *
+ * Step 2 reads the real voice status: VoiceManager.capabilities() (listVoices) + the voice strategy, through the same
+ * resolveVoicePlan the tour uses. Download tries Laura with VoiceManager.downloadEnglish (downloadVoice); on the
+ * emulator that fails with 1002300008 and the row keeps saying "Fallback voice" (PLAN §0.4). Play a sample speaks
+ * one Phrases line through the real SpeechPort in the chosen language (Polish: text only, shown as a caption).
+ * Step 3 asks in context: Location -> PermissionPort.requestLocation (requestPermissionsFromUser), then the location
+ * switch sheet (requestGlobalSwitch) when the switch is off; after a denial the settings sheet
+ * (requestPermissionOnSetting). Notifications -> notificationManager.requestEnableNotification (Notification Kit,
+ * API 10+; isNotificationEnabled API 11+; doc 开发指南/Notification_Kit_用户通知服务/请求通知授权/notification-enable and
+ * API参考/Notification_Kit_用户通知服务/ArkTS_API/ohos_notificationManager_NotificationManager模块_/js-apis-notificationmanager).
+ * After a refusal (1600004) the row says "Notifications are off" and never nags (DESIGN Flow D);
+ * openNotificationSettingsWithResult is not used (起始版本 above API 20).
+ *
+ * Persistence: UserSettings (contracts/Settings) through PersistenceV2.connect(UserSettings, 'settings', ...), the key
+ * the contract names for B9 (API 12+; doc 开发指南/ArkUI_方舟UI框架/UI开发_ArkTS声明式开发范式/学习UI范式状态管理/
+ * 状态管理_V2/管理应用拥有的状态/PersistenceV2_持久化存储UI状态/arkts-new-persistencev2). onboardingDone = true after
+ * Done, Skip or Set up later, so the second launch goes straight to Home.
+ */
+import { PersistenceV2 } from '@kit.ArkUI';
+import { notificationManager } from '@kit.NotificationKit';
+import { Lang } from '../contracts/Model';
+import { PermissionPort, PermissionState, SpeechCapabilities, SpeechListener, Utterance, VoiceState } from '../contracts/Ports';
+import { UserSettings } from '../contracts/Settings';
+import { AppContainer } from '../app/AppContainer';
+import { Log } from '../app/Log';
+import { LogEvents } from '../app/LogEvents';
+import { phrase, PhraseKey } from '../core/content/Phrases';
+import {
+  canDownloadEnglish, choiceFor, clampStep, EnVoiceInput, EnVoiceRow, enVoiceRow, LocRow, locationRow, nextStep,
+  NOTIF_ERR_DIALOG_SHOWN, NOTIF_ERR_REFUSED, NotifRow, notifRow, ONB_STEP_PERMS, ONB_STEP_VOICE, percent,
+  selectedRow, voiceLangForPlan, zhSpoken
+} from '../core/onboarding/OnboardingRules';
+import { stripPauseMarkup } from '../core/speech/VoicePolicy';
+import { PreviewPoint } from '../views/common/RoutePreview';
+import { AppViewModel } from './AppViewModel';
+import { withTimeout } from './Async';
+import { findTour, previewPoints } from './PackView';
+
+/** The PersistenceV2 key the UserSettings contract names (contracts/Settings.ets). */
+export const SETTINGS_KEY: string = 'settings';
+
+const VOICES_TIMEOUT_MS: number = 8000;
+const DOWNLOAD_TIMEOUT_MS: number = 120000;
+/** System dialogs and sheets wait for the user; after this the row re-reads the real state. */
+const DIALOG_TIMEOUT_MS: number = 120000;
+const NOTIF_QUERY_TIMEOUT_MS: number = 5000;
+/** A sample that never reports done (engine hung) frees the button after this. */
+const SAMPLE_GUARD_MS: number = 20000;
+
+function errCode(e: Object): number {
+  try {
+    const c = (e as Record<string, Object>)['code'];
+    return typeof c === 'number' ? c as number : -1;
+  } catch (x) {
+    return -1;
+  }
+}
+
+/** Forwards SpeechPort callbacks for the one sample utterance to the view model. */
+class SampleListener implements SpeechListener {
+  private readonly id: string;
+  private readonly onEnd: (id: string, ok: boolean) => void;
+
+  constructor(id: string, onEnd: (id: string, ok: boolean) => void) {
+    this.id = id;
+    this.onEnd = onEnd;
+  }
+
+  onUtteranceStart(id: string): void {
+    // the caption is already showing
+  }
+
+  onUtteranceDone(id: string): void {
+    if (id === this.id) {
+      this.onEnd(id, true);
+    }
+  }
+
+  onUtteranceError(id: string, code: number): void {
+    if (id === this.id) {
+      Log.w(LogEvents.TTS_ERR, `where=onboarding_sample id=${id} code=${code}`);
+      this.onEnd(id, false);
+    }
+  }
+}
+
+@ObservedV2
+export class OnboardingViewModel {
+  private static settingsInst: UserSettings | undefined = undefined;
+
+  /** UserSettings persisted with PersistenceV2 (one instance per key). An in-memory copy if storage fails. */
+  static settings(): UserSettings {
+    if (OnboardingViewModel.settingsInst === undefined) {
+      let s: UserSettings | undefined = undefined;
+      try {
+        PersistenceV2.notifyOnError((key: string, reason: string, msg: string) => {
+          Log.e(LogEvents.UNCAUGHT, `where=PersistenceV2 key=${key} reason=${reason} msg=${msg}`);
+        });
+        s = PersistenceV2.connect(UserSettings, SETTINGS_KEY, () => new UserSettings());
+      } catch (e) {
+        Log.e(LogEvents.UNCAUGHT, `where=OnboardingViewModel.settings ${Log.errKv(e as Object)}`);
+      }
+      if (s === undefined) {
+        Log.w(LogEvents.SETTINGS, 'store=memory reason=persistence_unavailable');
+        s = new UserSettings();
+      }
+      OnboardingViewModel.settingsInst = s;
+      Log.i(LogEvents.SETTINGS, `store=persistenceV2 key=${SETTINGS_KEY} onboardingDone=${s.onboardingDone}` +
+        ` textLang=${s.textLang} voiceLang=${s.voiceLang}`);
+    }
+    return OnboardingViewModel.settingsInst;
+  }
+
+  /** On app start: the saved narration language drives the text language and the voice plan. */
+  static restoreNarration(app: AppViewModel): void {
+    try {
+      const s = OnboardingViewModel.settings();
+      const lang = selectedRow(s.textLang);
+      app.textLang = lang;
+      AppContainer.voiceManager().setVoiceLang(voiceLangForPlan(lang, s.voiceLang));
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=OnboardingViewModel.restoreNarration ${Log.errKv(e as Object)}`);
+    }
+  }
+
+  @Trace step: number = 0;
+  @Trace selected: Lang = Lang.EN;
+  @Trace capsKnown: boolean = false;
+  @Trace caps: SpeechCapabilities = { en: VoiceState.ERROR, zh: VoiceState.ERROR };
+  @Trace downloading: boolean = false;
+  @Trace downloadPct: number = 0;
+  @Trace downloadFailed: boolean = false;
+  @Trace sampleText: string = '';
+  @Trace samplePlaying: boolean = false;
+  @Trace loc: LocRow = LocRow.ASK;
+  @Trace locBusy: boolean = false;
+  @Trace notif: NotifRow = NotifRow.ASK;
+  @Trace notifBusy: boolean = false;
+  @Trace preview: PreviewPoint[] = [];
+  /** Opened from Settings (a NavDestination) instead of as the first-run root. */
+  asRoute: boolean = false;
+  private notifRefused: boolean = false;
+  private speechReady: boolean = false;
+  private sampleSeq: number = 0;
+  private sampleId: string = '';
+  private sampleGuard: number = -1;
+  private finished: boolean = false;
+
+  start(asRoute: boolean): void {
+    this.asRoute = asRoute;
+    this.selected = selectedRow(OnboardingViewModel.settings().textLang);
+    Log.i(LogEvents.APP_PAGE, `page=Onboarding step=1 asRoute=${asRoute} lang=${this.selected}`);
+    this.refreshVoices();
+    this.refreshPermissions();
+  }
+
+  stop(): void {
+    this.stopSample();
+  }
+
+  /** Step 1 visual: the tour stops from the bundled pack (empty until the pack is loaded). */
+  refreshPreview(): void {
+    try {
+      const pack = AppContainer.packRepository();
+      const tour = findTour(pack, '');
+      this.preview = tour === undefined ? [] : previewPoints(pack, tour.stops.map((s) => s.poiId));
+    } catch (e) {
+      this.preview = [];
+    }
+  }
+
+  // ---------- navigation ----------
+
+  next(): void {
+    const n = nextStep(this.step);
+    if (n < 0) {
+      this.finish('done');
+      return;
+    }
+    this.goTo(n);
+  }
+
+  goTo(step: number): void {
+    const s = clampStep(step);
+    if (this.step === ONB_STEP_VOICE && s !== ONB_STEP_VOICE) {
+      this.stopSample();
+    }
+    this.step = s;
+    Log.i(LogEvents.APP_PAGE, `page=Onboarding step=${s + 1}`);
+    if (s === ONB_STEP_PERMS) {
+      this.refreshPermissions();
+    }
+  }
+
+  /** Done, Skip or Set up later: never asked again on this install (Settings can reopen it). */
+  finish(how: string): void {
+    if (this.finished) {
+      return;
+    }
+    this.finished = true;
+    this.stopSample();
+    try {
+      OnboardingViewModel.settings().onboardingDone = true;
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=OnboardingViewModel.finish ${Log.errKv(e as Object)}`);
+    }
+    Log.i(LogEvents.SETTINGS, `key=onboardingDone value=true how=${how} step=${this.step + 1} lang=${this.selected}` +
+      ` loc=${this.loc} notif=${this.notif}`);
+    if (this.asRoute) {
+      AppViewModel.get().back();
+    }
+  }
+
+  // ---------- step 2: language and voice ----------
+
+  select(lang: Lang): void {
+    if (lang !== this.selected) {
+      this.stopSample();
+    }
+    this.selected = lang;
+    const c = choiceFor(lang);
+    try {
+      const s = OnboardingViewModel.settings();
+      s.textLang = c.textLang;
+      s.voiceLang = c.voiceLang;
+      AppViewModel.get().textLang = c.textLang;
+      AppContainer.voiceManager().setVoiceLang(voiceLangForPlan(c.textLang, c.voiceLang));
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=OnboardingViewModel.select ${Log.errKv(e as Object)}`);
+    }
+    Log.i(LogEvents.SETTINGS, `key=narration textLang=${c.textLang} voiceLang=${c.voiceLang} where=onboarding`);
+  }
+
+  enRow(): EnVoiceRow {
+    return enVoiceRow(this.enInput());
+  }
+
+  canDownload(): boolean {
+    return canDownloadEnglish(this.enInput());
+  }
+
+  zhSpoken(): boolean {
+    return zhSpoken(this.capsKnown, this.caps);
+  }
+
+  async refreshVoices(): Promise<void> {
+    const vm = AppContainer.voiceManager();
+    const c = await withTimeout(vm.capabilities(), VOICES_TIMEOUT_MS, vm.lastCaps(), 'onboarding.listVoices');
+    this.caps = c;
+    this.capsKnown = true;
+    Log.i(LogEvents.VOICE_STATUS, `where=onboarding en=${c.en} zh=${c.zh} row=${this.enRow()}`);
+  }
+
+  /** Tries Laura (en-US/8). Never throws; on failure the English row keeps the Fallback voice. */
+  async download(): Promise<void> {
+    if (this.downloading) {
+      return;
+    }
+    this.downloading = true;
+    this.downloadPct = 0;
+    this.downloadFailed = false;
+    const vm = AppContainer.voiceManager();
+    const ok = await withTimeout(vm.downloadEnglish((p: number) => {
+      this.downloadPct = percent(p);
+    }), DOWNLOAD_TIMEOUT_MS, false, 'onboarding.downloadVoice');
+    this.caps = vm.lastCaps();
+    this.downloading = false;
+    this.downloadFailed = !ok;
+    Log.i(LogEvents.VOICE_STATUS, `where=onboarding event=download ok=${ok} code=${vm.lastDownloadCode()}` +
+      ` row=${this.enRow()}`);
+  }
+
+  /** A tour owns the speech listener while it runs, so the sample is offered only when no tour is running. */
+  sampleAllowed(): boolean {
+    try {
+      return !AppContainer.tourController().isRunning();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** Speaks one line in the chosen language (Polish: shown as text for a reading time, no audio). */
+  async playSample(): Promise<void> {
+    if (!this.sampleAllowed()) {
+      return;
+    }
+    this.stopSample();
+    const lang = this.selected;
+    const text = phrase(PhraseKey.WELCOME_HINT, lang, {});
+    this.sampleSeq++;
+    const id = `onb-sample-${this.sampleSeq}`;
+    this.sampleId = id;
+    this.sampleText = stripPauseMarkup(text);
+    this.samplePlaying = true;
+    try {
+      const speech = AppContainer.speech();
+      if (!this.speechReady) {
+        const vm = AppContainer.voiceManager();
+        const c = await withTimeout(speech.init(), VOICES_TIMEOUT_MS, vm.lastCaps(), 'onboarding.speechInit');
+        this.speechReady = true;
+        this.caps = c;
+        this.capsKnown = true;
+      }
+      if (this.sampleId !== id) {
+        return;   // stopped or replaced while the engine warmed up
+      }
+      speech.setListener(new SampleListener(id, (doneId: string, ok: boolean) => this.onSampleEnd(doneId, ok)));
+      const u: Utterance = { id: id, itemId: 'onboarding-sample', text: text, lang: lang, personaId: 'historian' };
+      const plan = AppContainer.voiceManager().plan(lang);
+      Log.i(LogEvents.STORY_QUEUE, `event=onboarding_sample id=${id} lang=${lang} label=${plan.label}`);
+      speech.speak(u);
+      this.sampleGuard = setTimeout(() => this.onSampleEnd(id, false), SAMPLE_GUARD_MS);
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=OnboardingViewModel.playSample ${Log.errKv(e as Object)}`);
+      this.onSampleEnd(id, false);
+    }
+  }
+
+  stopSample(): void {
+    if (!this.samplePlaying) {
+      return;
+    }
+    this.sampleId = '';
+    this.samplePlaying = false;
+    this.clearGuard();
+    try {
+      AppContainer.speech().stopNow();
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=OnboardingViewModel.stopSample ${Log.errKv(e as Object)}`);
+    }
+  }
+
+  private onSampleEnd(id: string, ok: boolean): void {
+    if (id !== this.sampleId) {
+      return;
+    }
+    this.clearGuard();
+    this.sampleId = '';
+    this.samplePlaying = false;
+    Log.i(LogEvents.STORY_QUEUE, `event=onboarding_sample_end id=${id} ok=${ok}`);
+  }
+
+  private clearGuard(): void {
+    if (this.sampleGuard >= 0) {
+      clearTimeout(this.sampleGuard);
+      this.sampleGuard = -1;
+    }
+  }
+
+  private enInput(): EnVoiceInput {
+    const i: EnVoiceInput = {
+      capsKnown: this.capsKnown,
+      caps: this.caps,
+      strategy: AppContainer.voiceManager().strategy(),
+      downloading: this.downloading,
+      downloadFailed: this.downloadFailed
+    };
+    return i;
+  }
+
+  // ---------- step 3: permissions ----------
+
+  refreshPermissions(): void {
+    this.refreshLocation();
+    this.refreshNotifications();
+  }
+
+  async refreshLocation(): Promise<void> {
+    const p: PermissionPort = AppContainer.permissions();
+    const st = await withTimeout(p.locationState(), VOICES_TIMEOUT_MS, PermissionState.UNKNOWN, 'onboarding.locState');
+    let on = false;
+    try {
+      on = p.isLocationSwitchOn();
+    } catch (e) {
+      on = false;
+    }
+    this.loc = locationRow(st, on);
+  }
+
+  /**
+   * One button, which opens the system UI directly (HIG privacy): the permission dialog, then the location switch
+   * sheet if the phone's switch is off. After a denial or approximate-only grant, the settings sheet.
+   */
+  async allowLocation(): Promise<void> {
+    if (this.locBusy) {
+      return;
+    }
+    this.locBusy = true;
+    const p: PermissionPort = AppContainer.permissions();
+    const before = this.loc;
+    try {
+      let st: PermissionState = PermissionState.UNKNOWN;
+      if (before === LocRow.ASK) {
+        st = await withTimeout(p.requestLocation(), DIALOG_TIMEOUT_MS, PermissionState.UNKNOWN,
+          'onboarding.requestLocation');
+      } else if (before === LocRow.DENIED || before === LocRow.APPROX) {
+        st = await withTimeout(p.openLocationSettings(), DIALOG_TIMEOUT_MS, PermissionState.UNKNOWN,
+          'onboarding.openLocationSettings');
+      } else {
+        st = await withTimeout(p.locationState(), VOICES_TIMEOUT_MS, PermissionState.UNKNOWN, 'onboarding.locState');
+      }
+      if ((st === PermissionState.GRANTED || st === PermissionState.APPROX_ONLY) && !p.isLocationSwitchOn()) {
+        await withTimeout(p.requestLocationSwitch(), DIALOG_TIMEOUT_MS, false, 'onboarding.locationSwitch');
+      }
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=OnboardingViewModel.allowLocation ${Log.errKv(e as Object)}`);
+    }
+    await this.refreshLocation();
+    this.locBusy = false;
+    Log.i(LogEvents.SETTINGS, `key=onboarding_location from=${before} to=${this.loc}`);
+  }
+
+  async refreshNotifications(): Promise<void> {
+    const enabled = await withTimeout(this.notifEnabled(), NOTIF_QUERY_TIMEOUT_MS, false, 'onboarding.notifEnabled');
+    this.notif = notifRow(enabled, this.notifRefused);
+  }
+
+  async allowNotifications(): Promise<void> {
+    if (this.notifBusy || this.notif !== NotifRow.ASK) {
+      return;
+    }
+    const ctx = AppContainer.context();
+    if (ctx === undefined) {
+      Log.w(LogEvents.NOTIF_DENIED, 'where=onboarding reason=no_context');
+      return;
+    }
+    this.notifBusy = true;
+    const req = new Promise<boolean>((resolve) => {
+      try {
+        notificationManager.requestEnableNotification(ctx).then(() => resolve(true)).catch((e: Object) => {
+          const code = errCode(e);
+          if (code === NOTIF_ERR_REFUSED) {
+            this.notifRefused = true;
+            Log.w(LogEvents.NOTIF_DENIED, `where=onboarding code=${code}`);
+          } else if (code !== NOTIF_ERR_DIALOG_SHOWN) {
+            Log.e(LogEvents.NOTIF_DENIED, `where=onboarding.requestEnableNotification ${Log.errKv(e)}`);
+          }
+          resolve(false);
+        });
+      } catch (e) {
+        Log.e(LogEvents.UNCAUGHT, `where=onboarding.requestEnableNotification ${Log.errKv(e as Object)}`);
+        resolve(false);
+      }
+    });
+    const granted = await withTimeout(req, DIALOG_TIMEOUT_MS, false, 'onboarding.requestEnableNotification');
+    await this.refreshNotifications();
+    this.notifBusy = false;
+    Log.i(LogEvents.SETTINGS, `key=onboarding_notifications granted=${granted} row=${this.notif}`);
+  }
+
+  private notifEnabled(): Promise<boolean> {
+    try {
+      return notificationManager.isNotificationEnabled();
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=onboarding.isNotificationEnabled ${Log.errKv(e as Object)}`);
+      return Promise.resolve(false);
+    }
+  }
+}
