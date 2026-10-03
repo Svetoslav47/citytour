@@ -13,7 +13,7 @@
  *     is `audio.manifestPath` (default `audio/manifest.json`) and its clip paths (`audio/...`) are relative to the
  *     course root (the app bundles no course; everything is downloaded into filesDir/courses/<id>/<version>/).
  *  R6 Course version (SERVER.md §3.1): `<pack version>-a<first 8 hex of sha256(audio/manifest.json)>`
- *     (courseVersion), so it changes when the pack or the clips change.
+ *     (courseVersion), plus `-c<8 hex>` with a cover photo, so it changes when the pack, the clips or the cover change.
  *  R4 Version: an opaque string; a catalog version different from the installed one is an update.
  *  R5 Ids and versions become folder names, so they are restricted to [A-Za-z0-9._-] (no '..').
  */
@@ -44,6 +44,8 @@ export class CourseSummary {
   langs: string[] = [];
   bytes: number = 0;
   coverBlob: string = '';
+  /** "<author>, <licence>" of the cover photo (catalog `coverCredit`, SERVER.md §3); '' when none. */
+  coverCredit: string = '';
 }
 
 export class CourseFile {
@@ -189,6 +191,8 @@ function parseSummary(v: Object | undefined): CourseSummary | undefined {
   }
   const cover = str(r, 'coverBlob');
   c.coverBlob = SHA256_RE.test(cover) ? cover : '';
+  const credit = str(r, 'coverCredit');
+  c.coverCredit = c.coverBlob !== '' && credit.length <= 160 ? credit : '';
   return c;
 }
 
@@ -377,12 +381,16 @@ export function tokenUsable(t: InstallToken | undefined, nowMs: number): boolean
 export const TTS_MAX_TEXT_CHARS: number = 400;
 export const TTS_MAX_BODY_BYTES: number = 2048;
 
-/** R6: a course's catalog version, from its pack version and the sha256 of its clip manifest. */
-export function courseVersion(packVersion: string, audioManifestSha: string): string {
+/**
+ * R6: a course's catalog version, from its pack version and the sha256 of its clip manifest, plus `-c<8 hex>` when the
+ * pack has a cover photo (`coverTag`, SERVER.md §3.1). The app treats versions as opaque; this mirrors the server.
+ */
+export function courseVersion(packVersion: string, audioManifestSha: string, coverTag: string = ''): string {
   if (!SHA256_RE.test(audioManifestSha)) {
     return packVersion;
   }
-  return `${packVersion}-a${audioManifestSha.substring(0, 8)}`;
+  const c = new RegExp('^[a-f0-9]{8}$').test(coverTag) ? `-c${coverTag}` : '';
+  return `${packVersion}-a${audioManifestSha.substring(0, 8)}${c}`;
 }
 
 export class TtsBody {

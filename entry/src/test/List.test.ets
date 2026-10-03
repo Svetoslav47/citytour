@@ -32,6 +32,7 @@ import remoteEnvelopeTest from './RemoteEnvelope.test';
 import courseRulesTest from './CourseRules.test';
 import voiceChainTest from './VoiceChain.test';
 import poiDotsTest from './PoiDots.test';
+import coverRulesTest from './CoverRules.test';
 
 export default function testsuite() {
   harnessTest();
@@ -65,4 +66,5 @@ export default function testsuite() {
   courseRulesTest();
   voiceChainTest();
   poiDotsTest();
+  coverRulesTest();
 }

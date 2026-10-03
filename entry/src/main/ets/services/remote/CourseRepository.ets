@@ -13,10 +13,12 @@ import { PackLoadResult } from '../../contracts/Ports';
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
 import { activeAfterInstall, InstalledCourse, resolveActive } from '../../core/remote/CourseRules';
+import { chooseCover, CoverChoice, CoverCredit } from '../../core/remote/CoverRules';
 import { CourseSummary } from '../../core/remote/ServerApi';
 import { ActivePackRepository, PackChoice } from '../pack/ActivePackRepository';
 import { FilePackRepository } from '../pack/FilePackRepository';
 import { CancelToken, CourseRecord, CourseStore, InstallProgress } from './CourseStore';
+import { CoverStore, InstalledCover } from './CoverStore';
 import { RemoteClient } from './RemoteClient';
 
 /** What the speech side needs to know about the active course. */
@@ -41,6 +43,13 @@ export class CatalogState {
   fetchedAt: number = 0;
 }
 
+/** The full cover credit of an installed course (About & licences). */
+export class CourseCoverCredit {
+  id: string = '';
+  summary: CourseSummary = new CourseSummary();
+  credit: CoverCredit = new CoverCredit();
+}
+
 export class OpResult {
   ok: boolean = false;
   error: string = '';
@@ -50,16 +59,18 @@ export class CourseRepository {
   private readonly client: RemoteClient;
   private readonly store: CourseStore;
   private readonly pack: ActivePackRepository;
+  private readonly covers: CoverStore | undefined;
   private records: CourseRecord[] = [];
   private catalogState: CatalogState = new CatalogState();
   private listeners: ActiveCourseListener[] = [];
   private initP: Promise<void> | undefined = undefined;
   private busy: Set<string> = new Set<string>();
 
-  constructor(client: RemoteClient, store: CourseStore, pack: ActivePackRepository) {
+  constructor(client: RemoteClient, store: CourseStore, pack: ActivePackRepository, covers?: CoverStore) {
     this.client = client;
     this.store = store;
     this.pack = pack;
+    this.covers = covers;
   }
 
   /**
@@ -283,6 +294,53 @@ export class CourseRepository {
     await this.store.writeActive(id);
     this.announce();
     out.ok = true;
+    return out;
+  }
+
+  // ---------- cover photos (core/remote/CoverRules.ets) ----------
+
+  /**
+   * The cover of course `id`: the installed pack's own cover, else the catalog cover (from the cache; fetched and
+   * verified first when `fetch` is true), else none (CoverSource.NONE: the caller shows its fallback). Never rejects.
+   */
+  async coverFor(id: string, fetch: boolean): Promise<CoverChoice> {
+    try {
+      await this.init();
+      const rec = this.record(id);
+      const inst: InstalledCover = rec === undefined ? new InstalledCover() :
+        await CoverStore.installed(this.store.packPath(rec));
+      const courses = this.catalogState.courses;
+      const cat = courses === undefined ? undefined : courses.find((c: CourseSummary) => c.id === id);
+      const summary: CourseSummary | undefined = cat !== undefined ? cat : rec?.summary;
+      let cached = '';
+      if (inst.path === '' && summary !== undefined && summary.coverBlob !== '' && this.covers !== undefined) {
+        cached = fetch ? await this.covers.ensure(summary.coverBlob) : await this.covers.cached(summary.coverBlob);
+      }
+      return chooseCover(inst.path, inst.credit, cached, summary !== undefined ? summary.coverCredit : '');
+    } catch (e) {
+      Log.e(LogEvents.COURSE, `event=cover_lookup_fail id=${id} ${Log.errKv(e as Object)}`);
+      return new CoverChoice();
+    }
+  }
+
+  /** The full cover credits of the installed courses that have a cover (About & licences). Never rejects. */
+  async coverCredits(): Promise<CourseCoverCredit[]> {
+    const out: CourseCoverCredit[] = [];
+    try {
+      await this.init();
+      for (const rec of this.records) {
+        const inst = await CoverStore.installed(this.store.packPath(rec));
+        if (inst.path !== '' && inst.credit !== undefined) {
+          const c = new CourseCoverCredit();
+          c.id = rec.id;
+          c.summary = rec.summary;
+          c.credit = inst.credit;
+          out.push(c);
+        }
+      }
+    } catch (e) {
+      Log.e(LogEvents.COURSE, `event=cover_credits_fail ${Log.errKv(e as Object)}`);
+    }
     return out;
   }
 

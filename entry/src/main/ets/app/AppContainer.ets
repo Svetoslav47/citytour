@@ -60,6 +60,7 @@ import { ActivePackRepository } from '../services/pack/ActivePackRepository';
 import { ActiveCourse, CourseRepository } from '../services/remote/CourseRepository';
 import { demoWalkOffered } from '../core/remote/CourseRules';
 import { CourseStore } from '../services/remote/CourseStore';
+import { CoverStore } from '../services/remote/CoverStore';
 import { courseClipsOffThread } from '../services/remote/ClipManifestTask';
 import { FileStore } from '../services/remote/FileStore';
 import { RemoteClient } from '../services/remote/RemoteClient';
@@ -426,7 +427,8 @@ export class AppContainer {
       const active: ActivePackRepository = pack instanceof ActivePackRepository ? pack as ActivePackRepository :
         new ActivePackRepository();
       AppContainer.coursesImpl = new CourseRepository(AppContainer.remoteClient(),
-        new CourseStore(() => AppContainer.filesDir()), active);
+        new CourseStore(() => AppContainer.filesDir()), active,
+        new CoverStore(AppContainer.remoteClient(), () => AppContainer.filesDir()));
     }
     return AppContainer.coursesImpl;
   }
