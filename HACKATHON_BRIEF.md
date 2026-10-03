@@ -4,39 +4,50 @@ The user owns the decisions recorded here. Unresolved fields may remain blank; d
 
 ## Pitch
 
-**User problem:** [Who has what concrete problem?]
+**User problem:** Visitors exploring a city on their own miss the stories behind the places they walk past. Hiring a guided walking tour (a guide you follow, listening through earpieces) is expensive, has fixed times and runs at a fixed pace. Reading guidebooks or looking at a phone pulls attention away from the city itself.
 
-**Desired demonstration:** [What does the user want to show, if decided?]
+**Desired demonstration:** A guided walking tour of Kraków that works with the phone locked in a pocket. The app leads the visitor along an optimised route and speaks about each monument as they reach it, the same way a hired guide with earpieces would, but without the guide.
 
-**Lead challenge theme:** [Intelligent Experiences / Spatial Experiences / Human-Centric Technology]
+**Lead challenge theme:** Spatial Experiences
 
-**Distinctive platform capability:** [Name the real platform, device, or system capability used or improved.]
+**Distinctive platform capability:** Background location while the screen is locked (continuous task + Location Kit) driving on-device text-to-speech narration (Core Speech Kit); further capabilities are listed in the README as they land.
 
 ## Target
 
-- Platform: [HarmonyOS / OpenHarmony / Oniro]
+- Platform: HarmonyOS (API 20+; compiled against 6.1.1(24))
 - API level: 20 or later
-- Device type: [phone / tablet / 2-in-1 / car / wearable / TV / other]
-- Validation target: [emulator name/version or physical device model]
+- Device type: phone
+- Validation target: DevEco emulator "Pura 90", HarmonyOS 6.1.1(24); physical device from the Huawei mentors if available
 
 ## Intended user flow
 
-[Describe the user-confirmed flow. Add or remove steps as needed.]
-
-1. [Step]
+1. Pick the guided tour (or later: build one for the time available).
+2. The app plans the walking order of the stops and shows the route.
+3. Put headphones in, lock the phone, start walking.
+4. The guide leads you to each stop and, when you arrive, tells you about the place and where to look.
 
 ## Acceptance checks
 
-- [ ] [Observable check 1]
-- [ ] [Observable check 2]
-- [ ] [Observable check 3]
+- [ ] A guided tour runs end to end with the screen locked (narration triggered by location).
+- [ ] Stops are visited in a computed, optimised walking order.
+- [ ] Narration is available in English, Polish and Chinese (see open question on Polish voice).
 
 ## Scope boundaries
 
-- In scope: [Features and boundaries chosen by the user]
-- Out of scope: [Items the user explicitly deferred]
-- Mocked or simulated behavior: [List it clearly, or write "None"]
+- In scope:
+  - **Guided tour first**: one curated Kraków tour for now.
+  - **All Kraków locations installed** in the offline data (not only the tour stops).
+  - Languages: **English, Polish, Chinese**.
+  - Voice: **on-device text-to-speech only**.
+  - One guide persona, **"Historian"**. The design must allow a second persona to be added later.
+  - Map: **Map Kit** if feasible, otherwise the second-best option.
+- Out of scope (for now): a second guide persona (planned for if time allows).
+- Mocked or simulated behavior: a "Demo walk" location source for the emulator, clearly labelled in the UI (planned).
+
+## Open questions
+
+- Polish voice: on-device TTS (Core Speech Kit) supports only Chinese and English; how Polish narration is delivered is not yet decided.
 
 ## First-minute narrative
 
-[The user-confirmed narrative, if one is planned]
+[To be decided.]
