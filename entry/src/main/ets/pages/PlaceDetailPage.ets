@@ -11,6 +11,7 @@ import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { PlaceViewModel } from '../viewmodel/PlaceViewModel';
+import { SafeArea } from '../viewmodel/SafeArea';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { MapCanvas } from '../views/map/MapCanvas';
 import { Radius, Size, Space, Type } from '../views/common/Tokens';
@@ -51,6 +52,9 @@ export struct PlaceDetailPage {
   @Local app: AppViewModel = AppViewModel.get();
   @Local vm: PlaceViewModel = new PlaceViewModel();
   @Local pageW: number = 0;
+  /** Window avoid areas (edge-to-edge window, issue #63): the map snippet runs under the status bar, the back
+   * button sits below it and the text ends clear of the navigation indicator. */
+  @Local sa: SafeArea = SafeArea.get();
 
   aboutToAppear(): void {
     this.vm.load(this.poiId, this.app.textLang);
@@ -207,7 +211,7 @@ export struct PlaceDetailPage {
           Stack({ alignContent: Alignment.TopStart }) {
             if (this.vm.found && this.pageW > 0) {
               MapCanvas({ map: this.vm.map, scene: this.vm.scene, bounds: this.vm.sceneBounds,
-                boxHeight: Math.round(this.pageW * 3 / 4), mapId: 'mapPlace' })
+                boxHeight: Math.round(this.pageW * 3 / 4) + this.sa.top, topInset: this.sa.top, mapId: 'mapPlace' })
                 .accessibilityText($r('app.string.place_map_a11y', this.vm.name))
             }
             FloatingIconButton({
@@ -216,7 +220,7 @@ export struct PlaceDetailPage {
               buttonId: 'btnBackPlace',
               onTap: () => this.app.back()
             })
-              .margin({ left: Space.S2, top: Space.S2 })
+              .margin({ left: Space.S2 + this.sa.left, top: Space.S2 + this.sa.top })
           }
           .width('100%')
 
@@ -230,6 +234,7 @@ export struct PlaceDetailPage {
           }
         }
         .width('100%')
+        .padding({ bottom: this.sa.bottom })
       }
       .scrollBar(BarState.Off)
       .align(Alignment.Top)

@@ -6,6 +6,7 @@
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { AppViewModel } from '../viewmodel/AppViewModel';
+import { SafeArea } from '../viewmodel/SafeArea';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { Radius, Size, Space, Type } from '../views/common/Tokens';
 
@@ -22,6 +23,8 @@ class LicenceRow {
 @ComponentV2
 export struct AboutSourcesPage {
   @Local app: AppViewModel = AppViewModel.get();
+  /** Window avoid areas (edge-to-edge window, issue #63). */
+  @Local sa: SafeArea = SafeArea.get();
   private licences: LicenceRow[] = [
     new LicenceRow($r('app.string.about_osm'), undefined),
     new LicenceRow($r('app.string.about_wikipedia'), undefined),
@@ -135,6 +138,8 @@ export struct AboutSourcesPage {
       }
       .width('100%')
       .height('100%')
+      // The canvas runs under the system bars; the back button and the text stay clear of them.
+      .padding({ top: this.sa.top, bottom: this.sa.bottom, left: this.sa.left, right: this.sa.right })
     }
     .id('pageAbout')
     .hideTitleBar(true)

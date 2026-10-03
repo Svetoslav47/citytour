@@ -11,6 +11,7 @@ import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { MapCache, overlayBounds, walkOverlay } from '../viewmodel/MapViewModel';
+import { SafeArea } from '../viewmodel/SafeArea';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { SimulatedBadge } from '../views/common/SimulatedBadge';
 import { Size, Space } from '../views/common/Tokens';
@@ -26,6 +27,8 @@ export class MapMode {
 export struct MapPage {
   @Param mode: string = MapMode.TOUR;
   @Local app: AppViewModel = AppViewModel.get();
+  /** Window avoid areas (edge-to-edge window, issue #63). */
+  @Local sa: SafeArea = SafeArea.get();
   @Local map: MapData | undefined = undefined;
   @Local scene: MapOverlay = new MapOverlay();
   @Local bounds: number[] = [];
@@ -71,7 +74,8 @@ export struct MapPage {
             bounds: this.bounds,
             interactive: true,
             boxHeight: this.h,
-            topInset: 56,
+            topInset: 56 + this.sa.top,
+            bottomInset: this.sa.bottom,
             mapId: 'mapFull'
           })
         }
@@ -86,8 +90,9 @@ export struct MapPage {
           SimulatedBadge({ visible: this.demo })
         }
         .width('100%')
-        .padding({ left: Space.S2, right: Space.S3, top: Space.S2 })
-        .height(Size.TOUCH + Space.S2)
+        // The map is full-bleed under both system bars; the floating controls sit below the status bar.
+        .padding({ left: Space.S2 + this.sa.left, right: Space.S3 + this.sa.right, top: Space.S2 + this.sa.top })
+        .height(Size.TOUCH + Space.S2 + this.sa.top)
       }
       .width('100%')
       .height('100%')
