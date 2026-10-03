@@ -1169,6 +1169,10 @@
       "value": "You ended before the first stop. The tour is still here when you're ready."
     },
     {
+      "name": "summary_map_a11y",
+      "value": "Map of the route you walked."
+    },
+    {
       "name": "walk_look_up",
       "value": ", look up"
     },
