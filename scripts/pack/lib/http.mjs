@@ -277,13 +277,28 @@ export function isMain(metaUrl) {
   return Boolean(process.argv[1]) && metaUrl === pathToFileURL(resolve(process.argv[1])).href;
 }
 
-/** Runs a script's async main and maps any error to exit code 1 with a one-line reason. */
+/**
+ * Runs a script's async main and maps any error to exit code 1 with a one-line reason.
+ * Sets process.exitCode and lets Node exit on its own: calling process.exit() right after parsing
+ * tens of MB of JSON/XML deadlocked Node 26 at shutdown (main thread joining a V8 worker that waited
+ * for a GC), seen once with 20-fetch-osm-tiles.mjs --offline on 2026-10-03.
+ */
 export function runMain(main) {
-  main(parseArgs(process.argv.slice(2))).then(
-    () => process.exit(0),
+  let args;
+  try {
+    args = parseArgs(process.argv.slice(2));
+  } catch (e) {
+    console.error(`FAILED: ${e?.message ?? e}`);
+    process.exitCode = 1;
+    return;
+  }
+  main(args).then(
+    () => {
+      process.exitCode = 0;
+    },
     (e) => {
       console.error(`FAILED: ${e?.message ?? e}`);
-      process.exit(1);
+      process.exitCode = 1;
     },
   );
 }
