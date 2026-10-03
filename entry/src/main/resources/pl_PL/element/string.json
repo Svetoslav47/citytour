@@ -1531,6 +1531,26 @@
     {
       "name": "walk_menu_lang",
       "value": "Kontynuuj: %s"
+    },
+    {
+      "name": "route_time_available",
+      "value": "MASZ CZAS"
+    },
+    {
+      "name": "route_budget_all",
+      "value": "Wszystkie"
+    },
+    {
+      "name": "route_budget_min_a11y",
+      "value": "%d minut"
+    },
+    {
+      "name": "route_budget_best",
+      "value": "Najlepsze %1$d z %2$d przystanków"
+    },
+    {
+      "name": "route_budget_exact",
+      "value": "wyliczone dokładnie"
     }
   ]
 }

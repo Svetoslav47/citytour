@@ -1531,6 +1531,26 @@
     {
       "name": "walk_menu_lang",
       "value": "Continue in %s"
+    },
+    {
+      "name": "route_time_available",
+      "value": "Time available"
+    },
+    {
+      "name": "route_budget_all",
+      "value": "All stops"
+    },
+    {
+      "name": "route_budget_min_a11y",
+      "value": "%d minutes"
+    },
+    {
+      "name": "route_budget_best",
+      "value": "Best %1$d of %2$d stops"
+    },
+    {
+      "name": "route_budget_exact",
+      "value": "solved exactly"
     }
   ]
 }

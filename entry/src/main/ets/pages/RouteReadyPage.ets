@@ -3,13 +3,16 @@
  * A2/A7; the scripted fake until then). A saving is claimed only when a real planner computed it and it is at
  * least 50 m. "Begin" (id btnBegin) opens the sheet; "Start walking" (id btnStartWalking) starts the tour.
  * Sheet: bindSheet + SheetOptions (doc: arkts-sheet-page).
+ * X1: "Time available" (All stops | 30 min | 45 min, ids segBudget0/30/45) re-plans with TourControl.plan(tourId,
+ * budgetMin): exact orienteering picks the best subset; the result line says "Best k of n stops".
  */
 import { IssueCode } from '../contracts/EngineTypes';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { distanceRes, durationRes, savingRes } from '../viewmodel/Format';
-import { OrderRow, TourPlanViewModel } from '../viewmodel/TourPlanViewModel';
+import { BUDGET_OPTIONS_MIN, OrderRow, TourPlanViewModel } from '../viewmodel/TourPlanViewModel';
+import { SegmentOption, SegmentRow } from '../views/settings/SettingsRows';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { IssueBanner } from '../views/common/IssueBanner';
 import { Plaque, PlaqueState } from '../views/common/Plaque';
@@ -26,8 +29,29 @@ export struct RouteReadyPage {
    * sits below it, and the panel's last control clears the navigation indicator. */
   @Local sa: SafeArea = SafeArea.get();
 
+  private budgetOptions: SegmentOption[] = BUDGET_OPTIONS_MIN.map((m: number) => m === 0 ?
+    new SegmentOption('0', $r('app.string.route_budget_all')) :
+    new SegmentOption(`${m}`, $r('app.string.fmt_min', m), $r('app.string.route_budget_min_a11y', m)));
+
   aboutToAppear(): void {
     this.vm.planRoute();
+  }
+
+  @Builder
+  budgetPicker() {
+    Column() {
+      this.overline($r('app.string.route_time_available'))
+      SegmentRow({
+        options: this.budgetOptions,
+        selected: `${this.vm.budgetMin}`,
+        idPrefix: 'segBudget',
+        onSelect: (key: string) => this.vm.setBudget(Number(key))
+      })
+        .margin({ left: -Space.S4, right: -Space.S4 })
+    }
+    .alignItems(HorizontalAlign.Start)
+    .width('100%')
+    .margin({ top: Space.S4 })
   }
 
   private async onSheetGone(): Promise<void> {
@@ -130,6 +154,21 @@ export struct RouteReadyPage {
           .fontSize(Type.CALLOUT)
           .fontColor($r('app.color.text_secondary'))
           .margin({ top: 10 })
+      }
+      if (this.vm.showBudgetResult()) {
+        Text() {
+          Span($r('app.string.route_budget_best', this.vm.chosenStops(), this.vm.stops.length))
+          if (this.vm.plan.exact) {
+            Span(' · ')
+            Span($r('app.string.route_budget_exact'))
+          }
+        }
+        .id('txtBudgetResult')
+        .fontSize(Type.CALLOUT)
+        .lineHeight(Type.CALLOUT_LH)
+        .fontFeature(TABULAR)
+        .fontColor($r('app.color.text_primary'))
+        .margin({ top: 10 })
       }
       if (this.vm.isRealPlanner()) {
         Text($r('app.string.route_computed', this.vm.plan.ms, this.vm.plan.algo))
@@ -259,6 +298,8 @@ export struct RouteReadyPage {
       } else {
         this.planSummary()
       }
+
+      this.budgetPicker()
 
       if (this.vm.showOrder) {
         this.orderList()
