@@ -18,7 +18,7 @@ import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
 import { activeAfterInstall, InstalledCourse, resolveActive } from '../../core/remote/CourseRules';
 import { chooseCover, CoverChoice, CoverCredit } from '../../core/remote/CoverRules';
-import { CitySummary, CourseManifest, CourseSummary, manifestBytes } from '../../core/remote/ServerApi';
+import { cityName, CitySummary, CourseManifest, CourseSummary, manifestBytes } from '../../core/remote/ServerApi';
 import { cityNeedsDownload, orphanCities } from '../../core/remote/CourseRules';
 import { PackRepository } from '../../contracts/Ports';
 import { ActivePackRepository, PackChoice } from '../pack/ActivePackRepository';
@@ -106,6 +106,23 @@ export class CourseRepository {
 
   private cityRecord(id: string): CourseRecord | undefined {
     return this.cityRecords.find((r: CourseRecord) => r.id === id);
+  }
+
+  /** A course's city for its row: the catalog city's name in `uiLang`, else the summary's display name. */
+  cityLabel(s: CourseSummary, uiLang: string): string {
+    const c = this.catalogState.cities.find((x: CitySummary) => x.id === s.cityId);
+    return c !== undefined ? cityName(c.names, s.city !== '' ? s.city : c.id, uiLang) : s.city;
+  }
+
+  /** The city places pack `id` is installed. */
+  hasCity(id: string): boolean {
+    return this.cityRecord(id) !== undefined;
+  }
+
+  /** The catalog size of city `id`'s places pack (0 = unknown). */
+  cityBytes(id: string): number {
+    const c = this.catalogState.cities.find((x: CitySummary) => x.id === id);
+    return c !== undefined ? c.bytes : 0;
   }
 
   /** Installed city places packs (id@version), for logs and the dev panel. */

@@ -191,6 +191,21 @@ The server runs on one instance with a persistent volume. That is enough for a h
 ## 6. App changes
 - `ohos.permission.INTERNET`. Calls go through Network Kit `http`; large downloads use `@ohos.request` agent with progress.
 - `CourseRepository` manages the **downloaded** courses (`filesDir/courses/<id>/<version>/`); there is no bundled course. `PackRepository` (ActivePackRepository) reads from the active course, or from an empty pack until the first download (Home: "Download your first walk"). The first download becomes active; deleting the active course activates another downloaded one or none.
+- **City places packs (app side).** A second `CourseStore` keeps `filesDir/cities/<cityId>/<version>/`. Downloading a
+  course with a `cityId` first fetches `GET /v1/cities/<cityId>/manifest` when that city is not installed or the catalog
+  lists another version (`CourseRules.cityNeedsDownload`), installs it with the same verified, resumable, atomic
+  installer, then the course; **one progress bar** covers both (the Download size includes the city while it is not
+  installed, `downloadBytes`). An installed older city keeps working when the city manifest cannot be fetched. The
+  active pack is `CityCoursePackRepository`: the course's own pack (`tour/`) over the city pack, a course record wins
+  over a city record with the same id (POIs, narrations, sources), tours/routes/personas come from the course, the map
+  from the course when it ships `map-detail.json`, else from the city. Both packs must share one projection origin
+  (refused otherwise). Deleting the last course of a city deletes the city pack too (`orphanCities`, log
+  `COURSE event=city_removed`). A course without `cityId` (an older self-contained pack) still loads as before.
+- **Nothing city-specific in the app.** The projection origin and the out-of-area bbox come from the pack manifest
+  (the city's), the "All places" map opens on `city.json` `defaultBounds`, every user-visible city name comes from
+  `city.json` `names` (UI language, nominative slot), the media session album is `"{city} · {tour}"`, the
+  narration check's city-specific proper nouns come from `city.json` `properNouns`, and the SIMULATED Demo walk is
+  the course pack's own `demo-walk.json` (offered for any course that ships one).
 - **Courses screen:** shows catalog rows with *Download* (size), progress + *Cancel*, *Downloaded*, *Update*, *Try again* (resumes: verified files in the temp folder are kept after a failure), and *Delete*. The last good catalog is kept for offline use.
 - `RemoteVoice` (SpeechPort decorator) implements step 2 of the fallback chain. It checks `X-Text-Sha256` against the sha of its own text, and drops the audio on any mismatch.
 - The online studio voice is always on (no toggle). The HUD shows `server: online|offline|budget`.

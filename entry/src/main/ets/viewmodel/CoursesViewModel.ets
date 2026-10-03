@@ -15,7 +15,9 @@ import { Lang } from '../contracts/Model';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
-import { CourseRow, CourseState, courseTitle, mergeCourses, progressPct, sizeLabel } from '../core/remote/CourseRules';
+import {
+  CourseRow, CourseState, courseTitle, downloadBytes, mergeCourses, progressPct, sizeLabel
+} from '../core/remote/CourseRules';
 import { CoverChoice, rowHasCover } from '../core/remote/CoverRules';
 import { CatalogSource, CatalogState, OpResult } from '../services/remote/CourseRepository';
 import { CancelToken, InstallProgress } from '../services/remote/CourseStore';
@@ -192,12 +194,13 @@ export class CoursesViewModel {
         const it = new CourseItem();
         it.id = r.summary.id;
         it.title = courseTitle(r.summary, ui);
-        it.city = r.summary.city;
+        it.city = repo.cityLabel(r.summary, ui);
         it.stops = r.summary.stops;
         it.km = r.summary.km > 0 ? `${r.summary.km}` : '';
         it.minutes = r.summary.minutes;
         it.langs = r.summary.langs.map((l: string) => l === 'zh' ? '中文' : l.toUpperCase()).join(' · ');
-        it.size = sizeLabel(r.summary.bytes);
+        it.size = sizeLabel(r.state === CourseState.DOWNLOADED ? r.summary.bytes :
+          downloadBytes(r.summary.bytes, r.summary.cityId, repo.cityBytes(r.summary.cityId), repo.hasCity(r.summary.cityId)));
         it.state = r.state;
         it.active = r.active;
         it.canDelete = r.canDelete;

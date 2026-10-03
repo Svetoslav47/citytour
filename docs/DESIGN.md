@@ -275,7 +275,6 @@ Sentence by sentence (Polish): "Polskie opowieści są wyświetlane jako tekst. 
 ```
 ┌──────────────────────────────┐
 │ CityTour               ⚙︎     │  ← Navigation title (Full mode, collapses), menu: gearshape → Settings
-│ Kraków · offline ready ✓     │  ← subtitle (callout, secondary)
 │                              │
 │ ┌──────────────────────────┐ │  ← [only if a session exists] CONTINUE card
 │ │ NOW WALKING        ● live│ │     overline + live dot (accent) / or "PAUSED"
@@ -678,7 +677,7 @@ A `NavDestination` with title "Settings" (Full mode) and a `List` with `ListItem
 | **Sound and haptics** | Arrival chime | `Toggle` | On |
 | | Vibrate on arrival | `Toggle` | On (needs `ohos.permission.VIBRATE`) |
 | **Offline data** | Kraków pack | → OfflineData page | "3,412 places · 11 tour stories · 48 MB ⚠️ (real numbers from the pack) · Included with the app". The page shows: built date, sources with licences (ODbL OSM, Kraków open data licence ⚠️, Wikipedia CC BY-SA), **Check for update** (stretch, disabled in MVP: hide it instead). |
-| **Demo** | Demo walk | `Toggle` | Off. Title "Demo walk (simulated location)". Footnote: "Replays a recorded walk along the Royal Route instead of using GPS. Everything simulated is labelled SIMULATED." When it's on, two more rows appear: **Replay speed** `SegmentButton` 1× · 2× · 4× · 8×, and **Simulated clock** `Toggle` (Hejnał demo; proposal). |
+| **Demo** | Demo walk | `Toggle` | Off. Title "Demo walk (simulated location)". Footnote: "Replays a recorded walk along the tour's route (the course pack's demo track) instead of using GPS. Everything simulated is labelled SIMULATED." When it's on, two more rows appear: **Replay speed** `SegmentButton` 1× · 2× · 4× · 8×, and **Simulated clock** `Toggle` (Hejnał demo; proposal). |
 | **Permissions** | Location | value + → | "Precise · while using" / "Off". Action: **Open settings** (`requestPermissionOnSetting`). |
 | | Notifications | value + → | "On" / "Off" → `openNotificationSettingsWithResult` ✅ |
 | **About** | How these stories are made | → page | the AI disclosure (§3.15) |

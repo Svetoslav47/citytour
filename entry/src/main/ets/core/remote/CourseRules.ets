@@ -76,6 +76,14 @@ export function cityNeedsDownload(installedVersion: string, catalogVersion: stri
   return catalogVersion !== '' && catalogVersion !== installedVersion;
 }
 
+/**
+ * Bytes a Download fetches: the course, plus its city's places pack when that city is not installed yet (the first
+ * course of a city brings it; the next ones share it). `cityBytes` 0 = unknown (older catalog).
+ */
+export function downloadBytes(courseBytes: number, cityId: string, cityBytes: number, cityInstalled: boolean): number {
+  return courseBytes + (cityId !== '' && !cityInstalled && cityBytes > 0 ? cityBytes : 0);
+}
+
 /** Installed city packs that no installed course uses any more (removed with the last course of the city). */
 export function orphanCities(installedCities: string[], usedCityIds: string[]): string[] {
   return installedCities.filter((c: string) => usedCityIds.indexOf(c) < 0);
