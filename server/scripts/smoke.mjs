@@ -63,6 +63,15 @@ const f = man.payload.files.find((x) => x.path.endsWith('tours.json')) || man.pa
 const b = await get(`/v1/blobs/${f.sha256}`);
 check(`GET blob ${f.path}`, b.r.status === 200 && sha(b.buf) === f.sha256 &&
   /immutable/.test(b.r.headers.get('cache-control') || ''), `${b.buf.length} bytes`);
+for (const city of cat.payload?.cities ?? []) {
+  const cm = await get(`/v1/cities/${city.id}/manifest`);
+  const cman = JSON.parse(cm.buf.toString());
+  check(`GET city ${city.id} manifest signature`, cm.r.status === 200 && verifyEnv(cman) && cman.payload.version === city.version,
+    `${cman.payload?.files?.length} files, ${city.places} places`);
+}
+if (course.cityId) {
+  check(`course ${course.id} city ${course.cityId} is in the catalog`, (cat.payload.cities ?? []).some((x) => x.id === course.cityId));
+}
 const bad = await get('/v1/blobs/..%2F..%2Fcatalog.json');
 check('blob path traversal rejected', bad.r.status === 404);
 
