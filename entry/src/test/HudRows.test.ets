@@ -113,10 +113,14 @@ export default function hudRowsTest() {
       expect(find(r, 'location').tone).assertEqual(HudTone.OK);
       expect(find(r, 'course').value).assertEqual('212° · 1.3 m/s');
       // bearing 230 vs course 212 => +18 relative
-      expect(find(r, 'next').value).assertEqual('St Mary\'s Basilica · 180 m · bearing 230° (+18°)');
-      expect(find(r, 'trigger').value).assertEqual('approach @110 m · arrive @35 m · walking');
+      expect(find(r, 'next').value).assertEqual('St Mary\'s Basilica · 180 m · brg 230° (+18°)');
+      expect(find(r, 'trigger').value).assertEqual('approach 110 m · arrive 35 m');
       expect(find(r, 'route').value).assertEqual('on route · cue in 41 m: In 40 metres, turn left');
-      expect(find(r, 'voice').value).assertEqual('Core Speech TTS · zh-CN reads EN (Fallback voice) · zh-CN/13 · idle');
+      const near = snap();
+      near.phase = TourPhase.APPROACHING;
+      expect(find(rows(near, { arriveM: 35, approachM: 110 }), 'trigger').value)
+        .assertEqual('approach 110 m · arrive 35 m · approaching');
+      expect(find(r, 'voice').value).assertEqual('Fallback voice (zh-CN reads EN) · Core Speech zh-CN/13 · idle');
       expect(find(r, 'voice').tone).assertEqual(HudTone.WARN);
       expect(find(r, 'session').value).assertEqual('AVSession active · playing');
       expect(find(r, 'background').value).assertEqual('LOCATION + AUDIO_PLAYBACK running');
@@ -146,9 +150,9 @@ export default function hudRowsTest() {
       expect(find(r, 'location').value).assertEqual(`Location Kit · accuracy ${NA}`);
       expect(find(r, 'course').value).assertEqual(`${NA} · ${NA}`);
       expect(find(r, 'next').value).assertEqual(NA);
-      expect(find(r, 'trigger').value).assertEqual(`approach @${NA} · arrive @${NA} · walking`);
+      expect(find(r, 'trigger').value).assertEqual(`approach ${NA} · arrive ${NA}`);
       expect(find(r, 'route').value).assertEqual(`on route · cue ${NA}`);
-      expect(contains(find(r, 'voice').value, `engine ${NA}`)).assertTrue();
+      expect(contains(find(r, 'voice').value, `Core Speech ${NA}`)).assertTrue();
       expect(find(r, 'session').tone).assertEqual(HudTone.OFF);
       expect(find(r, 'background').value).assertEqual('continuous task not running');
     });
@@ -157,7 +161,7 @@ export default function hudRowsTest() {
       if (s.user !== undefined) {
         s.user.courseDeg = Number.NaN;
       }
-      expect(find(rows(s), 'next').value).assertEqual('St Mary\'s Basilica · 180 m · bearing 230°');
+      expect(find(rows(s), 'next').value).assertEqual('St Mary\'s Basilica · 180 m · brg 230°');
       expect(find(rows(s), 'course').tone).assertEqual(HudTone.NA);
     });
     it('off_route_lost_signal_and_voice_states', 0, () => {
@@ -174,12 +178,12 @@ export default function hudRowsTest() {
       expect(contains(find(r, 'route').value, 'OFF ROUTE')).assertTrue();
       expect(find(r, 'route').tone).assertEqual(HudTone.WARN);
       expect(find(r, 'location').tone).assertEqual(HudTone.OFF);
-      expect(find(r, 'voice').value).assertEqual('Studio voice (pre-recorded) · zh-CN/13 · paused');
+      expect(find(r, 'voice').value).assertEqual('Studio voice (pre-recorded) · Core Speech zh-CN/13 · paused');
       expect(find(r, 'session').value).assertEqual('AVSession active · paused');
       s.voiceLabel = VoiceLabel.TEXT_ONLY_USER;
       s.paused = false;
       s.speechText = true;
-      expect(find(rows(s), 'voice').value).assertEqual('text only (your choice) · zh-CN/13 · showing text');
+      expect(find(rows(s), 'voice').value).assertEqual('text only (your choice) · Core Speech zh-CN/13 · showing text');
       expect(find(rows(s), 'voice').tone).assertEqual(HudTone.OFF);
     });
     it('trigger_radii_match_the_engine', 0, () => {

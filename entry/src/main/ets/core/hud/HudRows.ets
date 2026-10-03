@@ -148,16 +148,18 @@ function nextRow(s: EngineSnapshot, name: string): HudRow {
     return row('next', 'Next', done ? 'tour over' : NA, HudTone.NA);
   }
   const rel: number = s.user === undefined ? Number.NaN : relativeBearing(n.bearingDeg, s.user.courseDeg);
-  const brg: string = Number.isFinite(rel) ? `bearing ${hudDegrees(n.bearingDeg)} (${hudSignedDegrees(rel)})` :
-    `bearing ${hudDegrees(n.bearingDeg)}`;
+  const brg: string = Number.isFinite(rel) ? `brg ${hudDegrees(n.bearingDeg)} (${hudSignedDegrees(rel)})` :
+    `brg ${hudDegrees(n.bearingDeg)}`;
   return row('next', 'Next', `${name === '' ? n.poiId : name} · ${hudDistance(n.distanceM)} · ${brg}`,
     Number.isFinite(n.distanceM) ? HudTone.OK : HudTone.NA);
 }
 
 function triggerRow(s: EngineSnapshot, t: TriggerRadii | undefined): HudRow {
-  const radii: string = t === undefined ? `approach @${NA} · arrive @${NA}` :
-    `approach @${hudDistance(t.approachM)} · arrive @${hudDistance(t.arriveM)}`;
-  return row('trigger', 'Trigger', `${radii} · ${s.phase}`, t === undefined ? HudTone.NA : HudTone.OK);
+  const radii: string = t === undefined ? `approach ${NA} · arrive ${NA}` :
+    `approach ${hudDistance(t.approachM)} · arrive ${hudDistance(t.arriveM)}`;
+  // The geofence state is shown only while it fires (approaching / at the stop), to keep the row one line.
+  const live: boolean = s.phase === TourPhase.APPROACHING || s.phase === TourPhase.AT_STOP;
+  return row('trigger', 'Trigger', live ? `${radii} · ${s.phase}` : radii, t === undefined ? HudTone.NA : HudTone.OK);
 }
 
 function routeRow(s: EngineSnapshot): HudRow {
@@ -175,9 +177,9 @@ function routeRow(s: EngineSnapshot): HudRow {
 function voiceName(label: VoiceLabel): string {
   switch (label) {
     case VoiceLabel.NATIVE:
-      return 'Core Speech TTS (native voice)';
+      return 'native voice';
     case VoiceLabel.FALLBACK_ZH_READS_EN:
-      return 'Core Speech TTS · zh-CN reads EN (Fallback voice)';
+      return 'Fallback voice (zh-CN reads EN)';
     case VoiceLabel.PRERENDERED:
       return 'Studio voice (pre-recorded)';
     case VoiceLabel.TEXT_ONLY_PLATFORM:
@@ -191,7 +193,8 @@ function voiceName(label: VoiceLabel): string {
 
 function voiceRow(s: EngineSnapshot): HudRow {
   const parts: string[] = [voiceName(s.voiceLabel)];
-  parts.push(s.platform.ttsEngine !== '' && s.platform.ttsEngine !== 'none' ? s.platform.ttsEngine : `engine ${NA}`);
+  parts.push(s.platform.ttsEngine !== '' && s.platform.ttsEngine !== 'none' ? `Core Speech ${s.platform.ttsEngine}` :
+    `Core Speech ${NA}`);
   parts.push(s.nowPlaying === undefined ? 'idle' : s.paused ? 'paused' : s.speechText ? 'showing text' : 'speaking');
   let tone: HudTone = HudTone.OK;
   if (s.voiceLabel === VoiceLabel.FALLBACK_ZH_READS_EN) {
