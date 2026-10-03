@@ -1105,6 +1105,10 @@
       "value": "Downloading"
     },
     {
+      "name": "onb_fallback_note",
+      "value": "The Chinese voice reads English until the English voice is installed."
+    },
+    {
       "name": "summary_complete",
       "value": "Tour complete"
     },

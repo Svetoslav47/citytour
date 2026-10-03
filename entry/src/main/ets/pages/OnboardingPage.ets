@@ -317,7 +317,7 @@ export struct OnboardingPage {
       .width('100%')
       .margin({ top: 10 })
     } else if (this.vm.enRow() === EnVoiceRow.FALLBACK) {
-      Text($r('app.string.voice_fallback_tooltip'))
+      Text($r('app.string.onb_fallback_note'))
         .fontSize(Type.FOOTNOTE)
         .lineHeight(Type.FOOTNOTE_LH)
         .fontColor($r('app.color.text_secondary'))
@@ -469,7 +469,7 @@ export struct OnboardingPage {
           this.langRows()
         }
         .padding({ left: Space.S4, right: Space.S4 })
-        .margin({ top: 28 })
+        .margin({ top: Space.S5 })
 
         Row({ space: Space.S2 }) {
           SymbolGlyph($r('sys.symbol.info_circle'))
@@ -521,7 +521,7 @@ export struct OnboardingPage {
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')
-        .padding({ left: Space.S4, right: Space.S4, top: Space.S5 })
+        .padding({ left: Space.S4, right: Space.S4, top: Space.S4 })
       }
       .alignItems(HorizontalAlign.Start)
       .width('100%')

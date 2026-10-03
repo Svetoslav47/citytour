@@ -44,6 +44,8 @@ export const SETTINGS_KEY: string = 'settings';
 
 const VOICES_TIMEOUT_MS: number = 8000;
 const DOWNLOAD_TIMEOUT_MS: number = 120000;
+/** No start/progress event for this long (e.g. the system dialog was cancelled): show the failure. */
+const DOWNLOAD_STALL_MS: number = 30000;
 /** System dialogs and sheets wait for the user; after this the row re-reads the real state. */
 const DIALOG_TIMEOUT_MS: number = 120000;
 const NOTIF_QUERY_TIMEOUT_MS: number = 5000;
@@ -245,7 +247,12 @@ export class OnboardingViewModel {
     Log.i(LogEvents.VOICE_STATUS, `where=onboarding en=${c.en} zh=${c.zh} row=${this.enRow()}`);
   }
 
-  /** Tries Laura (en-US/8). Never throws; on failure the English row keeps the Fallback voice. */
+  /**
+   * Tries Laura (en-US/8). Never throws; on failure the English row keeps the Fallback voice.
+   * The system shows its own "Download language package?" dialog first. On the Pura 90 emulator its Cancel delivers
+   * no callback at all (the kit's own timeout is 5 min), so the row gives up after DOWNLOAD_STALL_MS without any
+   * progress event and says so honestly. A late success still flips the row to Laura.
+   */
   async download(): Promise<void> {
     if (this.downloading) {
       return;
@@ -254,14 +261,36 @@ export class OnboardingViewModel {
     this.downloadPct = 0;
     this.downloadFailed = false;
     const vm = AppContainer.voiceManager();
-    const ok = await withTimeout(vm.downloadEnglish((p: number) => {
+    let lastEventMs = Date.now();
+    const real = vm.downloadEnglish((p: number) => {
+      lastEventMs = Date.now();
       this.downloadPct = percent(p);
-    }), DOWNLOAD_TIMEOUT_MS, false, 'onboarding.downloadVoice');
+    });
+    let stallTimer = -1;
+    const stalled = new Promise<boolean>((resolve) => {
+      stallTimer = setInterval(() => {
+        if (Date.now() - lastEventMs >= DOWNLOAD_STALL_MS) {
+          Log.w(LogEvents.VOICE_DL_FAIL, `where=onboarding code=stalled ms=${DOWNLOAD_STALL_MS} pct=${this.downloadPct}`);
+          resolve(false);
+        }
+      }, 1000);
+    });
+    const ok = await withTimeout(Promise.race([real, stalled]), DOWNLOAD_TIMEOUT_MS, false, 'onboarding.downloadVoice');
+    clearInterval(stallTimer);
     this.caps = vm.lastCaps();
     this.downloading = false;
     this.downloadFailed = !ok;
     Log.i(LogEvents.VOICE_STATUS, `where=onboarding event=download ok=${ok} code=${vm.lastDownloadCode()}` +
       ` row=${this.enRow()}`);
+    if (!ok) {
+      real.then((late: boolean) => {
+        if (late) {
+          this.caps = vm.lastCaps();
+          this.downloadFailed = false;
+          Log.i(LogEvents.VOICE_STATUS, `where=onboarding event=download_late_ok row=${this.enRow()}`);
+        }
+      }).catch(() => {});
+    }
   }
 
   /** A tour owns the speech listener while it runs, so the sample is offered only when no tour is running. */
