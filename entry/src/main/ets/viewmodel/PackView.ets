@@ -113,11 +113,14 @@ export function listedMetres(pack: PackRepository, poiIds: string[]): number {
 export class SourceSummary {
   count: number = 0;
   allReviewed: boolean = false;
+  /** Some story is an AI draft (reviewed or not), so "short descriptions from Wikipedia" would be wrong. */
+  aiDrafted: boolean = false;
 }
 
 export function sourceSummary(pack: PackRepository, poiIds: string[], personaId: string, lang: Lang): SourceSummary {
   const ids = new Set<string>();
   let reviewed = poiIds.length > 0;
+  let ai = false;
   for (const id of poiIds) {
     const p = safePoi(pack, id);
     if (p !== undefined) {
@@ -130,6 +133,7 @@ export function sourceSummary(pack: PackRepository, poiIds: string[], personaId:
       }
       if (n !== undefined) {
         n.sources.forEach((s: string) => ids.add(s));
+        ai = ai || n.tier === ContentTier.REVIEWED_HISTORIAN || n.tier === ContentTier.GROUNDED_AI;
       }
     } catch (e) {
       reviewed = false;
@@ -138,5 +142,6 @@ export function sourceSummary(pack: PackRepository, poiIds: string[], personaId:
   const s = new SourceSummary();
   s.count = ids.size;
   s.allReviewed = reviewed;
+  s.aiDrafted = ai;
   return s;
 }

@@ -17,6 +17,18 @@ export function distanceRes(m: number): Resource {
   return $r('app.string.fmt_km', (Math.round(v / 100) / 10).toFixed(1));
 }
 
+/**
+ * "Optimised order: 300 m shorter than the listed order" as one sentence per language (word order differs in zh/pl),
+ * with the same rounding as distanceRes.
+ */
+export function savingRes(m: number): Resource {
+  const v = Math.max(0, m);
+  if (v < 1000) {
+    return $r('app.string.route_optimised_m', v < 100 ? Math.round(v / 10) * 10 : Math.round(v / 20) * 20);
+  }
+  return $r('app.string.route_optimised_km', (Math.round(v / 100) / 10).toFixed(1));
+}
+
 /** "25 min" or "1 h 25 min" (at least 1 min). */
 export function durationRes(minutes: number): Resource {
   const total = Math.max(1, Math.round(minutes));

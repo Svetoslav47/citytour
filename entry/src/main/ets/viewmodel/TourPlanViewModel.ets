@@ -65,6 +65,7 @@ export class TourPlanViewModel {
   @Trace estMinutes: number = 0;
   @Trace sourcesCount: number = 0;
   @Trace allReviewed: boolean = false;
+  @Trace aiDrafted: boolean = false;
   @Trace voiceLabel: VoiceLabel = VoiceLabel.TEXT_ONLY_PLATFORM;
 
   // Location gate (Tour detail)
@@ -113,6 +114,7 @@ export class TourPlanViewModel {
     const src = sourceSummary(pack, ids, tour.personaId, lang);
     this.sourcesCount = src.count;
     this.allReviewed = src.allReviewed;
+    this.aiDrafted = src.aiDrafted;
     try {
       this.voiceLabel = AppContainer.voiceManager().storyPlan(lang).label;   // A13: "Studio voice" with clips
     } catch (e) {

@@ -249,6 +249,10 @@
       "value": "Drafted with AI, reviewed by a person. %d sources cited."
     },
     {
+      "name": "tour_about_ai",
+      "value": "Drafted with AI from the sources, not yet reviewed by a person. %d sources cited."
+    },
+    {
       "name": "tour_about_extract",
       "value": "Short descriptions from Wikipedia and the city register. %d sources cited."
     },
@@ -293,12 +297,12 @@
       "value": "walking"
     },
     {
-      "name": "route_optimised_prefix",
-      "value": "Optimised order:"
+      "name": "route_optimised_m",
+      "value": "Optimised order: %d m shorter than the listed order"
     },
     {
-      "name": "route_optimised_suffix",
-      "value": "shorter than the listed order"
+      "name": "route_optimised_km",
+      "value": "Optimised order: %s km shorter than the listed order"
     },
     {
       "name": "route_start_failed",
@@ -845,6 +849,10 @@
       "value": "Drafted with AI from the sources above, reviewed by a person on %s."
     },
     {
+      "name": "place_ai_unreviewed_note",
+      "value": "Drafted with AI from the sources above. Not yet reviewed by a person."
+    },
+    {
       "name": "place_offline_link",
       "value": "You're offline. The link will open when you're connected."
     },
@@ -862,7 +870,7 @@
     },
     {
       "name": "about_ai_body",
-      "value": "Each tour story was drafted with the help of an AI model from the sources listed with it, then checked and edited by a person. Places outside the tour use short descriptions from Wikipedia or Kraków's heritage register, shown as they are. Nothing you do in the app is sent anywhere. Stories, maps and voices are stored on your phone."
+      "value": "Each tour story was drafted with the help of an AI model from the sources listed with it. A person then checks and edits it; until then the story is labelled AI-drafted. Places outside the tour use short descriptions from Wikipedia or Kraków's heritage register, shown as they are. Nothing you do in the app is sent anywhere. Stories, maps and voices are stored on your phone."
     },
     {
       "name": "about_osm",
@@ -1162,7 +1170,7 @@
     },
     {
       "name": "walk_look_up",
-      "value": "look up"
+      "value": ", look up"
     },
     {
       "name": "walk_back_home",
@@ -1290,7 +1298,7 @@
     },
     {
       "name": "about_ai_model",
-      "value": "Stories drafted with Claude (Anthropic) from the cited sources, prompt historian-v1, then reviewed and edited by a person. No AI runs on your phone."
+      "value": "Stories drafted with Claude (Anthropic) from the cited sources, prompt historian-v1. Only stories marked reviewed were checked and edited by a person. No AI runs on your phone."
     },
     {
       "name": "settings_a11y_back",

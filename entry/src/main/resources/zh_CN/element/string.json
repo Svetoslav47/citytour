@@ -1,6 +1,18 @@
 {
   "string": [
     {
+      "name": "module_desc",
+      "value": "CityTour 应用模块"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "克拉科夫语音步行导览"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "CityTour"
+    },
+    {
       "name": "perm_location_reason",
       "value": "CityTour 使用您的精确位置，在您到达古迹时开始讲解，并引导您前往下一站。"
     },
@@ -13,8 +25,1492 @@
       "value": "到达景点时短暂振动提示。"
     },
     {
+      "name": "label_simulated",
+      "value": "模拟"
+    },
+    {
+      "name": "label_simulated_a11y",
+      "value": "模拟位置。演示步行已开启。"
+    },
+    {
+      "name": "label_demo_walk_a11y",
+      "value": "模拟位置。演示步行已开启。打开演示控制。"
+    },
+    {
+      "name": "label_demo_assist",
+      "value": "演示辅助"
+    },
+    {
+      "name": "a11y_back",
+      "value": "返回"
+    },
+    {
+      "name": "a11y_close",
+      "value": "关闭"
+    },
+    {
+      "name": "a11y_settings",
+      "value": "设置"
+    },
+    {
+      "name": "a11y_map_attribution",
+      "value": "地图版权信息"
+    },
+    {
+      "name": "map_attribution",
+      "value": "© OpenStreetMap 贡献者"
+    },
+    {
+      "name": "fmt_km",
+      "value": "%s 公里"
+    },
+    {
+      "name": "fmt_m",
+      "value": "%d 米"
+    },
+    {
+      "name": "fmt_min",
+      "value": "%d 分钟"
+    },
+    {
+      "name": "fmt_h_min",
+      "value": "%1$d 小时 %2$d 分钟"
+    },
+    {
+      "name": "fmt_approx",
+      "value": "~%s"
+    },
+    {
+      "name": "fmt_stop_of",
+      "value": "第 %1$d 站，共 %2$d 站"
+    },
+    {
+      "name": "fmt_list_sep",
+      "value": "%1$s · %2$s"
+    },
+    {
+      "name": "cta_continue",
+      "value": "继续"
+    },
+    {
+      "name": "cta_start_tour",
+      "value": "开始游览"
+    },
+    {
+      "name": "cta_begin",
+      "value": "开始"
+    },
+    {
+      "name": "cta_start_walking",
+      "value": "出发"
+    },
+    {
+      "name": "cta_tell_more",
+      "value": "了解更多"
+    },
+    {
+      "name": "cta_end_tour",
+      "value": "结束游览"
+    },
+    {
+      "name": "cta_keep_walking",
+      "value": "继续游览"
+    },
+    {
+      "name": "label_next",
+      "value": "下一站"
+    },
+    {
+      "name": "label_here",
+      "value": "您已到达"
+    },
+    {
+      "name": "look_left_up",
+      "value": "请向左上方看"
+    },
+    {
+      "name": "offline_ready",
+      "value": "克拉科夫 · 可离线使用"
+    },
+    {
+      "name": "home_title",
+      "value": "CityTour"
+    },
+    {
+      "name": "home_now_walking",
+      "value": "正在游览"
+    },
+    {
+      "name": "home_live",
+      "value": "进行中"
+    },
+    {
+      "name": "home_paused",
+      "value": "已暂停"
+    },
+    {
+      "name": "home_continue_line",
+      "value": "第 %1$d 站，共 %2$d 站 · %3$s"
+    },
+    {
+      "name": "home_open",
+      "value": "打开"
+    },
+    {
+      "name": "home_open_a11y",
+      "value": "打开“正在游览”"
+    },
+    {
+      "name": "home_guided_tours",
+      "value": "导览路线"
+    },
+    {
+      "name": "home_tour_meta",
+      "value": "%1$d 站 · %2$s · %3$s"
+    },
+    {
+      "name": "home_tour_from_to",
+      "value": "从 %1$s 到 %2$s"
+    },
+    {
+      "name": "home_stops_n",
+      "value": "%d 站"
+    },
+    {
+      "name": "home_tour_a11y",
+      "value": "%1$s。%2$s。%3$d 站，%4$s，约 %5$s。导游：%6$s。"
+    },
+    {
+      "name": "home_explore",
+      "value": "探索"
+    },
+    {
+      "name": "home_all_places",
+      "value": "克拉科夫所有地点"
+    },
+    {
+      "name": "home_places_count",
+      "value": "已离线保存 %d 个地点"
+    },
+    {
+      "name": "home_demo_walk",
+      "value": "试试演示步行"
+    },
+    {
+      "name": "home_demo_walk_hint",
+      "value": "沿路线回放一段录制的步行轨迹，不使用 GPS。标有“模拟”。"
+    },
+    {
+      "name": "home_loading",
+      "value": "正在加载游览数据…"
+    },
+    {
+      "name": "home_pack_error_title",
+      "value": "无法加载游览数据"
+    },
+    {
+      "name": "home_pack_error_body",
+      "value": "请重新安装应用。游览数据随应用一起安装，无需联网。"
+    },
+    {
+      "name": "home_progress_a11y",
+      "value": "游览进度，第 %1$d 站，共 %2$d 站"
+    },
+    {
+      "name": "tour_stat_walk",
+      "value": "步行"
+    },
+    {
+      "name": "tour_stat_with_stories",
+      "value": "含讲解"
+    },
+    {
+      "name": "tour_stat_stops",
+      "value": "站"
+    },
+    {
+      "name": "tour_guide_a11y",
+      "value": "导游：%1$s。%2$s，%3$s。"
+    },
+    {
+      "name": "tour_your_guide",
+      "value": "您的导游"
+    },
+    {
+      "name": "tour_stops_header",
+      "value": "站点"
+    },
+    {
+      "name": "tour_about_stories",
+      "value": "关于这些讲解"
+    },
+    {
+      "name": "tour_about_reviewed",
+      "value": "由 AI 起草，经人工审核。引用了 %d 个来源。"
+    },
+    {
+      "name": "tour_about_ai",
+      "value": "由 AI 根据来源起草，尚未经人工审核。引用了 %d 个来源。"
+    },
+    {
+      "name": "tour_about_extract",
+      "value": "简短介绍摘自维基百科和城市文化遗产名录。引用了 %d 个来源。"
+    },
+    {
+      "name": "tour_about_none",
+      "value": "本路线的讲解仍在准备中。"
+    },
+    {
+      "name": "tour_story_min",
+      "value": "%d 分钟"
+    },
+    {
+      "name": "tour_stop_a11y",
+      "value": "第 %1$d 站，%2$s。"
+    },
+    {
+      "name": "tour_map_a11y",
+      "value": "%1$s 地图，共 %2$d 站"
+    },
+    {
+      "name": "place_map_a11y",
+      "value": "%s 周边地图"
+    },
+    {
+      "name": "tour_not_found",
+      "value": "离线数据中没有此路线。"
+    },
+    {
+      "name": "route_title",
+      "value": "您的路线"
+    },
+    {
+      "name": "route_first_stop",
+      "value": "第一站"
+    },
+    {
+      "name": "route_starting_near",
+      "value": "从您附近出发"
+    },
+    {
+      "name": "route_walking",
+      "value": "步行"
+    },
+    {
+      "name": "route_optimised_m",
+      "value": "优化顺序比列表顺序少走 %d 米"
+    },
+    {
+      "name": "route_optimised_km",
+      "value": "优化顺序比列表顺序少走 %s 公里"
+    },
+    {
+      "name": "route_start_failed",
+      "value": "无法开始游览，请重试。"
+    },
+    {
+      "name": "route_listed_optimal",
+      "value": "列表顺序已是最短的步行路线。"
+    },
+    {
+      "name": "route_estimate",
+      "value": "距离为估算值。"
+    },
+    {
+      "name": "route_computed",
+      "value": "路线顺序由本机计算，用时 %1$d 毫秒（%2$s）。"
+    },
+    {
+      "name": "route_show_order",
+      "value": "显示顺序"
+    },
+    {
+      "name": "route_hide_order",
+      "value": "隐藏顺序"
+    },
+    {
+      "name": "route_leg",
+      "value": "距下一站 %s"
+    },
+    {
+      "name": "route_planning",
+      "value": "正在规划路线…"
+    },
+    {
+      "name": "route_numbered",
+      "value": "按步行顺序编号"
+    },
+    {
+      "name": "route_demo_note",
+      "value": "演示步行：您的位置将沿录制的路线模拟。"
+    },
+    {
+      "name": "byg_title",
+      "value": "出发前"
+    },
+    {
+      "name": "byg_headphones_title",
+      "value": "戴上耳机。"
+    },
+    {
+      "name": "byg_headphones_body",
+      "value": "导游会在您步行时为您讲解。"
+    },
+    {
+      "name": "byg_volume_title",
+      "value": "检查音量。"
+    },
+    {
+      "name": "byg_volume_body",
+      "value": "调高音量，确保在街头嘈杂声中也能听清导游。"
+    },
+    {
+      "name": "byg_test_line",
+      "value": "播放试听"
+    },
+    {
+      "name": "byg_test_line_text",
+      "value": "您好，我是您的导游。如果您能清楚地听到我的声音，我们就可以出发了。"
+    },
+    {
+      "name": "byg_lock_title",
+      "value": "锁定手机。"
+    },
+    {
+      "name": "byg_lock_body",
+      "value": "我会继续讲解，并告诉您该往哪里看。"
+    },
+    {
+      "name": "byg_text_notif_title",
+      "value": "开启通知。"
+    },
+    {
+      "name": "byg_text_notif_body",
+      "value": "到达每一站时，您会感到振动并看到一条通知。"
+    },
+    {
+      "name": "byg_footnote",
+      "value": "游览期间，CityTour 会在锁屏状态下使用您的位置信息，您会看到一条系统通知。您可随时在应用或通知中停止。"
+    },
+    {
+      "name": "err_perm_denied",
+      "value": "CityTour 需要获取您的位置，才能知道您何时到达各站。"
+    },
+    {
+      "name": "err_perm_allow",
+      "value": "允许获取位置"
+    },
+    {
+      "name": "err_perm_approx",
+      "value": "请开启精确位置。大致位置的精度仅约 5 公里，不足以找到具体的入口。"
+    },
+    {
+      "name": "err_perm_turn_on",
+      "value": "开启"
+    },
+    {
+      "name": "err_loc_switch_off",
+      "value": "本机位置服务已关闭。"
+    },
+    {
+      "name": "err_try_demo",
+      "value": "改为试试演示步行"
+    },
+    {
+      "name": "err_loc_nofix",
+      "value": "正在等待 GPS 信号…请走到空旷处。"
+    },
+    {
+      "name": "err_loc_lost",
+      "value": "GPS 信号暂时丢失。请继续朝下一站前进。"
+    },
+    {
+      "name": "err_loc_poor",
+      "value": "GPS 信号弱：距离可能会跳变。"
+    },
+    {
+      "name": "err_loc_unavailable",
+      "value": "当前无法获取位置。"
+    },
+    {
+      "name": "err_loc_out_of_area",
+      "value": "您距离克拉科夫很远。请从第一站出发，或试试演示步行。"
+    },
+    {
+      "name": "err_tts_init",
+      "value": "此设备不支持语音。讲解将以文字显示。"
+    },
+    {
+      "name": "err_voice_unavailable",
+      "value": "未安装英语语音。将由备用语音朗读英语。"
+    },
+    {
+      "name": "err_tts_err",
+      "value": "有一句无法朗读，已以文字显示。"
+    },
+    {
+      "name": "err_audio_interrupt",
+      "value": "已暂停：其他应用正在使用音频。"
+    },
+    {
+      "name": "err_audio_route_lost",
+      "value": "已暂停：耳机已断开。"
+    },
+    {
+      "name": "err_bg_fail",
+      "value": "无法在锁屏状态下启动导览。步行时请保持应用打开。"
+    },
+    {
+      "name": "err_bg_cancelled",
+      "value": "游览已暂停：通知被关闭后，后台定位已停止。"
+    },
+    {
+      "name": "err_avs_fail",
+      "value": "锁屏控制不可用，游览仍可正常进行。"
+    },
+    {
+      "name": "err_notif_denied",
+      "value": "通知已关闭。"
+    },
+    {
+      "name": "err_pack",
+      "value": "无法加载游览数据。请重新安装应用。"
+    },
+    {
+      "name": "err_narr_fallback",
+      "value": "正在显示此地点的简短介绍。"
+    },
+    {
+      "name": "err_route_fallback",
+      "value": "正在使用估算的步行距离。"
+    },
+    {
+      "name": "err_plan_failed",
+      "value": "无法规划路线，请重试。"
+    },
+    {
+      "name": "err_uncaught",
+      "value": "出了点问题，但游览仍在继续。"
+    },
+    {
+      "name": "err_try_again",
+      "value": "重试"
+    },
+    {
+      "name": "err_resume_tour",
+      "value": "恢复游览"
+    },
+    {
+      "name": "walk_next_stop",
+      "value": "下一站 · 第 %d 站"
+    },
+    {
+      "name": "walk_in_m",
+      "value": "%d 米后"
+    },
+    {
+      "name": "walk_here_stop",
+      "value": "您已到达 · 第 %d 站"
+    },
+    {
+      "name": "walk_passing",
+      "value": "途经 · 第 %d 站"
+    },
+    {
+      "name": "walk_paused",
+      "value": "已暂停"
+    },
+    {
+      "name": "walk_waiting_gps",
+      "value": "正在等待 GPS"
+    },
+    {
+      "name": "walk_off_route",
+      "value": "已偏离路线"
+    },
+    {
+      "name": "walk_tour_complete",
+      "value": "游览完成"
+    },
+    {
+      "name": "walk_tour_ended",
+      "value": "游览已结束"
+    },
+    {
+      "name": "walk_about_min",
+      "value": "约 %d 分钟"
+    },
+    {
+      "name": "walk_story_of",
+      "value": "讲解 %1$d/%2$d"
+    },
+    {
+      "name": "walk_transcript",
+      "value": "文字稿"
+    },
+    {
+      "name": "walk_stops",
+      "value": "站点（%d）"
+    },
+    {
+      "name": "walk_replay",
+      "value": "重播上一段"
+    },
+    {
+      "name": "walk_play",
+      "value": "播放"
+    },
+    {
+      "name": "walk_pause",
+      "value": "暂停"
+    },
+    {
+      "name": "walk_skip",
+      "value": "跳过此段"
+    },
+    {
+      "name": "walk_minimise",
+      "value": "最小化，游览继续进行"
+    },
+    {
+      "name": "walk_menu",
+      "value": "更多选项"
+    },
+    {
+      "name": "walk_menu_stops",
+      "value": "站点"
+    },
+    {
+      "name": "walk_menu_full_map",
+      "value": "完整地图"
+    },
+    {
       "name": "walk_menu_how",
       "value": "工作原理"
+    },
+    {
+      "name": "walk_replanned",
+      "value": "已从当前位置重新规划。"
+    },
+    {
+      "name": "walk_next_stop_cta",
+      "value": "下一站"
+    },
+    {
+      "name": "walk_short_version",
+      "value": "简短版 · 停下片刻即可收听完整讲解"
+    },
+    {
+      "name": "walk_face",
+      "value": "面向 %s"
+    },
+    {
+      "name": "walk_now_playing",
+      "value": "正在播放"
+    },
+    {
+      "name": "walk_directions",
+      "value": "路线指引"
+    },
+    {
+      "name": "dir_ahead",
+      "value": "正前方"
+    },
+    {
+      "name": "dir_ahead_right",
+      "value": "右前方"
+    },
+    {
+      "name": "dir_right",
+      "value": "在您右侧"
+    },
+    {
+      "name": "dir_behind_right",
+      "value": "右后方"
+    },
+    {
+      "name": "dir_behind",
+      "value": "在您身后"
+    },
+    {
+      "name": "dir_behind_left",
+      "value": "左后方"
+    },
+    {
+      "name": "dir_left",
+      "value": "在您左侧"
+    },
+    {
+      "name": "dir_ahead_left",
+      "value": "左前方"
+    },
+    {
+      "name": "dir_here",
+      "value": "您已到达"
+    },
+    {
+      "name": "end_dialog_title",
+      "value": "结束游览？"
+    },
+    {
+      "name": "end_dialog_msg",
+      "value": "您已游览 %2$d 站中的 %1$d 站。结束后将无法恢复。"
+    },
+    {
+      "name": "demo_controls_title",
+      "value": "演示控制"
+    },
+    {
+      "name": "demo_speed",
+      "value": "回放速度"
+    },
+    {
+      "name": "demo_jump_next",
+      "value": "跳到下一站"
+    },
+    {
+      "name": "demo_assist_note",
+      "value": "演示辅助会移动模拟的步行者，仅在演示步行中可用。"
+    },
+    {
+      "name": "stops_sheet_title",
+      "value": "站点"
+    },
+    {
+      "name": "stops_visited",
+      "value": "已游览"
+    },
+    {
+      "name": "stops_next",
+      "value": "下一站"
+    },
+    {
+      "name": "stops_upcoming",
+      "value": "即将到达"
+    },
+    {
+      "name": "stops_footer",
+      "value": "已游览 %1$d/%2$d 站 · 剩余 %3$s"
+    },
+    {
+      "name": "voice_fallback_badge",
+      "value": "备用语音"
+    },
+    {
+      "name": "voice_fallback_tooltip",
+      "value": "英语由设备上的中文语音朗读；此设备未安装英语语音。"
+    },
+    {
+      "name": "voice_native",
+      "value": "英语语音"
+    },
+    {
+      "name": "voice_laura_installed",
+      "value": "Laura · 已安装"
+    },
+    {
+      "name": "voice_fallback_row",
+      "value": "备用语音 · 中文语音朗读英语"
+    },
+    {
+      "name": "voice_zh",
+      "value": "聆小珊 · 中文语音"
+    },
+    {
+      "name": "voice_text_only",
+      "value": "仅文字"
+    },
+    {
+      "name": "voice_text_only_platform",
+      "value": "仅文字：此设备没有可用语音"
+    },
+    {
+      "name": "voice_download",
+      "value": "下载英语语音"
+    },
+    {
+      "name": "voice_downloading",
+      "value": "正在下载语音… %s"
+    },
+    {
+      "name": "voice_download_failed",
+      "value": "无法下载语音。暂时将由备用语音朗读英语，请稍后重试。"
+    },
+    {
+      "name": "voice_ready",
+      "value": "语音已就绪。"
+    },
+    {
+      "name": "voice_strategy",
+      "value": "英语语音"
+    },
+    {
+      "name": "voice_strategy_auto",
+      "value": "自动：已安装英语语音时使用，否则使用备用语音"
+    },
+    {
+      "name": "voice_strategy_zh",
+      "value": "始终使用中文语音（备用语音）"
+    },
+    {
+      "name": "voice_strategy_text",
+      "value": "仅文字"
+    },
+    {
+      "name": "lang_en_spoken",
+      "value": "English（语音）"
+    },
+    {
+      "name": "lang_zh_spoken",
+      "value": "中文（语音）"
+    },
+    {
+      "name": "lang_pl_text",
+      "value": "Polski（仅文字）"
+    },
+    {
+      "name": "lang_en_listen_pl_read",
+      "value": "听英语，看波兰语"
+    },
+    {
+      "name": "lang_pl_footnote",
+      "value": "波兰语讲解以文字显示。HarmonyOS 设备端语音目前支持英语和中文。"
+    },
+    {
+      "name": "lang_english",
+      "value": "English"
+    },
+    {
+      "name": "lang_chinese",
+      "value": "中文"
+    },
+    {
+      "name": "lang_polish",
+      "value": "Polski"
+    },
+    {
+      "name": "lang_system",
+      "value": "跟随系统"
+    },
+    {
+      "name": "place_listen",
+      "value": "收听"
+    },
+    {
+      "name": "place_pause",
+      "value": "暂停"
+    },
+    {
+      "name": "place_look",
+      "value": "看点"
+    },
+    {
+      "name": "place_facts",
+      "value": "概况"
+    },
+    {
+      "name": "place_sources",
+      "value": "来源"
+    },
+    {
+      "name": "place_transcript",
+      "value": "讲解"
+    },
+    {
+      "name": "place_tier_reviewed",
+      "value": "历史学家讲解稿 · 已审核 · %d 个来源"
+    },
+    {
+      "name": "place_tier_grounded",
+      "value": "由 AI 根据维基百科和城市资料起草"
+    },
+    {
+      "name": "place_tier_wikipedia",
+      "value": "摘自维基百科"
+    },
+    {
+      "name": "place_tier_register",
+      "value": "摘自克拉科夫文化遗产名录"
+    },
+    {
+      "name": "place_tier_basic",
+      "value": "基本信息"
+    },
+    {
+      "name": "place_mt_label",
+      "value": "机器翻译"
+    },
+    {
+      "name": "place_shown_in_en",
+      "value": "以英文显示"
+    },
+    {
+      "name": "place_ai_note",
+      "value": "根据以上来源由 AI 起草，已于 %s 经人工审核。"
+    },
+    {
+      "name": "place_ai_unreviewed_note",
+      "value": "由 AI 根据上述来源起草，尚未经人工审核。"
+    },
+    {
+      "name": "place_offline_link",
+      "value": "您当前处于离线状态。联网后将打开该链接。"
+    },
+    {
+      "name": "place_no_story",
+      "value": "此地点暂无讲解。以下是来源中的介绍。"
+    },
+    {
+      "name": "about_title",
+      "value": "来源与许可"
+    },
+    {
+      "name": "about_ai_title",
+      "value": "这些讲解是如何制作的"
+    },
+    {
+      "name": "about_ai_body",
+      "value": "每段游览讲解都由 AI 模型根据随附列出的来源协助起草，之后由人工核查和编辑；在此之前，讲解会标注为“由 AI 起草”。路线以外的地点使用维基百科或克拉科夫文化遗产名录中的简短介绍，按原文显示。您在应用中的任何操作都不会被发送出去。讲解、地图和语音均存储在您的手机上。"
+    },
+    {
+      "name": "about_osm",
+      "value": "地图数据 © OpenStreetMap 贡献者，ODbL 1.0"
+    },
+    {
+      "name": "about_wikipedia",
+      "value": "文字来自 Wikipedia（Wikipedia 贡献者），CC BY-SA 4.0"
+    },
+    {
+      "name": "about_wikidata",
+      "value": "资料来自 Wikidata，CC0"
+    },
+    {
+      "name": "about_arcgis",
+      "value": "古迹与纪念牌：克拉科夫市开放数据（MSIP）"
+    },
+    {
+      "name": "about_osrm",
+      "value": "步行路线由 OSRM 基于 OpenStreetMap 数据计算"
+    },
+    {
+      "name": "about_mt",
+      "value": "波兰语和中文讲解由 AI 起草的英文机器翻译而来，并已相应标注。"
+    },
+    {
+      "name": "map_full",
+      "value": "完整地图"
+    },
+    {
+      "name": "map_expand",
+      "value": "展开地图"
+    },
+    {
+      "name": "map_unavailable",
+      "value": "地图不可用"
+    },
+    {
+      "name": "map_waiting_gps",
+      "value": "正在等待 GPS"
+    },
+    {
+      "name": "map_recenter",
+      "value": "重新居中"
+    },
+    {
+      "name": "settings_title",
+      "value": "设置"
+    },
+    {
+      "name": "settings_narration",
+      "value": "讲解"
+    },
+    {
+      "name": "settings_story_language",
+      "value": "讲解语言"
+    },
+    {
+      "name": "settings_app_language",
+      "value": "应用语言"
+    },
+    {
+      "name": "settings_voice",
+      "value": "语音"
+    },
+    {
+      "name": "settings_guide",
+      "value": "导游"
+    },
+    {
+      "name": "settings_walking",
+      "value": "步行"
+    },
+    {
+      "name": "settings_spoken_directions",
+      "value": "语音路线指引"
+    },
+    {
+      "name": "settings_spoken_directions_note",
+      "value": "在站点之间的转弯处播报简短指引。"
+    },
+    {
+      "name": "settings_trigger",
+      "value": "开始讲解的距离"
+    },
+    {
+      "name": "settings_trigger_note",
+      "value": "在 GPS 容易漂移的窄街中，距离设大一些效果更好。"
+    },
+    {
+      "name": "settings_demo",
+      "value": "演示"
+    },
+    {
+      "name": "settings_demo_walk",
+      "value": "演示步行（模拟位置）"
+    },
+    {
+      "name": "settings_demo_walk_note",
+      "value": "沿皇家之路回放一段录制的步行轨迹，不使用 GPS。所有模拟内容均标有“模拟”。"
+    },
+    {
+      "name": "settings_replay_speed",
+      "value": "回放速度"
+    },
+    {
+      "name": "settings_permissions",
+      "value": "权限"
+    },
+    {
+      "name": "settings_location",
+      "value": "位置"
+    },
+    {
+      "name": "settings_open_settings",
+      "value": "打开设置"
+    },
+    {
+      "name": "settings_about",
+      "value": "关于"
+    },
+    {
+      "name": "settings_how_made",
+      "value": "这些讲解是如何制作的"
+    },
+    {
+      "name": "settings_sources",
+      "value": "来源与许可"
+    },
+    {
+      "name": "settings_version",
+      "value": "版本"
+    },
+    {
+      "name": "settings_version_value",
+      "value": "1.0（HackYeah 2026 版）"
+    },
+    {
+      "name": "settings_offline_data",
+      "value": "离线数据"
+    },
+    {
+      "name": "onb_skip",
+      "value": "跳过"
+    },
+    {
+      "name": "onb_skip_a11y",
+      "value": "跳过介绍"
+    },
+    {
+      "name": "onb1_title",
+      "value": "装进口袋的导游"
+    },
+    {
+      "name": "onb1_body",
+      "value": "戴上耳机，锁定手机，出发吧。历史学家将带您游览克拉科夫，每到一处便为您讲解。"
+    },
+    {
+      "name": "onb2_title",
+      "value": "导游该如何讲解？"
+    },
+    {
+      "name": "onb2_body",
+      "value": "您可以随时更改。"
+    },
+    {
+      "name": "onb3_title",
+      "value": "两项权限及其用途"
+    },
+    {
+      "name": "onb_loc_title",
+      "value": "位置"
+    },
+    {
+      "name": "onb_loc_body",
+      "value": "查找下一站，并判断您何时到达。仅在游览进行时使用。"
+    },
+    {
+      "name": "onb_notif_title",
+      "value": "通知"
+    },
+    {
+      "name": "onb_notif_body",
+      "value": "在屏幕关闭且音频暂停时，提醒您已到达。"
+    },
+    {
+      "name": "onb_allow",
+      "value": "允许"
+    },
+    {
+      "name": "onb_allowed",
+      "value": "已允许"
+    },
+    {
+      "name": "onb_footer",
+      "value": "仅在游览进行时使用位置信息。任何数据都不会离开您的手机。"
+    },
+    {
+      "name": "onb_done",
+      "value": "完成"
+    },
+    {
+      "name": "onb_later",
+      "value": "稍后设置"
+    },
+    {
+      "name": "onb_play_sample",
+      "value": "播放试听"
+    },
+    {
+      "name": "onb_step_a11y",
+      "value": "第 %1$d 步，共 %2$d 步"
+    },
+    {
+      "name": "onb_visual_a11y",
+      "value": "克拉科夫地图上的皇家之路，从巴比肯碉堡到瓦维尔山"
+    },
+    {
+      "name": "onb_lang_group",
+      "value": "讲解语言"
+    },
+    {
+      "name": "onb_spoken_laura",
+      "value": "语音 · Laura"
+    },
+    {
+      "name": "onb_spoken_fallback",
+      "value": "语音 · 备用语音"
+    },
+    {
+      "name": "onb_spoken_zh",
+      "value": "语音 · 聆小珊"
+    },
+    {
+      "name": "onb_checking_voice",
+      "value": "正在检查本机语音…"
+    },
+    {
+      "name": "onb_installed",
+      "value": "已安装"
+    },
+    {
+      "name": "onb_downloading",
+      "value": "正在下载"
+    },
+    {
+      "name": "onb_fallback_note",
+      "value": "在安装英语语音之前，由中文语音朗读英语。"
+    },
+    {
+      "name": "summary_complete",
+      "value": "游览完成"
+    },
+    {
+      "name": "summary_ended",
+      "value": "游览已结束"
+    },
+    {
+      "name": "summary_done",
+      "value": "完成"
+    },
+    {
+      "name": "summary_stops",
+      "value": "站"
+    },
+    {
+      "name": "summary_walked",
+      "value": "已步行"
+    },
+    {
+      "name": "summary_total",
+      "value": "总用时"
+    },
+    {
+      "name": "summary_heard",
+      "value": "您已收听"
+    },
+    {
+      "name": "summary_still_to_see",
+      "value": "尚未游览"
+    },
+    {
+      "name": "summary_sources",
+      "value": "来源与致谢"
+    },
+    {
+      "name": "summary_start_again",
+      "value": "重新开始"
+    },
+    {
+      "name": "summary_simulated",
+      "value": "模拟步行：距离和时间来自录制的路线。"
+    },
+    {
+      "name": "summary_empty",
+      "value": "您在到达第一站前就结束了游览。准备好后，随时可以再来。"
+    },
+    {
+      "name": "walk_look_up",
+      "value": "，抬头看"
+    },
+    {
+      "name": "walk_back_home",
+      "value": "返回首页"
+    },
+    {
+      "name": "walk_end_a11y",
+      "value": "结束游览"
+    },
+    {
+      "name": "walk_voice_info_a11y",
+      "value": "备用语音。英语由设备上的中文语音朗读。"
+    },
+    {
+      "name": "walk_map_a11y",
+      "value": "路线地图。下一站：%s。"
+    },
+    {
+      "name": "map_you",
+      "value": "您的位置"
+    },
+    {
+      "name": "kind_monument",
+      "value": "古迹"
+    },
+    {
+      "name": "kind_church",
+      "value": "教堂"
+    },
+    {
+      "name": "kind_castle",
+      "value": "城堡"
+    },
+    {
+      "name": "kind_square",
+      "value": "广场"
+    },
+    {
+      "name": "kind_gate",
+      "value": "城门"
+    },
+    {
+      "name": "kind_museum",
+      "value": "博物馆"
+    },
+    {
+      "name": "kind_building",
+      "value": "建筑"
+    },
+    {
+      "name": "kind_plaque",
+      "value": "纪念牌"
+    },
+    {
+      "name": "kind_viewpoint",
+      "value": "观景点"
+    },
+    {
+      "name": "kind_synagogue",
+      "value": "犹太会堂"
+    },
+    {
+      "name": "kind_other",
+      "value": "地点"
+    },
+    {
+      "name": "place_stop_overline",
+      "value": "第 %d 站"
+    },
+    {
+      "name": "place_look_up",
+      "value": "请抬头看"
+    },
+    {
+      "name": "place_look_level",
+      "value": "请平视前方"
+    },
+    {
+      "name": "place_look_down",
+      "value": "请向下看"
+    },
+    {
+      "name": "place_see_sources",
+      "value": "查看来源"
+    },
+    {
+      "name": "place_source_a11y",
+      "value": "来源 %1$d：%2$s。%3$s。在浏览器中打开。"
+    },
+    {
+      "name": "place_reviewed_on",
+      "value": "已于 %s 经人工审核。"
+    },
+    {
+      "name": "place_extract_note",
+      "value": "按原文引用，未添加任何内容。"
+    },
+    {
+      "name": "place_basic_note",
+      "value": "此地点暂无讲解，仅有名称。"
+    },
+    {
+      "name": "place_not_found",
+      "value": "离线数据中没有此地点。"
+    },
+    {
+      "name": "about_data_title",
+      "value": "数据与许可"
+    },
+    {
+      "name": "about_pack_title",
+      "value": "离线数据包"
+    },
+    {
+      "name": "about_pack_line",
+      "value": "版本 %1$s · 构建于 %2$s · %3$d 个地点"
+    },
+    {
+      "name": "about_arcgis_terms",
+      "value": "许可条款未公开；仅用于位置和名称，并注明出处。"
+    },
+    {
+      "name": "about_ai_disclosure_title",
+      "value": "AI 使用说明"
+    },
+    {
+      "name": "about_ai_model",
+      "value": "讲解由 Claude (Anthropic) 根据引用的来源起草，提示词为 historian-v1。只有标注为“已审核”的讲解经过人工核查和编辑。您的手机上不运行任何 AI。"
+    },
+    {
+      "name": "settings_a11y_back",
+      "value": "返回"
+    },
+    {
+      "name": "settings_detail_level",
+      "value": "详细程度"
+    },
+    {
+      "name": "settings_detail_brief",
+      "value": "简要"
+    },
+    {
+      "name": "settings_detail_standard",
+      "value": "标准"
+    },
+    {
+      "name": "settings_detail_deep",
+      "value": "深入"
+    },
+    {
+      "name": "settings_detail_brief_note",
+      "value": "简要：每站播放简短版。点按“了解更多”可收听完整讲解。"
+    },
+    {
+      "name": "settings_detail_standard_note",
+      "value": "标准：停下时播放完整讲解，走过时播放简短版。"
+    },
+    {
+      "name": "settings_detail_deep_note",
+      "value": "深入：每站都播放完整讲解，即使您继续前行。"
+    },
+    {
+      "name": "settings_mention_places",
+      "value": "提及沿途地点"
+    },
+    {
+      "name": "settings_not_in_build",
+      "value": "此版本暂不支持"
+    },
+    {
+      "name": "settings_sound_haptics",
+      "value": "声音与振动"
+    },
+    {
+      "name": "settings_arrival_chime",
+      "value": "到达提示音"
+    },
+    {
+      "name": "settings_vibrate",
+      "value": "到达时振动"
+    },
+    {
+      "name": "settings_vibrate_note",
+      "value": "到达站点或完成游览时短暂振动。"
+    },
+    {
+      "name": "settings_pack_title",
+      "value": "克拉科夫数据包"
+    },
+    {
+      "name": "settings_pack_line",
+      "value": "%1$d 个地点 · %2$d 段游览讲解"
+    },
+    {
+      "name": "settings_pack_size",
+      "value": "%s MB"
+    },
+    {
+      "name": "settings_pack_included",
+      "value": "已内置"
+    },
+    {
+      "name": "settings_pack_loading",
+      "value": "正在读取离线数据包…"
+    },
+    {
+      "name": "settings_pack_error",
+      "value": "无法读取离线数据包。"
+    },
+    {
+      "name": "settings_demo_on_note",
+      "value": "已开启：您开始的下一次游览将使用录制的步行轨迹。"
+    },
+    {
+      "name": "settings_demo_running_note",
+      "value": "游览正在进行。更改将在您开始下一次游览时生效。"
+    },
+    {
+      "name": "settings_speed_x",
+      "value": "%d×"
+    },
+    {
+      "name": "settings_speed_a11y",
+      "value": "回放速度 %d 倍"
+    },
+    {
+      "name": "settings_notifications",
+      "value": "通知"
+    },
+    {
+      "name": "settings_loc_allowed",
+      "value": "精确 · 使用期间"
+    },
+    {
+      "name": "settings_loc_approx",
+      "value": "仅大致位置"
+    },
+    {
+      "name": "settings_loc_switch_off",
+      "value": "手机位置服务已关闭"
+    },
+    {
+      "name": "settings_loc_off",
+      "value": "已关闭"
+    },
+    {
+      "name": "settings_loc_ask",
+      "value": "未设置"
+    },
+    {
+      "name": "settings_on",
+      "value": "已开启"
+    },
+    {
+      "name": "settings_off",
+      "value": "已关闭"
+    },
+    {
+      "name": "settings_perm_note",
+      "value": "点按某一行即可授权。CityTour 仅请求游览所需的权限。"
+    },
+    {
+      "name": "settings_show_intro",
+      "value": "再次显示介绍"
+    },
+    {
+      "name": "settings_app_language_note",
+      "value": "“跟随系统”将使用手机的语言，下次打开 CityTour 时生效。"
+    },
+    {
+      "name": "settings_voice_now",
+      "value": "当前语音"
+    },
+    {
+      "name": "settings_voice_en_title",
+      "value": "英语语音（Laura）"
+    },
+    {
+      "name": "settings_voice_installed",
+      "value": "已安装"
+    },
+    {
+      "name": "settings_voice_downloadable",
+      "value": "未安装，可下载。"
+    },
+    {
+      "name": "settings_voice_unavailable",
+      "value": "此设备不可用"
+    },
+    {
+      "name": "settings_voice_try_again",
+      "value": "重试"
+    },
+    {
+      "name": "settings_voice_strategy",
+      "value": "英语朗读方式"
+    },
+    {
+      "name": "settings_voice_strategy_note",
+      "value": "不影响中文和波兰语。波兰语讲解使用预先录制的录音室语音；没有录音的句子以文字显示，除非您选择“听英语，看波兰语”。"
+    },
+    {
+      "name": "settings_voice_prerendered",
+      "value": "录音室语音（预录制）"
+    },
+    {
+      "name": "voice_studio",
+      "value": "录音室语音"
+    },
+    {
+      "name": "onb_spoken_studio",
+      "value": "语音 · 录音室语音"
+    },
+    {
+      "name": "onb_studio_note_en",
+      "value": "讲解播放预先录制的录音室语音。路线指引使用设备端语音（在安装英语语音之前，由中文语音朗读英语）。"
+    },
+    {
+      "name": "lang_pl_spoken",
+      "value": "Polski（语音 · 录音室语音）"
+    },
+    {
+      "name": "lang_pl_footnote_studio",
+      "value": "波兰语讲解由预先录制的录音室语音朗读（使用 ElevenLabs 通过 AI 生成）。路线指引和其他实时内容以文字显示：HarmonyOS 设备端语音仅支持英语和中文。"
+    },
+    {
+      "name": "voice_studio_tooltip",
+      "value": "讲解播放预先录制的录音室语音，由 ElevenLabs 通过 AI 生成。路线指引等实时内容使用设备端语音。"
+    },
+    {
+      "name": "walk_voice_studio_a11y",
+      "value": "录音室语音。预先录制的讲解，由 ElevenLabs 通过 AI 生成。"
+    },
+    {
+      "name": "about_voice_title",
+      "value": "讲解语音"
+    },
+    {
+      "name": "about_voice_body",
+      "value": "讲解语音由 ElevenLabs 生成（eleven_multilingual_v2，语音“George”）；讲解稿由 AI 起草，请查看审核状态。音频在构建时生成并随应用提供：运行时无需网络，也无需 API 密钥。路线指引和没有录音的内容使用 HarmonyOS 设备端语音，或以文字显示。"
     },
     {
       "name": "walk_menu_how_hide",
