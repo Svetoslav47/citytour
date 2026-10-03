@@ -8,6 +8,9 @@
 //   - catalog and course files are copied when missing or different (the image = the latest publish);
 //   - every manifest file missing from blobs/ is copied from SEED_FILES_DIR after its sha256 is verified;
 //   - seed tts-index entries are merged into the disk's index (runtime-rendered entries are kept).
+// City packs (publish-city): SEED_DIR/cities/<cityId>/manifest.json is copied the same way, and its files are read from
+// SEED_CITY_FILES_DIR/<cityId>/ (the repo's data/city; manifest paths are relative to the city root: city.json,
+// pois.json, narrations/<lang>.json, ...), with the same fallback (no <cityId>/ folder = SEED_CITY_FILES_DIR is the root).
 // The private key is never in the image: the envelopes were signed on the maintainer's machine.
 import { existsSync, statSync } from 'node:fs';
 import { mkdir, readdir, readFile } from 'node:fs/promises';
@@ -40,8 +43,30 @@ export function courseFilesRoot(filesDir: string | undefined, id: string): strin
   return existsSync(perCourse) && statSync(perCourse).isDirectory() ? perCourse : filesDir;
 }
 
-export async function seedDataDir(store: DataStore, seedDir: string, filesDir: string | undefined, log: Logger):
-  Promise<{ metaCopied: number; blobsCopied: number; indexAdded: number }> {
+/** Copies every file of a seeded manifest that is missing from blobs/ out of `root`, after verifying its sha256. */
+async function copyMissingBlobs(store: DataStore, manifestPath: string, root: string | undefined, what: string,
+  envName: string): Promise<number> {
+  const env = JSON.parse(await readFile(manifestPath, 'utf8')) as { payload?: { files?: ManifestFile[] } };
+  let copied = 0;
+  for (const f of env.payload?.files ?? []) {
+    if (!SHA256_RE.test(f.sha256) || (await store.hasBlob(f.sha256))) {
+      continue;
+    }
+    if (!root || f.path.includes('..') || f.path.startsWith('/')) {
+      throw new Error(`seed: ${what} blob ${f.sha256} (${f.path}) missing and no ${envName} to copy it from`);
+    }
+    const data = await readFile(join(root, f.path));
+    if (sha256Hex(data) !== f.sha256) {
+      throw new Error(`seed: ${what} file ${f.path} does not match its manifest sha256 (the image and the seed are out of sync)`);
+    }
+    await store.putBlob(f.sha256, data);
+    copied++;
+  }
+  return copied;
+}
+
+export async function seedDataDir(store: DataStore, seedDir: string, filesDir: string | undefined, log: Logger,
+  cityFilesDir?: string): Promise<{ metaCopied: number; blobsCopied: number; indexAdded: number }> {
   const out = { metaCopied: 0, blobsCopied: 0, indexAdded: 0 };
   if (!existsSync(join(seedDir, 'catalog.json'))) {
     log.warn({ evt: 'SEED', seedDir }, 'no catalog.json in the seed dir, skipping');
@@ -61,24 +86,21 @@ export async function seedDataDir(store: DataStore, seedDir: string, filesDir: s
         out.metaCopied++;
       }
     }
-    const env = JSON.parse(await readFile(join(coursesDir, id, 'manifest.json'), 'utf8')) as {
-      payload?: { files?: ManifestFile[] };
-    };
-    const root = courseFilesRoot(filesDir, id);
-    for (const f of env.payload?.files ?? []) {
-      if (!SHA256_RE.test(f.sha256) || (await store.hasBlob(f.sha256))) {
-        continue;
-      }
-      if (!root || f.path.includes('..') || f.path.startsWith('/')) {
-        throw new Error(`seed: blob ${f.sha256} (${f.path}) missing and no SEED_FILES_DIR to copy it from`);
-      }
-      const data = await readFile(join(root, f.path));
-      if (sha256Hex(data) !== f.sha256) {
-        throw new Error(`seed: ${f.path} does not match its manifest sha256 (the image and the seed are out of sync)`);
-      }
-      await store.putBlob(f.sha256, data);
-      out.blobsCopied++;
+    out.blobsCopied += await copyMissingBlobs(store, join(coursesDir, id, 'manifest.json'), courseFilesRoot(filesDir, id),
+      `course ${id}`, 'SEED_FILES_DIR');
+  }
+  const citiesDir = join(seedDir, 'cities');
+  const cityIds = existsSync(citiesDir) ? (await readdir(citiesDir)).filter((d) => COURSE_ID_RE.test(d)) : [];
+  for (const id of cityIds) {
+    const src = join(citiesDir, id, 'manifest.json');
+    if (!existsSync(src)) {
+      continue;
     }
+    await mkdir(join(store.dataDir, 'cities', id), { recursive: true });
+    if (await copyIfChanged(src, join(store.dataDir, 'cities', id, 'manifest.json'))) {
+      out.metaCopied++;
+    }
+    out.blobsCopied += await copyMissingBlobs(store, src, courseFilesRoot(cityFilesDir, id), `city ${id}`, 'SEED_CITY_FILES_DIR');
   }
   const idxPath = join(seedDir, 'tts-index.json');
   if (existsSync(idxPath)) {
@@ -96,6 +118,6 @@ export async function seedDataDir(store: DataStore, seedDir: string, filesDir: s
       await store.ttsRecordMany(add);
     }
   }
-  log.info({ evt: 'SEED', ...out, courses: ids }, 'data dir seeded from the image');
+  log.info({ evt: 'SEED', ...out, courses: ids, cities: cityIds }, 'data dir seeded from the image');
   return out;
 }

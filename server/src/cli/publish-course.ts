@@ -1,6 +1,9 @@
 // npm run publish-course -- --course krakow --pack <packDir> --audio <data/course/<id>/audio> --data <DATA_DIR>
-//                           [--seed seed] [--key-file .keys/signing-private.pem] [--city Kraków]
+//                           [--city-id krakow] [--root <course root>] [--seed seed]
+//                           [--key-file .keys/signing-private.pem] [--city Kraków]
 //                           [--system-lines ../scripts/voice/system-lines.mjs]
+// --pack data/course/<id>/tour (the course overlay of a city, with --city-id: publish the city first) or the legacy
+// full pack data/course/<id>/packs/<id>. Manifest paths are relative to --root (default: the parent of --audio).
 // Signing key: SIGNING_PRIVATE_KEY (PEM, env) if set, else --key-file (default .keys/signing-private.pem from
 // `npm run keygen`). Never prints the key.
 import { readFileSync } from 'node:fs';
@@ -44,13 +47,18 @@ async function main(argv: string[]): Promise<number> {
     courseId,
     packDir: resolve(String(o.pack)),
     audioDir: resolve(String(o.audio)),
+    courseRoot: o.root ? resolve(o.root) : undefined,
+    cityId: o['city-id'],
     dataDir: resolve(String(o.data)),
     seedDir: o.seed ? resolve(o.seed) : undefined,
     privateKey,
     systemLinesPath,
-    city: o.city ?? defaultCity(courseId),
+    city: o.city ?? (o['city-id'] ? undefined : defaultCity(courseId)),
     log: (s) => console.log(`publish-course: ${s}`)
   });
+  const b = r.allowedBreakdown;
+  console.log(`publish-course: allowed ${r.allowedCount} (narration ${b.narration} incl. ${b.cityNarration} from the city, ` +
+    `system ${b.system}, numeric ${b.numeric}); shipped clips not allowed: ${r.clipsNotAllowed}`);
   console.log(`publish-course: blobs written ${r.blobsWritten}, shipped clips pre-seeded in tts-index ${r.shippedIndexed}`);
   if (r.clipsNotAllowed > 0) {
     console.warn(`publish-course: WARNING ${r.clipsNotAllowed} shipped clips are not in the allowed set ` +

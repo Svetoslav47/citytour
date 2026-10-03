@@ -108,6 +108,18 @@ export function createApp(o: AppOptions): express.Express {
     sendJsonFile(res, buf);
   });
 
+  app.get('/v1/cities/:cityId/manifest', async (req, res) => {
+    const id = String(req.params.cityId);
+    if (!COURSE_ID_RE.test(id)) {
+      throw new HttpError(404, 'not_found');
+    }
+    const buf = await o.store.cityManifest(id);
+    if (!buf) {
+      throw new HttpError(404, 'not_found');
+    }
+    sendJsonFile(res, buf);
+  });
+
   app.get('/v1/blobs/:sha256', async (req, res) => {
     const sha = String(req.params.sha256);
     const path = SHA256_RE.test(sha) ? o.store.blobPath(sha) : null;
