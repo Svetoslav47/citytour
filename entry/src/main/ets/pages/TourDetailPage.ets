@@ -21,6 +21,9 @@ import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { SafeArea } from '../viewmodel/SafeArea';
 
+/** The route card is fitted to the whole walk (s ~0.25 for a 2 km route): show streets/buildings at that scale. */
+const ROUTE_CARD_LOD: number = 0.4;
+
 @ComponentV2
 export struct TourDetailPage {
   @Param tourId: string = '';
@@ -29,6 +32,9 @@ export struct TourDetailPage {
   /** Window avoid areas (edge-to-edge window, issue #63): the map runs under the status bar, the CTA bar under the
    * navigation indicator; the back button and the button stay clear of both. */
   @Local sa: SafeArea = SafeArea.get();
+  /** The hero has scrolled under the status bar: a canvas-coloured scrim keeps the text below the status bar. */
+  @Local pastHero: boolean = false;
+  private scroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
     this.vm.load(this.tourId, this.app.textLang);
@@ -90,7 +96,7 @@ export struct TourDetailPage {
   @Builder
   routeMap(boxHeight: number, topInset: number) {
     MapCanvas({ map: this.vm.map, scene: this.vm.scene, bounds: this.vm.sceneBounds,
-      boxHeight: boxHeight, topInset: topInset, mapId: 'mapTourDetail' })
+      boxHeight: boxHeight, topInset: topInset, mapId: 'mapTourDetail', lodScale: ROUTE_CARD_LOD })
       .onClick(() => this.app.openFullMap('tour'))
       .accessibilityText($r('app.string.tour_map_a11y', this.vm.title, this.vm.stops.length))
   }
@@ -277,7 +283,7 @@ export struct TourDetailPage {
   build() {
     NavDestination() {
       Stack({ alignContent: Alignment.Bottom }) {
-        Scroll() {
+        Scroll(this.scroller) {
           Column() {
             Stack({ alignContent: Alignment.TopStart }) {
               if (this.photoHero()) {
@@ -317,6 +323,24 @@ export struct TourDetailPage {
         .align(Alignment.Top)
         .width('100%')
         .height('100%')
+        .onDidScroll(() => {
+          const hero = this.photoHero() ? 280 : 260;   // hero height below the status bar (see the hero above)
+          const past = this.scroller.currentOffset().yOffset >= hero;
+          if (past !== this.pastHero) {
+            this.pastHero = past;
+          }
+        })
+
+        // Status-bar scrim (edge-to-edge window, issue #63): once the hero is gone the body stops below the clock.
+        if (this.pastHero && this.sa.top > 0) {
+          Column()
+            .id('scrimTourDetail')
+            .width('100%')
+            .height(this.sa.top)
+            .backgroundColor($r('app.color.bg_canvas'))
+            .position({ x: 0, y: 0 })
+            .hitTestBehavior(HitTestMode.Transparent)
+        }
 
         this.bottomBar()
       }

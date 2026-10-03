@@ -116,7 +116,8 @@ export class MapRenderer {
 
   /** `transparentLand`: clear instead of painting the land, so a base image under the canvas shows through. */
   draw(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camera, ov: MapOverlay, pal: MapPalette,
-    fast: boolean, transparentLand: boolean = false, places: PoiLayer | undefined = undefined): number {
+    fast: boolean, transparentLand: boolean = false, places: PoiLayer | undefined = undefined,
+    lodScale: number = 1): number {
     const t0 = Date.now();
     const s = cam.s;
     ctx.resetTransform();
@@ -134,7 +135,8 @@ export class MapRenderer {
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     for (const l of this.layers) {
-      if (s < l.minScale) {
+      // lodScale < 1 (static previews, e.g. Tour detail's Route card) shows the street layers further out.
+      if (s < l.minScale * lodScale) {
         continue;
       }
       if (fast && !(l.id === 'water' || l.id === 'river' || l.id === 'green' || l.id === 'major')) {
