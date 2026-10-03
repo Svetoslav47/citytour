@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "perm_location_reason",
+      "value": "CityTour używa dokładnej lokalizacji, aby opowiedzieć o zabytku, gdy do niego dojdziesz, i poprowadzić Cię do kolejnego przystanku."
+    },
+    {
+      "name": "perm_background_reason",
+      "value": "Pozwala przewodnikowi działać i mówić, gdy telefon jest zablokowany w kieszeni."
+    },
+    {
+      "name": "perm_vibrate_reason",
+      "value": "Krótka wibracja informuje, że dotarłeś do przystanku."
+    }
+  ]
+}

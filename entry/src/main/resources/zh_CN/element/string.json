@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "perm_location_reason",
+      "value": "CityTour 使用您的精确位置，在您到达古迹时开始讲解，并引导您前往下一站。"
+    },
+    {
+      "name": "perm_background_reason",
+      "value": "在手机锁屏放在口袋里时，导览仍可继续运行并讲解。"
+    },
+    {
+      "name": "perm_vibrate_reason",
+      "value": "到达景点时短暂振动提示。"
+    }
+  ]
+}
