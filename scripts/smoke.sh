@@ -63,7 +63,16 @@ snapshot_log() {
   devecocli log --device "$DEVICE" --bundle-name "$BUNDLE" --keyword CityTour --tail 3000 >>"$DEMO_LOG" 2>&1
 }
 
-# 3a. Open the developer page (EntryAbility routes `--ps page dev` on hot start via onNewWant).
+# 3a. A fresh install (SMOKE_FRESH=1 / --uninstall) opens on onboarding (task A12): skip it if it is shown.
+#     A plain `devecocli run` keeps the onboardingDone flag, so the button is usually absent; ignore that failure.
+if devecocli ui click --device "$DEVICE" --id btnOnbSkip >"$OUT/onboarding-skip.log" 2>&1; then
+  echo "smoke.sh: onboarding shown, tapped btnOnbSkip"
+  sleep 2
+else
+  echo "smoke.sh: no onboarding (btnOnbSkip not shown)"
+fi
+
+# 3b. Open the developer page (EntryAbility routes `--ps page dev` on hot start via onNewWant).
 [ -n "${HDC:-}" ] && [ -n "$SERIAL" ] || fail "no hdc or no serial for \"$DEVICE\" (needed to open the DevPanel)"
 "$HDC" -t "$SERIAL" shell aa start -a EntryAbility -b "$BUNDLE" --ps page dev >"$OUT/aa-start.log" 2>&1 \
   || fail "aa start --ps page dev failed (see $OUT/aa-start.log)"
@@ -71,12 +80,12 @@ sleep 3
 devecocli log --device "$DEVICE" --bundle-name "$BUNDLE" --keyword CityTour --follow >"$OUT/demo-follow.log" 2>&1 &
 FOLLOW_PID=$!
 
-# 3b. Tap "Start demo tour".
+# 3c. Tap "Start demo tour".
 echo "smoke.sh: devecocli ui click --device \"$DEVICE\" --id btnDevDemoTour"
 devecocli ui click --device "$DEVICE" --id btnDevDemoTour >"$OUT/click.log" 2>&1 \
   || fail "ui click --id btnDevDemoTour failed (see $OUT/click.log)"
 
-# 3c. Wait for the end of the tour (or the timeout), with one progress line per poll.
+# 3d. Wait for the end of the tour (or the timeout), with one progress line per poll.
 TIMEOUT_S="${SMOKE_DEMO_TIMEOUT:-1500}"
 START_S=$(date +%s)
 SHOT_TAKEN=0
@@ -101,7 +110,7 @@ devecocli ui screenshot --device "$DEVICE" --path "$OUT/demo-end.png" >/dev/null
   || echo "smoke.sh: screenshot failed (non-fatal)"
 cat "$OUT/demo-follow.log" >>"$DEMO_LOG"
 
-# 3d. Required events (ARCHITECTURE §11.2 + A7 DoD), in one table.
+# 3e. Required events (ARCHITECTURE §11.2 + A7 DoD), in one table.
 MISSING=()
 check() {   # check <label> <extended regex>
   if grep -Eq "$2" "$DEMO_LOG"; then
