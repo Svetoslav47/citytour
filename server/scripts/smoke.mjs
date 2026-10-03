@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const base = (process.argv[2] || 'http://127.0.0.1:8080').replace(/\/+$/, '');
 const keyArg = process.argv[3] || (existsSync('.keys/signing-public.pem') ? '.keys/signing-public.pem' : '');
-const SHIPPED = 'That\'s the end of our walk.';   // has a clip in rawfile/audio/manifest.json
+const SHIPPED = 'That\'s the end of our walk.';   // has a clip in data/course/krakow/audio/manifest.json
 
 function publicKey(s) {
   if (existsSync(s)) {

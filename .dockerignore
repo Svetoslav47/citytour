@@ -7,8 +7,7 @@
 !server/src
 !server/seed
 !server/docker-entrypoint.sh
-!entry/src/main/resources/rawfile/packs
-!entry/src/main/resources/rawfile/audio
+!data/course/krakow
 **/.DS_Store
 **/.env*
 **/.keys

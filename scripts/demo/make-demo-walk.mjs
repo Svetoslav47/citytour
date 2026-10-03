@@ -6,7 +6,7 @@
 // same pipeline as real fixes. Everything in the output is labelled simulated (`simulated: true`, `notice`).
 //
 // Input (committed, never fetched here):
-//   entry/src/main/resources/rawfile/packs/krakow/{routes,tours,pois}.json  the app's own offline pack (task B2):
+//   data/course/krakow/packs/krakow/{routes,tours,pois}.json  the Kraków course pack (task B2; downloaded by the app):
 //       the Royal Route stops, their OSRM foot legs (geometry + steps) and the walking-time matrix
 //   data/raw/osm/oldtown-tile*.osm.gz    OSM ways of ul. Floriańska, for the walk from the start point
 // The walk follows the pack's legs in the order the app's planner (core/route/Planner, Held-Karp: walking time +
@@ -40,7 +40,7 @@ import { fileURLToPath } from 'node:url';
 import { unproject } from '../pack/projection.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const PACK_DIR = 'entry/src/main/resources/rawfile/packs/krakow';
+const PACK_DIR = 'data/course/krakow/packs/krakow';
 const TOUR_ID = 'royal-route';
 const OSM_DIR = 'data/raw/osm';
 const OUT_FILE = 'entry/src/main/resources/rawfile/demo/royal-route-walk.json';

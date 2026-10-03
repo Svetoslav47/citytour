@@ -20,7 +20,7 @@ POST /v1/tts                          audio/mpeg, X-Text-Sha256, X-Cache: hit|mi
 cd server
 npm ci
 npm run keygen                      # Ed25519 keypair -> server/.keys/ (gitignored); prints the PUBLIC key
-R=../entry/src/main/resources/rawfile
+R=../data/course/krakow               # the course data (the app ships no course; it downloads this)
 npm run publish-course -- --course krakow --pack $R/packs/krakow --audio $R/audio --data ./data --seed ./seed
 cp .env.example .env                # then set TOKEN_SECRET (openssl rand -base64 48); a dummy ElevenLabs key is fine
 npm run dev                         # or: npm run build && node --env-file=.env dist/server.js
@@ -61,7 +61,7 @@ Validated with zod at boot; the process exits with a list of the bad variables (
 ## Publishing a course
 
 ```bash
-npm run publish-course -- --course krakow --pack <packDir> --audio <rawfile/audio> --data <DATA_DIR> [--seed ./seed]
+npm run publish-course -- --course krakow --pack <packDir> --audio <data/course/<id>/audio> --data <DATA_DIR> [--seed ./seed]
 ```
 
 1. Copies every pack file and every clip (+ `audio/manifest.json`) to `blobs/<sha256>`; pack files are checked
@@ -83,8 +83,8 @@ Signing happens only on the maintainer's machine; the private key never leaves `
 manager). The **image** carries the result:
 
 - `server/seed/` (committed): `catalog.json`, `courses/krakow/{manifest,allowed}.json`, `tts-index.json`;
-- the app's `rawfile/packs` and `rawfile/audio`, which the manifest's paths point at (the Docker build context is
-  the repo root for this reason).
+- the course files in `data/course/krakow/` (`packs/krakow/...`, `audio/...`, exactly the manifest's paths; the
+  app bundles none of them and downloads them from here). The Docker build context is the repo root for this reason.
 
 On every boot (`SEED_DIR` set) the server copies changed metadata to `DATA_DIR`, copies every manifest file that is
 missing from `blobs/` (verifying its sha256), and merges the shipped clips into `tts-index.json` while keeping lines

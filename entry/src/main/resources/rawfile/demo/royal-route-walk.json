@@ -4,7 +4,7 @@
  "simulated": true,
  "notice": "SIMULATED location track for the emulator demo (the emulator GPS is a fixed point). Not recorded GPS.",
  "generatedBy": "scripts/demo/make-demo-walk.mjs",
- "source": "entry/src/main/resources/rawfile/packs/krakow/routes.json (the pack's OSRM foot legs in the planner's order, OSM data ODbL) + ul. Floriańska from data/raw/osm (ODbL)",
+ "source": "data/course/krakow/packs/krakow/routes.json (the pack's OSRM foot legs in the planner's order, OSM data ODbL) + ul. Floriańska from data/raw/osm (ODbL)",
  "params": {
   "seed": 20261003,
   "start": "florianska",

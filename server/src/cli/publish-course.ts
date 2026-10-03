@@ -1,4 +1,4 @@
-// npm run publish-course -- --course krakow --pack <packDir> --audio <rawfile/audio dir> --data <DATA_DIR>
+// npm run publish-course -- --course krakow --pack <packDir> --audio <data/course/<id>/audio> --data <DATA_DIR>
 //                           [--seed seed] [--key-file .keys/signing-private.pem] [--city Kraków]
 //                           [--system-lines ../scripts/voice/system-lines.mjs]
 // Signing key: SIGNING_PRIVATE_KEY (PEM, env) if set, else --key-file (default .keys/signing-private.pem from

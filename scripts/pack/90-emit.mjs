@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Stage 9: builds the offline Kraków pack and writes it to entry/src/main/resources/rawfile/packs/krakow/.
+// Stage 9: builds the offline Kraków pack and writes it to data/course/krakow/packs/krakow/
+// (course data for the server; the app bundles no course and downloads it).
 // Runs stages 4, 6, 7 and 8 in one process (Node 22+ ESM, stdlib only). Reads ONLY committed files
 // (data/raw/**, data/tours/royal-route.json); the network is disabled for the whole run.
 //
@@ -39,7 +40,7 @@ import { buildCandidates, PERSONA_ID } from './75-extract-narrations.mjs';
 import { buildReport, selectNarration, VALIDATOR_VERSION } from './80-validate.mjs';
 
 export const PACK_ID = 'krakow';
-export const DEFAULT_OUT = join(REPO_ROOT, 'entry', 'src', 'main', 'resources', 'rawfile', 'packs', PACK_ID);
+export const DEFAULT_OUT = join(REPO_ROOT, 'data', 'course', PACK_ID, 'packs', PACK_ID);
 export const NARRATE_HOOK = join(REPO_ROOT, 'scripts', 'pack', '70-narrate.mjs');
 const ARCGIS_SERVICES = 'https://services-eu1.arcgis.com/svTzSt3AvH7sK6q9/ArcGIS/rest/services';
 const KRAKOW_PUBLISHER = 'City of Kraków (Gmina Miejska Kraków), Zintegrowana Platforma GIS';
