@@ -14,15 +14,18 @@
 //
 // Jury-relevant outcomes asserted: every planned stop entered exactly once and in the planned order; full story at
 // the dwell stops and teaser only at the pass-by stop, at x1 (real walking pace) as well as x8; no story cut mid-sentence (no STOP_SPEECH, no overlapping
-// sentence, every item completes, a stop's story is never interleaved with another); finished state; no off-route
-// false positive (no REPLAN / REQUEST_REPLAN, snapshot.offRoute stays false); no arrival during the detour or the
-// 60 m accuracy window.
+// sentence, every item completes, a stop's story is never interleaved with another); finished state; no arrival
+// during the detour or the 60 m accuracy window.
+// A9 (turn-by-turn, off-route): the fixture carries the pack's legs between the fixture stops (routes.json, the track
+// walks them), so the engine tracks every leg: spoken turn cues fire on the walk (NAV_CUE kind=now, each cue once);
+// the ~80 m detour gives exactly one OFF_ROUTE inside its window (also at x4/x8 with wall-clock stamps), then
+// REQUEST_REPLAN -> Planner from the current fix -> PLAN_READY (REPLAN changed=0) and ON_ROUTE once the walker is
+// back; nowhere else on the normal track is the walker off the route (no false positive).
 // Each run prints one `REPLAY_SUMMARY ...` line (pasted into the README "Testing" section and the A11 PR).
 import { describe, it, expect } from '@ohos/hypium';
 import { StepResult, TourEngine, TourInput, TourState } from '../main/ets/core/tour/TourEngine';
 import { TourConfig } from '../main/ets/core/tour/TourConfig';
 import { FilteredFix, FixFilter } from '../main/ets/core/geo/FixFilter';
-import { haversineM } from '../main/ets/core/geo/GeoMath';
 import { CityPack, PlanInputs, buildCostInputs, plan as planRoute } from '../main/ets/core/route/Planner';
 import { DemoFix, DemoTick, DemoTrack, DemoWalkPlayer } from '../main/ets/core/sim/DemoWalkPlayer';
 import {
@@ -40,7 +43,10 @@ import {
 import { EnVoiceStrategy, VoiceLabel } from '../main/ets/contracts/Settings';
 import { DemoControls, TourController, TourControllerDeps } from '../main/ets/services/tour/TourController';
 import { Scheduler } from '../main/ets/app/Clock';
-import { DEMO_MINI_EVENTS, DEMO_MINI_STOPS, MiniEvent, MiniStop, demoTrackMini } from './fixtures/DemoTrackMini';
+import {
+  DEMO_MINI_DIST_M, DEMO_MINI_DUR_S, DEMO_MINI_EVENTS, DEMO_MINI_STOPS, MiniEvent, MiniStop, demoMiniLegs,
+  demoTrackMini
+} from './fixtures/DemoTrackMini';
 
 const T0: number = 1700000000000;
 const SENTENCE_MS: number = 2500;          // fake speech: every sentence takes 2.5 s
@@ -50,6 +56,8 @@ const TOUR_ID: string = 'royal-route-mini';
 const PASS_BY_STOP: number = 9;
 /** An arrival may be confirmed at most this long (track time) after the walker leaves the stop's dwell. */
 const ARRIVAL_SLACK_MS: number = 10000;
+/** Off-route may start/clear this long (track time) around the detour window (fixes > 35 m off the leg). */
+const OFF_ROUTE_SLACK_MS: number = 30000;
 /*
  * Walking pace (issue #60, fixed in core/tour). At x1 the 35 m geofence (+15 m accuracy allowance) is entered
  * ~25-50 s before the walker reaches a stop, so this fixture's short teaser (arrival line + 2 sentences x 2.5 s) ends
@@ -62,8 +70,10 @@ const ARRIVAL_SLACK_MS: number = 10000;
 
 // ---------------------------------------------------------------- pack built from the fixture stops
 
+/** The pack POI of fixture stop n (the stops are the real Royal Route POIs, the legs the pack's). */
 function poiId(n: number): string {
-  return `poi_demo_stop_${n}`;
+  const s: MiniStop | undefined = DEMO_MINI_STOPS.find((m: MiniStop) => m.n === n);
+  return s === undefined ? `poi_demo_stop_${n}` : s.poiId;
 }
 
 function stopOf(id: string): MiniStop | undefined {
@@ -97,28 +107,18 @@ function packTour(): Tour {
   });
   const t: Tour = {
     id: TOUR_ID, personaId: PERSONA, titles: { en: 'Royal Route (stops 7-11)' }, summaries: { en: 'Replay fixture' },
-    stops: stops, fixedStartPoiId: poiId(DEMO_MINI_STOPS[0].n), estMinutes: 20
+    stops: stops, fixedStartPoiId: poiId(DEMO_MINI_STOPS[0].n),
+    fixedEndPoiId: poiId(DEMO_MINI_STOPS[DEMO_MINI_STOPS.length - 1].n), estMinutes: 20
   };
   return t;
 }
 
-/** Walking matrix: haversine x 1.25 (the pack's detour factor), 1.3 m/s. */
+/** The pack's walking matrix and legs between the fixture stops (routes.json, written into the fixture). */
 function packRoutes(): RouteData {
-  const ids: string[] = stopIds();
-  const dist: number[][] = [];
-  const dur: number[][] = [];
-  for (const a of DEMO_MINI_STOPS) {
-    const dRow: number[] = [];
-    const tRow: number[] = [];
-    for (const b of DEMO_MINI_STOPS) {
-      const d: number = Math.round(haversineM(a.lat, a.lng, b.lat, b.lng) * 1.25);
-      dRow.push(d);
-      tRow.push(Math.round(d / 1.3));
-    }
-    dist.push(dRow);
-    dur.push(tRow);
-  }
-  const r: RouteData = { nodeIds: ids, distancesM: dist, durationsS: dur, detourFactor: 1.25, legs: [] };
+  const r: RouteData = {
+    nodeIds: stopIds(), distancesM: DEMO_MINI_DIST_M, durationsS: DEMO_MINI_DUR_S, detourFactor: 1.25,
+    legs: demoMiniLegs()
+  };
   return r;
 }
 
@@ -258,6 +258,11 @@ class Observed {
     return this.lines('STORY_SKIP_MOVING').map((l: LogLine) => kvOf(l.kv, 'poi'));
   }
 
+  /** NAV_CUE lines of spoken-style cues (not the snap lines). */
+  navCues(kind: string): LogLine[] {
+    return this.lines('NAV_CUE').filter((l: LogLine) => kvOf(l.kv, 'kind') === kind);
+  }
+
   /** A fix accepted by the probe FixFilter (same thresholds the engine applies). */
   probe(r: FilteredFix, trackMs: number): void {
     this.probeFixes++;
@@ -315,7 +320,9 @@ class Observed {
     return `REPLAY_SUMMARY run=${name} enter=[${enters}] full=[${this.fullStoryIds().map(stopNumber).join(',')}] ` +
       `teaserOnly=[${this.teaserOnlyIds().map(stopNumber).join(',')}] sentences=${this.heard.length} ` +
       `stories=${this.lines('STORY_START').length} violations=${this.violations.length} ` +
-      `stopSpeech=${this.stopSpeech} replan=${this.replanRequests + this.lines('REPLAN').length} ` +
+      `stopSpeech=${this.stopSpeech} replan=${this.lines('REPLAN').length} offRoute=${this.lines('OFF_ROUTE')
+        .map((l: LogLine) => `${Math.round(l.trackMs / 1000)}s`).join(',')} navNow=${this.navCues('now').length} ` +
+      `navPrepare=${this.navCues('prepare').length} ` +
       `offRouteSnaps=${this.offRouteSnapshots} locPoor=${this.lines('LOC_POOR').length} ` +
       `triggerGrade=${this.probeTriggerGrade}/${this.probeFixes} poorInDip=${this.probePoorInWindow}/` +
       `${this.probeFixesInWindow} finished=${finished} simulatedS=${wallS}`;
@@ -351,10 +358,24 @@ class EngineReplay {
     const input: TourInput = {
       tour: packTour(), pois: packPois(), lang: Lang.EN, personaId: PERSONA,
       narration: (id: string, len: NarrationLength): Narration | undefined => narrationLookup(id, len),
-      voice: voicePlan(text), adaptiveLength: true, spokenDirections: true, source: FixSource.DEMO
+      voice: voicePlan(text), adaptiveLength: true, spokenDirections: true, source: FixSource.DEMO,
+      legs: demoMiniLegs()
     };
     this.st = TourEngine.init(input, new TourConfig());
     this.plan = heldKarpPlan();
+  }
+
+  /** REQUEST_REPLAN, as TourController.replan(): the planner over the open stops from the current fix. */
+  replan(nowMs: number): void {
+    const open: string[] = TourEngine.snapshot(this.st).stops
+      .filter((s: StopProgress) => s.status === StopStatus.PENDING || s.status === StopStatus.APPROACHING)
+      .map((s: StopProgress) => s.poiId);
+    const f: Fix | undefined = this.st.lastFix;
+    const origin: LatLng = f === undefined ? invalidOrigin() : { lat: f.lat, lng: f.lng };
+    const pack: CityPack = { pois: packPois(), routes: packRoutes() };
+    const p: TourPlan = planRoute(buildCostInputs(pack, packTour(), open, origin), 0);
+    const ev: EngineEvent = { type: EngineEventType.PLAN_READY, nowMs: nowMs, plan: p };
+    this.dispatch(ev);
   }
 
   /** "A story is playing" (TourController.storyActive), the Demo walk hold predicate. */
@@ -365,8 +386,13 @@ class EngineReplay {
   dispatch(ev: EngineEvent): void {
     const r: StepResult = TourEngine.reduce(this.st, ev);
     this.st = r.state;
+    let replan: boolean = false;
     for (const fx of r.effects) {
       this.execute(fx, ev.nowMs);
+      replan = replan || fx.type === EffectType.REQUEST_REPLAN;
+    }
+    if (replan) {
+      this.replan(ev.nowMs);
     }
     if (this.text) {
       const u: Utterance | undefined = this.st.queue.inFlight();
@@ -508,15 +534,46 @@ function assertJuryOutcomes(obs: Observed, finalStatus: (id: string) => StopStat
   // finished (exactly one engine transition; the controller's TEARDOWN line is from=finished)
   expect(obs.lines('STATE').filter((l: LogLine) => kvOf(l.kv, 'to') === 'finished' && kvOf(l.kv, 'from') !== 'finished')
     .length).assertEqual(1);
-  // no off-route false positives (the ~80 m detour is not a reason to re-plan), no lost-GPS episode
-  expect(obs.replanRequests).assertEqual(0);
-  expect(obs.lines('REPLAN').length).assertEqual(0);
-  expect(obs.offRouteSnapshots).assertEqual(0);
+  // no lost-GPS episode
   expect(obs.lines('LOC_LOST').length).assertEqual(0);
+  assertTurnByTurn(obs);
   // the 60 m accuracy dip: every fix there is not trigger-grade (probe FixFilter), and the engine logs LOC_POOR
   expect(obs.probeFixesInWindow > 0).assertTrue();
   expect(obs.probePoorInWindow).assertEqual(obs.probeFixesInWindow);
   expect(obs.lines('LOC_POOR').some((l: LogLine) => inWindow(l.trackMs, eventOf('poorAccuracy')))).assertTrue();
+}
+
+/**
+ * A9: turn cues fire on the walk, each once; the injected ~80 m detour (and only it) is OFF_ROUTE -> REPLAN ->
+ * ON_ROUTE. Holds for every run (x1 track stamps, x4/x8 wall-clock stamps, text-only, the controller).
+ */
+function assertTurnByTurn(obs: Observed): void {
+  const now: LogLine[] = obs.navCues('now');
+  expect(now.length >= 4).assertTrue();
+  const keys: string[] = obs.lines('NAV_CUE').filter((l: LogLine) => kvOf(l.kv, 'kind') !== 'snap')
+    .map((l: LogLine) => `${kvOf(l.kv, 'leg')}:${kvOf(l.kv, 'step')}:${kvOf(l.kv, 'kind')}`);
+  expect(new Set<string>(keys).size).assertEqual(keys.length);              // every cue once
+  expect(obs.lines('NAV_CUE').every((l: LogLine) => kvOf(l.kv, 'src') === 'demo')).assertTrue();
+  expect(obs.lines('NAV_CUE').filter((l: LogLine) => kvOf(l.kv, 'kind') !== 'snap')
+    .every((l: LogLine) => kvOf(l.kv, 'spoken') === '1')).assertTrue();
+  // a turn cue was really said (or captioned) to the end
+  expect(obs.heard.some((h: Heard) => h.text.indexOf('Now ') === 0)).assertTrue();
+  // the detour: exactly one off-route episode, inside its window, then the re-plan, then back on the route
+  const det: MiniEvent = eventOf('detour');
+  const off: LogLine[] = obs.lines('OFF_ROUTE');
+  expect(off.length).assertEqual(1);
+  expect(off[0].trackMs >= det.fromMs && off[0].trackMs <= det.toMs).assertTrue();
+  expect(kvOf(off[0].kv, 'leg')).assertEqual(`${poiId(7)}>${poiId(8)}`);
+  expect(kvOf(off[0].kv, 'src')).assertEqual('demo');
+  expect(inOrder(obs, [['OFF_ROUTE', 'leg='], ['REPLAN', 'changed=0'], ['ON_ROUTE', 'leg=']]) >= 0).assertTrue();
+  const re: LogLine[] = obs.lines('REPLAN');
+  expect(re.length).assertEqual(1);
+  expect(kvOf(re[0].kv, 'to')).assertEqual(poiId(8));
+  const on: LogLine[] = obs.lines('ON_ROUTE');
+  expect(on.length).assertEqual(1);
+  expect(on[0].trackMs >= det.fromMs && on[0].trackMs <= det.toMs + OFF_ROUTE_SLACK_MS).assertTrue();
+  expect(obs.offRouteSnapshots > 0).assertTrue();
+  expect(obs.heard.some((h: Heard) => h.text === 'You\'ve left the route.')).assertTrue();
 }
 
 /**
@@ -730,7 +787,7 @@ class ReplayPack implements PackRepository {
       origin: { lat: 50.0617, lng: 19.9373 }, bbox: [50.0525, 19.929, 50.0675, 19.947], files: [],
       counts: {
         pois: DEMO_MINI_STOPS.length, narrations_en: DEMO_MINI_STOPS.length * 2, narrations_pl: 0, narrations_zh: 0,
-        legs: 0
+        legs: demoMiniLegs().length
       },
       licenses: []
     };

@@ -643,6 +643,15 @@ function checkArrivalAndApproach(st: TourState, fx: Fx, fix: Fix, triggerGrade: 
       }
     }
   }
+  // A9: neighbouring stops overlap (Sts Peter and Paul / St Andrew's on Grodzka are 50 m apart, radii 45 and 35):
+  // while the planned next stop is itself being entered (its debounce is running), a different stop waits, so the
+  // walker who follows the route hears the stops in the planned order.
+  if (enterIdx >= 0 && enterIdx !== st.targetIdx && st.targetIdx >= 0 && isOpen(st.stops[st.targetIdx].status) &&
+    st.stops[st.targetIdx].trigger.enterStreak > 0) {
+    fx.log(EngineLog.POI_APPROACH, `id=${st.stops[enterIdx].poiId} d=${r1(haversineM(fix.lat, fix.lng,
+      st.stops[enterIdx].lat, st.stops[enterIdx].lng))} deferredFor=${st.stops[st.targetIdx].poiId}`);
+    enterIdx = -1;
+  }
   for (const i of entered) {
     if (i !== enterIdx) {               // only one arrival per fix; the other may enter again later
       const s: StopRuntime = st.stops[i];
