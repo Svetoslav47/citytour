@@ -110,11 +110,12 @@ export interface TourControllerDeps {
   keepScreenOn?: (on: boolean) => void;
 }
 
-/** Tour settings the controller applies at plan() time (UserSettings once B9 lands). */
+/** Tour settings the controller applies at plan() time (B9: SettingsViewModel.applyToTour from UserSettings). */
 export class TourOptions {
   lang: Lang = Lang.EN;
   adaptiveLength: boolean = true;
   spokenDirections: boolean = true;
+  briefOnly: boolean = false;          // Settings detail level Brief: teaser at every stop unless asked for more
   demoSpeed: number = 4;
   config: TourConfig | undefined = undefined;
 }
@@ -817,7 +818,7 @@ export class TourController implements TourControl {
       tour: tour, pois: this.tourPois(tour), lang: lang, personaId: personaId,
       narration: (poiId: string, len: NarrationLength) => this.narrationFor(poiId, personaId, lang, len),
       voice: vp, adaptiveLength: this.opts.adaptiveLength, spokenDirections: this.opts.spokenDirections,
-      source: this.sourceKind
+      briefOnly: this.opts.briefOnly, source: this.sourceKind
     };
     this.state = TourEngine.init(input, this.opts.config !== undefined ? this.opts.config : new TourConfig());
     this.dispatchType(EngineEventType.START_PLANNING);

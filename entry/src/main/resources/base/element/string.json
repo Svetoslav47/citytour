@@ -1467,10 +1467,6 @@
     {
       "name": "settings_sources_body",
       "value": "Full licence texts for every source are listed on the About page."
-    },
-    {
-      "name": "settings_selected_a11y",
-      "value": "%s, selected"
     }
   ]
 }

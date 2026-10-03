@@ -30,9 +30,23 @@ export class Haptics implements HapticsPort {
   private supportCache: Map<string, boolean> = new Map<string, boolean>();
   private lastAt: Map<string, number> = new Map<string, number>();
   private unsupportedLogged: boolean = false;
+  private enabled: boolean = true;
+
+  /** Settings "Vibrate on arrival" (B9). Off = no tour vibration at all; each skipped cue is still logged. */
+  setEnabled(on: boolean): void {
+    this.enabled = on;
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
+  }
 
   play(kind: HapticKind): void {
     try {
+      if (!this.enabled) {
+        Log.i(LogEvents.HAPTIC, `kind=${kind} skipped=user_off`);
+        return;
+      }
       const now: number = Date.now();
       const last: number | undefined = this.lastAt.get(kind);
       if (last !== undefined && now - last < MIN_GAP_MS) {

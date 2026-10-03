@@ -1,0 +1,50 @@
+/*
+ * Display strings for Settings values (task B9): story language rows, app language rows, the honest voice row.
+ */
+import { UiLang } from '../../contracts/Settings';
+import { StoryLang, VoiceRow } from '../../core/settings/SettingsRules';
+
+export function storyLangRes(l: StoryLang): Resource {
+  if (l === StoryLang.ZH) {
+    return $r('app.string.lang_zh_spoken');
+  }
+  if (l === StoryLang.PL) {
+    return $r('app.string.lang_pl_text');
+  }
+  if (l === StoryLang.PL_LISTEN_EN) {
+    return $r('app.string.lang_en_listen_pl_read');
+  }
+  return $r('app.string.lang_en_spoken');
+}
+
+export function uiLangRes(u: UiLang): Resource {
+  if (u === UiLang.EN) {
+    return $r('app.string.lang_english');
+  }
+  if (u === UiLang.PL) {
+    return $r('app.string.lang_polish');
+  }
+  if (u === UiLang.ZH) {
+    return $r('app.string.lang_chinese');
+  }
+  return $r('app.string.lang_system');
+}
+
+export function voiceRowRes(v: VoiceRow): Resource {
+  if (v === VoiceRow.LAURA) {
+    return $r('app.string.voice_laura_installed');
+  }
+  if (v === VoiceRow.FALLBACK) {
+    return $r('app.string.voice_fallback_row');
+  }
+  if (v === VoiceRow.ZH) {
+    return $r('app.string.voice_zh');
+  }
+  if (v === VoiceRow.TEXT_USER) {
+    return $r('app.string.voice_text_only');
+  }
+  if (v === VoiceRow.PRERENDERED) {
+    return $r('app.string.settings_voice_prerendered');
+  }
+  return $r('app.string.voice_text_only_platform');
+}

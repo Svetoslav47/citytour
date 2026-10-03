@@ -157,6 +157,20 @@ export class VoiceManager implements VoicePort {
     return this.downloading;
   }
 
+  /**
+   * The caller gave up waiting (Settings/Onboarding: no progress event for 30 s, e.g. the system "Download language
+   * package?" dialog was cancelled, which on the emulator sends no callback at all). Frees the busy flag so a later
+   * "Try again" really calls downloadVoice again; a late callback of the abandoned attempt still updates the caps.
+   */
+  abandonDownload(reason: string): void {
+    if (!this.downloading) {
+      return;
+    }
+    this.downloading = false;
+    this.lastDlCode = -8;
+    Log.w(LogEvents.VOICE_DL_FAIL, `code=abandoned reason=${reason}`);
+  }
+
   /** 0 = no failure yet / success, else the last download error code (1002300008 on the emulator). */
   lastDownloadCode(): number {
     return this.lastDlCode;

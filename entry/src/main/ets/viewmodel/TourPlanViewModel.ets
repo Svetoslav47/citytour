@@ -16,6 +16,7 @@ import { MapOverlay } from '../views/map/MapRenderer';
 import { MapCache, overlayBounds, previewOverlay } from './MapViewModel';
 import { StopRow } from '../views/common/StopList';
 import { withTimeout } from './Async';
+import { SettingsViewModel } from './SettingsViewModel';
 import { localName } from './Format';
 import {
   findTour, legMetres, listedMetres, personaName, poiName, previewPoints, safeRoutes, sourceSummary, stopRows
@@ -132,6 +133,13 @@ export class TourPlanViewModel {
     this.checking = true;
     this.locBanner = LocBanner.NONE;
     try {
+      // B9: Settings > Demo walk is on => the SIMULATED source at the saved speed, no location gate.
+      if (SettingsViewModel.settings().useDemoWalk) {
+        const ok = await SettingsViewModel.applySource('startTour');
+        this.demo = true;
+        Log.i(LogEvents.LOC_SOURCE, `kind=demo where=tourDetail reason=settings ok=${ok}`);
+        return true;
+      }
       const perms = AppContainer.permissions();
       let st = await withTimeout(perms.locationState(), PERM_STATE_TIMEOUT_MS, PermissionState.UNKNOWN,
         'perm.locationState');
