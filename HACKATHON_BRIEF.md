@@ -30,7 +30,7 @@ The user owns the decisions recorded here. Unresolved fields may remain blank; d
 
 - [ ] A guided tour runs end to end with the screen locked (narration triggered by location).
 - [ ] Stops are visited in a computed, optimised walking order.
-- [ ] Narration is available in English, Polish and Chinese (see open question on Polish voice).
+- [ ] Narration is spoken in English and Chinese, and shown as text in English, Polish and Chinese.
 
 ## Scope boundaries
 
@@ -40,13 +40,10 @@ The user owns the decisions recorded here. Unresolved fields may remain blank; d
   - Languages: **English, Polish, Chinese**.
   - Voice: **on-device text-to-speech only**.
   - One guide persona, **"Historian"**. The design must allow a second persona to be added later.
-  - Map: **Map Kit** if feasible, otherwise the second-best option.
+  - Map: **not** Huawei Map Kit (user decision 2026-10-03); use the best alternative chosen in the architecture (see docs/ARCHITECTURE.md).
+  - Polish: UI and full narration **text** in Polish; **spoken** narration in English and Chinese only (Core Speech Kit TTS supports only zh-CN and en-US). Documented as a platform limitation.
 - Out of scope (for now): a second guide persona (planned for if time allows).
 - Mocked or simulated behavior: a "Demo walk" location source for the emulator, clearly labelled in the UI (planned).
-
-## Open questions
-
-- Polish voice: on-device TTS (Core Speech Kit) supports only Chinese and English; how Polish narration is delivered is not yet decided.
 
 ## First-minute narrative
 
