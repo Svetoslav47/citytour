@@ -17,8 +17,11 @@
  *
  * Flow per stop: arrival (2-fix debounced ENTER) => HAPTIC(arrive) + SET_MEDIA_META + one P2 item
  * [arrival line, look clause, teaser...]; when it ends, FULL is queued if the user lingers (TriggerPolicy),
- * else the stop is TEASER_ONLY (STORY_SKIP_MOVING); when the stop is done the next-stop line (P2),
- * NOTIFY_NEXT and SET_MEDIA_META follow, or the finish line + HAPTIC(finish) after the last stop.
+ * TEASER_ONLY (STORY_SKIP_MOVING) if they clearly walked past; while they are still approaching, the engine holds
+ * silence in the LINGER stage (STORY_LINGER) and decides on a later fix, within the TourConfig linger bounds
+ * (issue #60: at walking pace the geofence is entered ~25-50 s before the stop, so the teaser ends before the
+ * walker gets there and stops); when the stop is done the next-stop line (P2), NOTIFY_NEXT and SET_MEDIA_META
+ * follow, or the finish line + HAPTIC(finish) after the last stop.
  * Only an open stop (PENDING or APPROACHING) can fire, and while one stop's story plays no other stop
  * fires, so St Mary's / Cloth Hall cannot ping-pong. While paused, fixes still update the position and
  * arrivals are queued, but no sentence starts.
@@ -34,7 +37,8 @@ import { ContentTier, Lang, Narration, NarrationLength, Poi, Tour, TourStop, Vie
 import { VoiceLabel } from '../../contracts/Settings';
 import { AnnouncementQueue, QueueAdvance, expiryFor, readingTimeMs } from './AnnouncementQueue';
 import {
-  StopTrigger, StoryLength, TriggerSample, TriggerVerdict, decideStoryLength, evaluateTrigger
+  LingerInput, StopTrigger, StoryDecision, StoryLength, TriggerSample, TriggerVerdict, decideAfterTeaser,
+  evaluateTrigger
 } from './TriggerPolicy';
 import { TourConfig } from './TourConfig';
 import { FilteredFix, FixFilter } from '../geo/FixFilter';
@@ -60,6 +64,7 @@ export class EngineLog {
   static readonly STORY_START: string = 'STORY_START';
   static readonly STORY_END: string = 'STORY_END';
   static readonly STORY_SKIP_MOVING: string = 'STORY_SKIP_MOVING';
+  static readonly STORY_LINGER: string = 'STORY_LINGER';
   static readonly NARR_FALLBACK: string = 'NARR_FALLBACK';
   static readonly QUEUE_EXPIRED: string = 'QUEUE_EXPIRED';
   static readonly LOC_POOR: string = 'LOC_POOR';
@@ -88,7 +93,8 @@ export interface TourInput {
   projection?: Projection;     // defaults to the Kraków pack projection
 }
 
-export enum StopStage { NONE = 'none', TEASER = 'teaser', FULL = 'full', DONE = 'done' }
+/** LINGER: the teaser has ended, nothing plays, the teaser/full decision waits for the walker (issue #60). */
+export enum StopStage { NONE = 'none', TEASER = 'teaser', LINGER = 'linger', FULL = 'full', DONE = 'done' }
 
 /** One stop of the planned order, with its geofence. */
 export class StopRuntime {
@@ -138,6 +144,8 @@ export class TourState {
   stage: StopStage = StopStage.NONE;
   storyItemId: string = '';        // queue item that drives the AT_STOP sub-state
   userAskedMore: boolean = false;
+  lingerSinceMs: number = Number.NaN;  // when the teaser ended (stage LINGER)
+  slowSinceFixMs: number = Number.NaN; // fix time since which the speed median is below cfg.slowSpeedMps
   paused: boolean = false;
   pausedByAudio: boolean = false;  // §9 row 12: paused by an audio interrupt, so its RESUME hint may resume
   speechText: boolean;
@@ -497,6 +505,13 @@ function onFix(st: TourState, fx: Fx, fix: Fix): void {
   }
   st.course = st.courseEstimator.update(fix);
   st.speedMedianMps = f.speedMedianMps;
+  if (Number.isFinite(f.speedMedianMps) && f.speedMedianMps < st.cfg.slowSpeedMps) {
+    if (!Number.isFinite(st.slowSinceFixMs)) {
+      st.slowSinceFixMs = fix.timestampMs;
+    }
+  } else {
+    st.slowSinceFixMs = Number.NaN;
+  }
   st.lastFix = fix;
   st.source = fix.source;
 
@@ -540,6 +555,9 @@ function onFix(st: TourState, fx: Fx, fix: Fix): void {
       const s: StopRuntime = st.stops[st.activeIdx];
       if (evaluateTrigger(s.trigger, sampleFor(fix, f.triggerGrade, s), st.cfg) === TriggerVerdict.EXIT) {
         fx.log(EngineLog.POI_EXIT, `id=${s.poiId} dwell=${r1((st.nowMs - s.trigger.enteredAtMs) / 1000)}`);
+      }
+      if (st.stage === StopStage.LINGER) {
+        decideLength(st, fx, false);
       }
     }
   } else {
@@ -702,27 +720,65 @@ function onItemFinished(st: TourState, fx: Fx, item: Announcement, skipped: bool
   if (item.id !== st.storyItemId || st.activeIdx < 0) {
     return;
   }
-  const s: StopRuntime = st.stops[st.activeIdx];
   if (skipped || st.stage !== StopStage.TEASER) {
     finishStop(st, fx, StopStatus.VISITED);
     return;
   }
-  const len: StoryLength = decideStoryLength(s.trigger, st.speedMedianMps, st.input.adaptiveLength,
-    st.userAskedMore, st.cfg);
+  st.stage = StopStage.LINGER;
+  st.storyItemId = '';
+  st.lingerSinceMs = st.nowMs;
+  decideLength(st, fx, true);
+}
+
+function spd(st: TourState): string {
+  return Number.isFinite(st.speedMedianMps) ? st.speedMedianMps.toFixed(1) : 'NaN';
+}
+
+/**
+ * Teaser vs full for the active stop in the LINGER stage (TriggerPolicy.decideAfterTeaser). `atTeaserEnd`: called
+ * at the teaser's last sentence boundary (logs the start of a wait); otherwise on a later fix, TICK or USER_MORE.
+ */
+function decideLength(st: TourState, fx: Fx, atTeaserEnd: boolean): void {
+  const s: StopRuntime = st.stops[st.activeIdx];
+  const waitedMs: number = st.nowMs - st.lingerSinceMs;
+  const f: Fix | undefined = st.lastFix;
+  const inp: LingerInput = {
+    speedMedianMps: st.speedMedianMps,
+    slowForMs: f !== undefined && Number.isFinite(st.slowSinceFixMs) ? f.timestampMs - st.slowSinceFixMs : 0,
+    waitedMs: waitedMs, adaptiveLength: st.input.adaptiveLength, userAskedMore: st.userAskedMore
+  };
+  const d: StoryDecision = decideAfterTeaser(s.trigger, inp, st.cfg);
+  const dist: string = r1(s.trigger.lastDistanceM);
+  if (d.length === StoryLength.UNDECIDED) {
+    if (atTeaserEnd) {
+      fx.log(EngineLog.STORY_LINGER, `poi=${s.poiId} action=wait spd=${spd(st)} d=${dist} ` +
+        `noCloserS=${st.cfg.lingerWindowS} maxS=${st.cfg.lingerMaxS}`);
+    }
+    return;
+  }
+  if (!atTeaserEnd) {
+    fx.log(EngineLog.STORY_LINGER, `poi=${s.poiId} action=${d.length} reason=${d.reason} ` +
+      `waitedS=${r1(waitedMs / 1000)} spd=${spd(st)} d=${dist}`);
+  }
+  st.lingerSinceMs = Number.NaN;
   const full: Narration | undefined = narrationOf(st, s.poiId, NarrationLength.FULL);
-  if (len === StoryLength.FULL && full !== undefined) {
+  if (d.length === StoryLength.FULL && full !== undefined) {
     st.stage = StopStage.FULL;
     st.storyItemId = enqueue(st, fx, Priority.P2_STORY, AnnouncementKind.FULL_STORY, s.poiId, full.sentences,
       `full:${s.poiId}`, full.tier);
     return;
   }
-  if (len === StoryLength.TEASER_ONLY) {
-    fx.log(EngineLog.STORY_SKIP_MOVING, `poi=${s.poiId} spd=${Number.isFinite(st.speedMedianMps) ?
-      st.speedMedianMps.toFixed(1) : 'NaN'} inside=${s.trigger.inside} slowDwellS=${r1(s.trigger.slowDwellMs / 1000)}`);
+  if (d.length === StoryLength.TEASER_ONLY) {
+    fx.log(EngineLog.STORY_SKIP_MOVING, `poi=${s.poiId} spd=${spd(st)} inside=${s.trigger.inside} ` +
+      `slowDwellS=${r1(s.trigger.slowDwellMs / 1000)} reason=${d.reason}`);
     finishStop(st, fx, StopStatus.TEASER_ONLY);
     return;
   }
   finishStop(st, fx, StopStatus.VISITED);  // full wanted but none exists
+}
+
+function lingering(st: TourState): boolean {
+  return st.phase === TourPhase.AT_STOP && st.activeIdx >= 0 && st.stage === StopStage.LINGER;
 }
 
 function onUtteranceEnd(st: TourState, fx: Fx, id: string, failed: boolean, code: number): void {
@@ -758,6 +814,9 @@ function onTick(st: TourState, fx: Fx): void {
       onUtteranceEnd(st, fx, u.id, false, 0);
       return;
     }
+  }
+  if (lingering(st)) {
+    decideLength(st, fx, false);         // the window closes even without fixes
   }
   expireQueue(st, fx);
   pump(st, fx);
@@ -801,6 +860,12 @@ function onSkip(st: TourState, fx: Fx): void {
   }
   if (item !== undefined) {
     onItemFinished(st, fx, item, true);
+  } else if (lingering(st)) {            // skip in the silence after the teaser: move on, full stays on request
+    const s: StopRuntime = st.stops[st.activeIdx];
+    fx.log(EngineLog.STORY_LINGER, `poi=${s.poiId} action=${StoryLength.TEASER_ONLY} reason=userSkip ` +
+      `waitedS=${r1((st.nowMs - st.lingerSinceMs) / 1000)}`);
+    st.lingerSinceMs = Number.NaN;
+    finishStop(st, fx, StopStatus.TEASER_ONLY);
   }
   pump(st, fx);
 }
@@ -812,6 +877,12 @@ function storyStopIdx(st: TourState): number {
 function onMore(st: TourState, fx: Fx): void {
   if (st.activeIdx >= 0 && st.stage === StopStage.TEASER) {
     st.userAskedMore = true;             // full story after the teaser, whatever the speed
+    return;
+  }
+  if (lingering(st)) {
+    st.userAskedMore = true;             // asked in the silence after the teaser: the full story now
+    decideLength(st, fx, false);
+    pump(st, fx);
     return;
   }
   const idx: number = storyStopIdx(st);

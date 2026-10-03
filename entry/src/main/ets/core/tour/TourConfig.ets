@@ -1,8 +1,9 @@
 /*
  * Tunable constants of the tour engine (task A3). Logged once at START_TOUR (`TOUR_CONFIG k=v ...`).
- * Sources: docs/ARCHITECTURE.md §4.1 (approach exit: approachR * 1.3 for 20 s), §4.3 (trigger table),
- * §4.4 (queue expiry, text-only reading timer), §9 rows 5/6/11 (GPS lost, poor-accuracy log rate,
- * 3 consecutive TTS errors => text only), DESIGN §5.4 (distance rounding, walking speed for minutes).
+ * Sources: docs/ARCHITECTURE.md §4.1 (approach exit: approachR * 1.3 for 20 s), §4.3 (trigger table; the linger
+ * window after the teaser, issue #60), §4.4 (queue expiry, text-only reading timer), §9 rows 5/6/11 (GPS lost,
+ * poor-accuracy log rate, 3 consecutive TTS errors => text only), DESIGN §5.4 (distance rounding, walking speed
+ * for minutes).
  * The fix-quality thresholds are owned by core/geo/FixFilter (A1) and re-exported here so the engine has
  * one place that lists every number it depends on.
  * Pure: no platform imports.
@@ -43,6 +44,19 @@ export class TourConfig {
   fullStoryDwellS: number = 8;
   /** Speed median window (FixFilter's window). */
   speedWindow: number = SPEED_WINDOW;
+  /*
+   * Linger window after the teaser (issue #60). While the user is moving but still getting closer to the stop, the
+   * teaser/full decision waits (silence, no sentence is cut): the geofence is entered up to R + 15 m out, i.e.
+   * ~25-50 s before a walker reaches the stop, and the teaser is shorter than that.
+   */
+  /** Full story once the speed median has stayed below slowSpeedMps this long (DESIGN §5.3 S1-more: >= 4 s). */
+  lingerStillS: number = 4;
+  /** Teaser only once the user is moving and this far beyond their closest point (above standing GPS jitter). */
+  lingerRecedeM: number = 15;
+  /** Teaser only when the user is moving and has got no closer to the stop for this long (DESIGN S1-more: 20 s). */
+  lingerWindowS: number = 20;
+  /** Safety bound: never wait longer than this after the teaser. */
+  lingerMaxS: number = 90;
   /** A gap between two inside fixes longer than this does not count as dwell (signal gaps). */
   maxDwellGapMs: number = 5000;
 
@@ -71,7 +85,8 @@ export class TourConfig {
       `maxAcc=${this.maxTriggerAccuracyM} netMaxAcc=${this.networkMaxTriggerAccuracyM} ` +
       `accCap=${this.accuracyAllowanceCapM} enter=${this.enterConfirmFixes}/${this.enterConfirmMinSpanMs}ms ` +
       `enterNow=${this.enterImmediateFraction} exit=${this.exitConfirmFixes} slow=${this.slowSpeedMps} ` +
-      `dwell=${this.fullStoryDwellS}s speedWin=${this.speedWindow} walk=${this.walkSpeedMps}`;
+      `dwell=${this.fullStoryDwellS}s linger=still${this.lingerStillS}s/recede${this.lingerRecedeM}m/` +
+      `noCloser${this.lingerWindowS}s/max${this.lingerMaxS}s speedWin=${this.speedWindow} walk=${this.walkSpeedMps}`;
   }
 }
 
