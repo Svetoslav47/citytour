@@ -8,12 +8,12 @@
 // Layer 1 (pure core, deterministic, no timers): Planner (Held-Karp) -> DemoWalkPlayer (hold while a story plays,
 // like DemoWalkSource) -> TourEngine (which runs FixFilter on every fix) with a fake clock and a fake speech engine
 // that needs 2.5 s per sentence. An independent FixFilter classifies the same fixes as a probe.
-// Runs: voice x1 (track time), voice x8 (wall-clock stamps, as on the emulator), text-only x1 (TICK pacing).
+// Runs: voice x1 (track time), voice x4 and x8 (wall-clock stamps, as on the emulator), text-only x1 (TICK pacing).
 // Layer 2: the same track through the real TourController (fake ports: manual clock + scheduler, pack, speech,
 // a demo source that wraps DemoWalkPlayer exactly like DemoWalkSource) at x8, the DevPanel "Start demo tour" flow.
 //
 // Jury-relevant outcomes asserted: every planned stop entered exactly once and in the planned order; full story at
-// the dwell stops, teaser only at the pass-by stop; no story cut mid-sentence (no STOP_SPEECH, no overlapping
+// the dwell stops and teaser only at the pass-by stop, at x1 (real walking pace) as well as x8; no story cut mid-sentence (no STOP_SPEECH, no overlapping
 // sentence, every item completes, a stop's story is never interleaved with another); finished state; no off-route
 // false positive (no REPLAN / REQUEST_REPLAN, snapshot.offRoute stays false); no arrival during the detour or the
 // 60 m accuracy window.
@@ -51,13 +51,13 @@ const PASS_BY_STOP: number = 9;
 /** An arrival may be confirmed at most this long (track time) after the walker leaves the stop's dwell. */
 const ARRIVAL_SLACK_MS: number = 10000;
 /*
- * FINDING_X1 (reported in the A11 PR, not changed here: core/tour is task A3's file). At x1 (real walking pace)
- * the 35 m geofence (+15 m accuracy allowance) is entered ~25 s before the walker reaches a stop, and the teaser /
- * full decision (TriggerPolicy.decideStoryLength) is taken when the teaser ends. With this fixture's short teaser
- * (arrival line + 2 sentences x 2.5 s) the walker is still moving at 1.3 m/s then, so the dwell stops 8, 10 and 11
- * get TEASER_ONLY although the walker then stands there for 40 s. At the demo speeds (x4/x8) the walker reaches the
- * stop before the teaser ends and every dwell stop gets the full story. The x1 runs therefore assert the pass-by
- * and start-stop decisions only; the x8 runs (engine and controller) assert full at every dwell stop.
+ * Walking pace (issue #60, fixed in core/tour). At x1 the 35 m geofence (+15 m accuracy allowance) is entered
+ * ~25-50 s before the walker reaches a stop, so this fixture's short teaser (arrival line + 2 sentences x 2.5 s) ends
+ * while the walker is still approaching. The engine then waits in silence (LINGER, `STORY_LINGER action=wait`) and
+ * decides on a later fix: full once the walker has stood still for 4 s (dwell stops 8, 10, 11), teaser only once
+ * they have got no closer for 20 s or walked 15 m past (pass-by stop 9, which has a 3 s slow-down at the corner).
+ * Before the fix the x1 runs gave dwell stops 8, 10 and 11 only the teaser (x4: 10 and 11); now every run asserts
+ * the same outcome.
  */
 
 // ---------------------------------------------------------------- pack built from the fixture stops
@@ -470,8 +470,7 @@ class EngineReplay {
 }
 
 /** The assertions every run must pass (both speech modes, both speeds, both layers). */
-function assertJuryOutcomes(obs: Observed, finalStatus: (id: string) => StopStatus | undefined,
-  dwellGetsFull: boolean): void {
+function assertJuryOutcomes(obs: Observed, finalStatus: (id: string) => StopStatus | undefined): void {
   // every planned stop entered exactly once, in the planned order
   expect(obs.enteredIds().join(',')).assertEqual(stopIds().join(','));
   // each arrival on the right stretch of the walk (after leaving the previous stop, before leaving this one);
@@ -484,7 +483,7 @@ function assertJuryOutcomes(obs: Observed, finalStatus: (id: string) => StopStat
     expect(inWindow(l.trackMs, eventOf('detour'))).assertFalse();
     expect(inWindow(l.trackMs, eventOf('poorAccuracy'))).assertFalse();
   }
-  // story length decisions: teaser only at the pass-by stop; full at the dwell stops (see FINDING_X1 for x1)
+  // story length decisions: teaser only at the pass-by stop; full at every dwell stop (at x1 too, issue #60)
   const dwell: string[] = DEMO_MINI_STOPS.filter((s: MiniStop) => s.mode === 'dwell').map((s: MiniStop) => poiId(s.n));
   const full: string[] = obs.fullStoryIds();
   const teaserOnly: string[] = obs.teaserOnlyIds();
@@ -492,10 +491,8 @@ function assertJuryOutcomes(obs: Observed, finalStatus: (id: string) => StopStat
   expect(full.indexOf(poiId(PASS_BY_STOP)) < 0).assertTrue();
   expect(full.indexOf(dwell[0]) >= 0).assertTrue();          // the start stop: the walker is already standing there
   expect(full.length + teaserOnly.length).assertEqual(DEMO_MINI_STOPS.length);   // one decision per stop
-  if (dwellGetsFull) {
-    expect(full.join(',')).assertEqual(dwell.join(','));
-    expect(teaserOnly.join(',')).assertEqual(poiId(PASS_BY_STOP));
-  }
+  expect(full.join(',')).assertEqual(dwell.join(','));
+  expect(teaserOnly.join(',')).assertEqual(poiId(PASS_BY_STOP));
   for (const id of stopIds()) {
     expect(finalStatus(id)).assertEqual(teaserOnly.indexOf(id) >= 0 ? StopStatus.TEASER_ONLY : StopStatus.VISITED);
   }
@@ -520,6 +517,29 @@ function assertJuryOutcomes(obs: Observed, finalStatus: (id: string) => StopStat
   expect(obs.probeFixesInWindow > 0).assertTrue();
   expect(obs.probePoorInWindow).assertEqual(obs.probeFixesInWindow);
   expect(obs.lines('LOC_POOR').some((l: LogLine) => inWindow(l.trackMs, eventOf('poorAccuracy')))).assertTrue();
+}
+
+/**
+ * x1 only (issue #60): the teaser ended before the walker reached dwell stops 8, 10 and 11, so the engine waited
+ * (LINGER) and switched to the full story only once the walker stood still there; stop 9 was decided by walking on.
+ */
+function assertWalkingPaceLinger(obs: Observed): void {
+  const waited: string[] = obs.lines('STORY_LINGER').filter((l: LogLine) => kvOf(l.kv, 'action') === 'wait')
+    .map((l: LogLine) => stopNumber(kvOf(l.kv, 'poi')));
+  expect(waited.join(',')).assertEqual('8,9,10,11');
+  const stillFull: string[] = obs.lines('STORY_LINGER')
+    .filter((l: LogLine) => kvOf(l.kv, 'action') === 'full' && kvOf(l.kv, 'reason') === 'still')
+    .map((l: LogLine) => stopNumber(kvOf(l.kv, 'poi')));
+  expect(stillFull.join(',')).assertEqual('8,10,11');
+  for (const l of obs.lines('STORY_LINGER')) {
+    if (kvOf(l.kv, 'action') === 'full') {     // the full story starts at the stop, not on the approach
+      const s: MiniStop = stopOf(kvOf(l.kv, 'poi')) as MiniStop;
+      expect(l.trackMs >= s.arrivalMs && l.trackMs <= s.departMs).assertTrue();
+    }
+  }
+  const skip: LogLine[] = obs.lines('STORY_SKIP_MOVING');
+  expect(skip.length).assertEqual(1);
+  expect(['window', 'receding', 'exited'].indexOf(kvOf(skip[0].kv, 'reason')) >= 0).assertTrue();
 }
 
 // ---------------------------------------------------------------- layer 2: TourController with fake ports
@@ -921,7 +941,8 @@ export default function replayTest() {
     it('voice_x1: track-time replay through FixFilter + TourEngine gives the jury outcomes', 0, () => {
       const r: EngineReplay = new EngineReplay(false, 1, true).run();
       console.info(r.summary('engine-voice-x1'));
-      assertJuryOutcomes(r.obs, (id: string) => r.statusOf(id), false);
+      assertJuryOutcomes(r.obs, (id: string) => r.statusOf(id));
+      assertWalkingPaceLinger(r.obs);
       expect(r.st.phase).assertEqual(TourPhase.FINISHED);
       expect(r.idle()).assertTrue();
       // the finish lines are the last thing heard
@@ -932,14 +953,22 @@ export default function replayTest() {
     it('voice_x8: wall-clock stamps at x8 (the emulator demo setting) keep the same outcomes', 0, () => {
       const r: EngineReplay = new EngineReplay(false, 8, false).run();
       console.info(r.summary('engine-voice-x8'));
-      assertJuryOutcomes(r.obs, (id: string) => r.statusOf(id), true);
+      assertJuryOutcomes(r.obs, (id: string) => r.statusOf(id));
+      expect(r.st.phase).assertEqual(TourPhase.FINISHED);
+    });
+
+    it('voice_x4: wall-clock stamps at x4 (the other demo speed) keep the same outcomes', 0, () => {
+      const r: EngineReplay = new EngineReplay(false, 4, false).run();
+      console.info(r.summary('engine-voice-x4'));
+      assertJuryOutcomes(r.obs, (id: string) => r.statusOf(id));
       expect(r.st.phase).assertEqual(TourPhase.FINISHED);
     });
 
     it('text_only_x1: no SPEAK at all, captions paced by TICK, same outcomes', 0, () => {
       const r: EngineReplay = new EngineReplay(true, 1, true).run();
       console.info(r.summary('engine-text-x1'));
-      assertJuryOutcomes(r.obs, (id: string) => r.statusOf(id), false);
+      assertJuryOutcomes(r.obs, (id: string) => r.statusOf(id));
+      assertWalkingPaceLinger(r.obs);
       expect(r.st.phase).assertEqual(TourPhase.FINISHED);
       expect(r.inFlight === undefined).assertTrue();
       expect(r.obs.count('STORY_START', 'mode=text')).assertEqual(r.obs.lines('STORY_START').length);
@@ -948,7 +977,11 @@ export default function replayTest() {
 
     it('deterministic: two replays produce the identical log', 0, () => {
       const a: EngineReplay = new EngineReplay(false, 1, true).run();
-      const b: EngineReplay = new EngineReplay(false, 1, true).run();
+      // Same plan object: TourPlan.ms is the planner's wall-clock run time (logged in ROUTE_PLAN), 0 or 1 ms
+      // depending on machine load, which made this case flaky. The engine replay itself must be identical.
+      const b: EngineReplay = new EngineReplay(false, 1, true);
+      b.plan = a.plan;
+      b.run();
       const text = (r: EngineReplay): string => r.obs.logs.map((l: LogLine) => `${l.code} ${l.kv}`).join('\n');
       expect(a.obs.logs.length > 50).assertTrue();
       expect(text(a)).assertEqual(text(b));
@@ -967,7 +1000,7 @@ export default function replayTest() {
         console.info(r.obs.summary('controller-voice-x8', r.ctrl.current().phase === TourPhase.FINISHED, r.seconds));
         expect(r.ctrl.isRunning()).assertFalse();
         expect(r.ctrl.current().phase).assertEqual(TourPhase.FINISHED);
-        assertJuryOutcomes(r.obs, (id: string) => r.statusOf(id), true);
+        assertJuryOutcomes(r.obs, (id: string) => r.statusOf(id));
         // the order scripts/smoke.sh greps for on the emulator
         const steps: string[][] = [['PACK_LOAD', 'pois=5'], ['ROUTE_PLAN', 'algo=heldkarp'], ['LOC_SOURCE', 'kind=demo']];
         for (const id of stopIds()) {

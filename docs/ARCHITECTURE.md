@@ -417,8 +417,11 @@ stateDiagram-v2
   Walking --> AtStop: FIX inside triggerR (debounced, skipped approach)
   state AtStop {
     [*] --> Teaser
-    Teaser --> Full: ITEM_DONE & (inside exitR or slow)
+    Teaser --> Full: ITEM_DONE & slow
     Teaser --> Done: ITEM_DONE & moving away
+    Teaser --> Linger: ITEM_DONE & still approaching
+    Linger --> Full: FIX & stood still 4 s (or USER_MORE)
+    Linger --> Done: FIX/TICK & walked past (or USER_SKIP)
     Full --> Done: ITEM_DONE / USER_SKIP
     Done --> Deep: USER_MORE
     Deep --> Done: ITEM_DONE
@@ -469,6 +472,10 @@ All constants live in `core/tour/TourConfig.ets` (tunable, logged at start):
 | `exitConfirmFixes` | 3 consecutive fixes beyond the exit radius | debounce |
 | `slowSpeedMps` | 0.6 | "stopped / lingering" |
 | `fullStoryDwellS` | 8 | inside triggerR ≥ 8 s ⇒ the user has stopped |
+| `lingerStillS` | 4 | after the teaser: speed median < `slowSpeedMps` for 4 s ⇒ full (issue #60) |
+| `lingerRecedeM` | 15 | after the teaser: moving and 15 m beyond the closest point ⇒ walked past |
+| `lingerWindowS` | 20 | after the teaser: moving and no closer for 20 s ⇒ walked past |
+| `lingerMaxS` | 90 | never wait longer than this after the teaser |
 | `speedWindow` | median of the last 5 trigger-grade speeds | speed smoothing |
 
 **Accuracy-aware distance.** `dEff = max(0, d − min(accuracy, 15))` for **entry** (benefit of the doubt with a decent fix) and `d + min(accuracy, 15)` for **exit** (conservative). Combined with the 1.6× exit radius, a user standing at the edge of the radius with ±15 m jitter triggers **exactly once**. That is a unit test.
@@ -478,7 +485,8 @@ All constants live in `core/tour/TourConfig.ets` (tunable, logged at start):
 1. On arrival, enqueue a **P2 `STOP_STORY` item** = `[arrivalLine, ...teaser.sentences]`.
    - Example `arrivalLine`: "St. Mary's Basilica is on your left. Look up at the taller tower."
    - It is built from `Phrases` + `RelDir` + `Poi.view`.
-2. When the teaser item completes, if `insideExit || speedMedian < slowSpeedMps || dwell ≥ fullStoryDwellS`, enqueue the **full** narration (P2, same stop). Otherwise mark the stop `TeaserOnly` and log `STORY_SKIP_MOVING`. The full text stays available in PlaceDetail and through `USER_REPLAY`.
+2. When the teaser item completes, if `speedMedian < slowSpeedMps || slowDwell ≥ fullStoryDwellS` (and no EXIT yet), enqueue the **full** narration (P2, same stop). If the user has clearly walked past (EXIT, or moving and `lingerRecedeM` beyond the closest point, or no closer for `lingerWindowS`), mark the stop `TeaserOnly` and log `STORY_SKIP_MOVING`. The full text stays available in PlaceDetail and through `USER_REPLAY`.
+   - **Linger window (issue #60).** At walking pace the zone (R + accuracy allowance) is entered 25–50 s before the walker reaches the stop, so the teaser usually ends while they are still approaching. Then neither applies: the engine holds silence (`STORY_LINGER action=wait`, no sentence is cut, no other stop fires) and asks again on every fix and TICK. Full once the median has stayed slow for `lingerStillS` (a 3 s slow-down at a corner while passing is not a stop); teaser only on the walked-past rules above, or after `lingerMaxS`. `USER_MORE` in the silence starts the full story; `USER_SKIP` moves on (`TeaserOnly`). This is how a guide behaves: the full story when you stop at the monument, only the teaser when you walk past. Tested by the x1 replay (`entry/src/test/Replay.test.ets`).
 3. The user can always ask for more with `USER_MORE` (AVSession favorite or the in-app button), which queues the `deep` narration if it exists.
 4. A stop is spoken **at most once automatically per tour**. Replays happen only through the user.
 
@@ -913,7 +921,7 @@ Every row has a UI state, a log line, and **no crash**. All platform calls are w
 | Location | `LOC_SOURCE kind=real/demo`, `LOC_FIX src=… lat=… lng=… acc=… spd=… crs=… prov=…`, `LOC_POOR`, `LOC_LOST`, `LOC_BACK`, `LOC_ERR code=…` |
 | Planning | `ROUTE_PLAN algo=heldkarp n=… costS=… ms=… order=a,b,c`, `REPLAN from=… to=…`, `ROUTE_FALLBACK` |
 | Engine | `STATE from=Walking to=AtStop ev=FIX stop=…`, `POI_APPROACH id=… d=…`, `POI_ENTER id=… d=… acc=… dwell=…`, `POI_EXIT id=…`, `OFF_ROUTE xt=…`, `ON_ROUTE` |
-| Narration | `STORY_QUEUE id=… prio=… kind=…`, `STORY_START poi=… len=teaser tier=reviewed lang=en`, `STORY_END …`, `STORY_SKIP_MOVING …`, `NARR_SOURCE poi=… tier=… sources=n`, `NARR_FALLBACK …`, `QUEUE_EXPIRED …`, `NAV_CUE step=… text="…"` |
+| Narration | `STORY_QUEUE id=… prio=… kind=…`, `STORY_START poi=… len=teaser tier=reviewed lang=en`, `STORY_END …`, `STORY_SKIP_MOVING … reason=…`, `STORY_LINGER poi=… action=wait|full|teaserOnly reason=…`, `NARR_SOURCE poi=… tier=… sources=n`, `NARR_FALLBACK …`, `QUEUE_EXPIRED …`, `NAV_CUE step=… text="…"` |
 | Speech/audio | `TTS_INIT lang=… ok`, `VOICE_STATUS …`, `TTS_ERR …`, `UTT_START req=…`, `UTT_DONE req=… ms=…`, `AUDIO_INTERRUPT hint=…`, `AUDIO_ROUTE …` |
 | Platform | `BG_START modes=location,audioPlayback`, `BG_STOP`, `BG_SUSPEND`, `BG_CANCEL`, `AVS_CMD cmd=playNext`, `AVS_META title="…"`, `NOTIF_PUBLISH id=1001`, `HAPTIC kind=arrive` |
 

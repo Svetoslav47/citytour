@@ -44,6 +44,7 @@ export class LogEvents {
   static readonly STORY_START: string = 'STORY_START';
   static readonly STORY_END: string = 'STORY_END';
   static readonly STORY_SKIP_MOVING: string = 'STORY_SKIP_MOVING';
+  static readonly STORY_LINGER: string = 'STORY_LINGER';
   static readonly NARR_SOURCE: string = 'NARR_SOURCE';
   static readonly NARR_FALLBACK: string = 'NARR_FALLBACK';
   static readonly NARR_PERSONA_FALLBACK: string = 'NARR_PERSONA_FALLBACK';

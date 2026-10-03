@@ -5,10 +5,12 @@
 // Plus: walk-through => teaser only (STORY_SKIP_MOVING); acc 80 m => no arrival; a visited stop never fires
 // again (jitter at the edge with acc 15 m); text-only arrival = HAPTIC + NOTIFY + META and TICK-paced captions;
 // skip = STOP_SPEECH(afterCurrent) then the next line; 3 TTS errors => text only; USER_END => Aborted; snapshot.
+// Walking pace (issue #60): the teaser ends on the approach => silence (LINGER) => full once the walker stands at the
+// stop, also with GPS jitter; teaser only when they walk past; USER_MORE / USER_SKIP in that silence.
 // Fixtures: test/fixtures/MiniPack.ets (Barbican -> St Mary's -> Cloth Hall) plus a St Mary's full narration.
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  EngineLog, NarrationFn, StepResult, TourEngine, TourInput, TourState
+  EngineLog, NarrationFn, StepResult, StopStage, TourEngine, TourInput, TourState
 } from '../main/ets/core/tour/TourEngine';
 import { TourConfig } from '../main/ets/core/tour/TourConfig';
 import {
@@ -174,6 +176,7 @@ class Driver {
   lat: number = 0;
   lng: number = 0;
   sigs: string[] = [];
+  logs: string[] = [];             // `CODE kv` of every LOG effect
   spoken: string[] = [];
   speaking: Utterance | undefined = undefined;
   speakStart: number = 0;
@@ -195,6 +198,9 @@ class Driver {
     this.st = r.state;
     for (const x of r.effects) {
       this.sigs.push(sig(x));
+      if (x.type === EffectType.LOG) {
+        this.logs.push(`${x.logCode} ${x.logKv}`);
+      }
       if (x.type === EffectType.SPEAK && x.utterance !== undefined) {
         this.speaking = x.utterance;
         this.speakStart = this.t;
@@ -285,6 +291,12 @@ class Driver {
     for (let i = 0; i < n; i++) {
       this.second(0, Number.NaN);
     }
+  }
+
+  /** LOG lines (`CODE kv`) that start with the code and contain every part. */
+  logsWith(code: string, parts: string[]): string[] {
+    return this.logs.filter((l: string) => l.indexOf(`${code} `) === 0 &&
+      parts.every((p: string) => l.indexOf(p) >= 0));
   }
 
   count(prefix: string): number {
@@ -788,6 +800,89 @@ export default function tourEngineTest() {
       expect(s.signal).assertEqual(SignalQuality.GOOD);
       expect(s.paused || s.speechText || s.offRoute).assertFalse();
       expect(s.remainingM).assertLarger(150 + 450);
+    });
+    it('walking_pace_teaser_ends_on_the_approach_then_full_once_the_walker_stops', 0, () => {
+      // Issue #60: the zone is entered ~40 m out at 1.3 m/s; the 15 s arrival+teaser item ends ~20 m out.
+      const d: Driver = new Driver(input(false, false));
+      d.placeNear(MINI_ST_MARYS, 120, 0);
+      d.start(ORDER_SM_CH_B);
+      d.walkTo(MINI_ST_MARYS, 5, 1.3);
+      expect(d.st.phase).assertEqual(TourPhase.AT_STOP);
+      expect(d.st.stage).assertEqual(StopStage.LINGER);  // teaser done, still walking in: undecided, silent
+      expect(d.speaking === undefined).assertTrue();
+      expect(d.spoken[d.spoken.length - 1]).assertEqual('Fixture teaser sentence two.');
+      expect(d.logsWith(EngineLog.STORY_LINGER, [`poi=${MINI_ST_MARYS}`, 'action=wait']).length).assertEqual(1);
+      d.dwellUntilQuiet();                               // stands at the stop
+      expect(d.logsWith(EngineLog.STORY_LINGER, ['action=full', 'reason=still']).length).assertEqual(1);
+      expect(d.count('LOG STORY_SKIP_MOVING')).assertEqual(0);
+      const t2: number = d.spoken.indexOf('Fixture teaser sentence two.');
+      expect(d.spoken[t2 + 1]).assertEqual('Full story one.');   // nothing in between, nothing cut
+      expect(d.spoken[t2 + 2]).assertEqual('Full story two.');
+      expect(d.count('STOP')).assertEqual(0);
+      expect(d.snap().stops[0].status).assertEqual(StopStatus.VISITED);
+      expect(d.st.phase).assertEqual(TourPhase.WALKING);
+    });
+
+    it('walking_pace_walk_past_is_teaser_only_after_the_linger', 0, () => {
+      const d: Driver = new Driver(input(false, false));
+      d.placeNear(MINI_ST_MARYS, 120, 0);
+      d.start(ORDER_SM_CH_B);
+      d.walkTo(MINI_ST_MARYS, -60, 1.3);                 // straight through at 1.3 m/s
+      expect(d.logsWith(EngineLog.STORY_LINGER, ['action=wait']).length).assertEqual(1);
+      expect(d.logsWith(EngineLog.STORY_SKIP_MOVING, [`poi=${MINI_ST_MARYS}`, 'reason=receding']).length)
+        .assertEqual(1);
+      expect(d.spoken.indexOf('Full story one.') < 0).assertTrue();
+      expect(d.snap().stops[0].status).assertEqual(StopStatus.TEASER_ONLY);
+      expect(d.st.phase).assertEqual(TourPhase.WALKING);
+      const t2: number = d.spoken.indexOf('Fixture teaser sentence two.');
+      expect(d.spoken[t2 + 1].indexOf('Next stop: Cloth Hall') === 0).assertTrue();   // then on to the next stop
+    });
+
+    it('walking_pace_gps_jitter_while_standing_still_gets_full', 0, () => {
+      const d: Driver = new Driver(input(false, false));
+      const rnd: Lcg = new Lcg(60);
+      d.placeNear(MINI_ST_MARYS, 120, 0);
+      d.start(ORDER_SM_CH_B);
+      d.walkTo(MINI_ST_MARYS, 8, 1.3);
+      expect(d.st.stage).assertEqual(StopStage.LINGER);
+      d.acc = 12;
+      for (let k = 0; k < 40; k++) {                     // standing: the fix wanders +-8 m, speed spikes now and then
+        d.placeNear(MINI_ST_MARYS, 8 + 8 * rnd.next(), 180 * rnd.next());
+        d.second(k % 7 === 3 ? 0.9 : 0.3 + 0.2 * rnd.next(), Number.NaN);
+      }
+      expect(d.count('LOG STORY_SKIP_MOVING')).assertEqual(0);
+      expect(d.count('LOG POI_EXIT')).assertEqual(0);
+      expect(d.logsWith(EngineLog.STORY_LINGER, ['action=full']).length).assertEqual(1);
+      expect(d.spoken.indexOf('Full story two.') >= 0).assertTrue();
+    });
+
+    it('user_more_in_the_linger_silence_starts_the_full_story_at_once', 0, () => {
+      const d: Driver = new Driver(input(false, false));
+      d.placeNear(MINI_ST_MARYS, 120, 0);
+      d.start(ORDER_SM_CH_B);
+      d.walkTo(MINI_ST_MARYS, 15, 1.3);
+      expect(d.st.stage).assertEqual(StopStage.LINGER);
+      const mark: number = d.sigs.length;
+      d.ev(EngineEventType.USER_MORE);
+      expect(d.since(mark).indexOf('SPEAK Full story one.') >= 0).assertTrue();
+      expect(d.logsWith(EngineLog.STORY_LINGER, ['action=full', 'reason=askedMore']).length).assertEqual(1);
+      expect(d.st.stage).assertEqual(StopStage.FULL);
+    });
+
+    it('skip_in_the_linger_silence_moves_on_with_teaser_only', 0, () => {
+      const d: Driver = new Driver(input(false, false));
+      d.placeNear(MINI_ST_MARYS, 120, 0);
+      d.start(ORDER_SM_CH_B);
+      d.walkTo(MINI_ST_MARYS, 15, 1.3);
+      expect(d.st.stage).assertEqual(StopStage.LINGER);
+      const mark: number = d.sigs.length;
+      d.ev(EngineEventType.USER_SKIP);
+      expect(d.logsWith(EngineLog.STORY_LINGER, ['action=teaserOnly', 'reason=userSkip']).length).assertEqual(1);
+      expect(d.snap().stops[0].status).assertEqual(StopStatus.TEASER_ONLY);
+      expect(d.st.phase).assertEqual(TourPhase.WALKING);
+      expect(d.since(mark).filter((x: string) => x.indexOf('SPEAK Next stop: Cloth Hall') === 0).length)
+        .assertEqual(1);
+      expect(d.count('STOP')).assertEqual(0);              // nothing was playing, nothing to cut
     });
   });
 }

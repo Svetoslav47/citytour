@@ -7,11 +7,19 @@
  *   - Exit: 3 consecutive fixes with dExit beyond the exit radius.
  *   - Fixes that are not trigger-grade (accuracy > 40 m, coarse NETWORK; see FixFilter) are ignored here:
  *     they neither count towards nor reset a streak, so they can never cause an arrival or an exit.
- * Teaser vs full (decided when the teaser item completes, i.e. at a sentence boundary):
- *   FULL when adaptive length is off, the user asked for more, or the user has not left the stop
- *   (no EXIT yet) and is lingering: speed median < 0.6 m/s, or >= 8 s of slow fixes inside the trigger radius,
- *   or the speed is unknown (benefit of the doubt). Otherwise TEASER_ONLY (STORY_SKIP_MOVING).
- *   Interpretation (flagged for review): §4.3 lists `insideExit || slow || dwell >= 8 s`, but a walker is
+ * Teaser vs full (decided at sentence boundaries, never mid-sentence; issue #60 "linger window"):
+ *   FULL when adaptive length is off, the user asked for more, or the user has not left the stop (no EXIT yet)
+ *   and is lingering: >= 8 s of slow fixes inside the trigger radius, or the speed is unknown (benefit of the
+ *   doubt), or slow: at the teaser's end the speed median < 0.6 m/s; later, the median has stayed < 0.6 m/s for
+ *   lingerStillS (a short slow-down while walking past, e.g. a corner, is not a stop).
+ *   TEASER_ONLY (STORY_SKIP_MOVING) once the user has clearly walked past: EXIT confirmed, or moving and
+ *   lingerRecedeM beyond the closest point to the stop, or moving without getting any closer for lingerWindowS,
+ *   or still undecided lingerMaxS after the teaser (safety bound).
+ *   Otherwise (moving, still getting closer) the verdict is UNDECIDED: the engine holds silence after the teaser
+ *   and asks again on every fix. Why: at walking pace the geofence (R + accuracy allowance) is entered ~25-50 s
+ *   before the walker reaches the stop, so a decision taken the moment the teaser ends saw a walker who was still
+ *   approaching and gave every dwell stop the teaser only. A guide waits to see whether you stop at the monument.
+ *   Interpretation (A3, flagged for review): §4.3 first said `insideExit || slow || dwell >= 8 s`, but a walker is
  *   still inside 1.6 * R when a 20 s teaser ends and spends ~50 s inside R, so "inside" and plain dwell
  *   would make every walk-through FULL. Here leaving the stop forces TEASER_ONLY and dwell counts slow time only.
  * Pure: no platform imports.
@@ -20,7 +28,25 @@ import { TourConfig } from './TourConfig';
 
 export enum TriggerVerdict { NONE = 'none', ENTER = 'enter', EXIT = 'exit' }
 
-export enum StoryLength { FULL = 'full', TEASER_ONLY = 'teaserOnly' }
+/** UNDECIDED: the user is still moving but has not passed the stop yet (keep waiting, see the header). */
+export enum StoryLength { FULL = 'full', TEASER_ONLY = 'teaserOnly', UNDECIDED = 'undecided' }
+
+/** A teaser/full verdict and why (logged in STORY_LINGER / STORY_SKIP_MOVING). */
+export interface StoryDecision {
+  length: StoryLength;
+  /** adaptiveOff | askedMore | exited | speedUnknown | dwell | slow | still | receding | window | maxWait |
+   *  approaching (UNDECIDED) */
+  reason: string;
+}
+
+/** What the engine knows besides the geofence when it asks for the teaser/full verdict. */
+export interface LingerInput {
+  speedMedianMps: number;   // FixFilter's median of the last 5 trigger-grade speeds (NaN if unknown)
+  slowForMs: number;        // fix time the median has been < slowSpeedMps without a break (0 = not slow now)
+  waitedMs: number;         // engine time since the teaser ended (0 = at its end)
+  adaptiveLength: boolean;
+  userAskedMore: boolean;
+}
 
 /** One fix, reduced to what the geofence needs. */
 export interface TriggerSample {
@@ -47,6 +73,11 @@ export class StopTrigger {
   slowDwellMs: number = 0;
   lastInsideSampleMs: number = Number.NaN;
   lastDistanceM: number = Number.NaN;
+  /** Closest raw distance to the stop since the last ENTER, and the fix time it was reached. */
+  closestM: number = Number.NaN;
+  closestAtMs: number = Number.NaN;
+  /** How far the user is beyond that closest point: max(0, dEnter - closestM) (accuracy works in their favour). */
+  recedeM: number = 0;
 
   constructor(poiId: string, triggerRadiusM: number) {
     this.poiId = poiId;
@@ -115,6 +146,9 @@ export function evaluateTrigger(t: StopTrigger, s: TriggerSample, cfg: TourConfi
     t.exitStreak = 0;
     t.slowDwellMs = 0;
     t.lastInsideSampleMs = s.tMs;
+    t.closestM = s.distanceM;
+    t.closestAtMs = s.tMs;
+    t.recedeM = 0;
     return TriggerVerdict.ENTER;
   }
   // Inside: dwell bookkeeping, then the exit hysteresis.
@@ -125,6 +159,11 @@ export function evaluateTrigger(t: StopTrigger, s: TriggerSample, cfg: TourConfi
     }
   }
   t.lastInsideSampleMs = s.tMs;
+  if (!Number.isFinite(t.closestM) || s.distanceM < t.closestM) {
+    t.closestM = s.distanceM;
+    t.closestAtMs = s.tMs;
+  }
+  t.recedeM = Math.max(0, entryDistanceM(s.distanceM, s.accuracyM, cfg) - t.closestM);
   if (exitDistanceM(s.distanceM, s.accuracyM, cfg) <= t.exitRadiusM(cfg)) {
     t.exitStreak = 0;
     return TriggerVerdict.NONE;
@@ -141,23 +180,59 @@ export function evaluateTrigger(t: StopTrigger, s: TriggerSample, cfg: TourConfi
   return TriggerVerdict.EXIT;
 }
 
+function decision(length: StoryLength, reason: string): StoryDecision {
+  const d: StoryDecision = { length: length, reason: reason };
+  return d;
+}
+
 /**
- * Teaser vs full when the teaser item has finished (see the header for the rule and its interpretation).
+ * Teaser vs full after the teaser item has finished (see the header). Returns UNDECIDED while the user is moving,
+ * has not passed the stop, is still getting closer and the linger window is open.
+ */
+export function decideAfterTeaser(t: StopTrigger, inp: LingerInput, cfg: TourConfig): StoryDecision {
+  if (!inp.adaptiveLength) {
+    return decision(StoryLength.FULL, 'adaptiveOff');
+  }
+  if (inp.userAskedMore) {
+    return decision(StoryLength.FULL, 'askedMore');
+  }
+  if (!t.inside) {
+    return decision(StoryLength.TEASER_ONLY, 'exited');     // moving away: EXIT already confirmed
+  }
+  if (!Number.isFinite(inp.speedMedianMps)) {
+    return decision(StoryLength.FULL, 'speedUnknown');
+  }
+  if (t.slowDwellMs >= cfg.fullStoryDwellS * 1000) {
+    return decision(StoryLength.FULL, 'dwell');
+  }
+  if (inp.waitedMs <= 0 && inp.speedMedianMps < cfg.slowSpeedMps) {
+    return decision(StoryLength.FULL, 'slow');              // already standing when the teaser ends
+  }
+  if (inp.waitedMs > 0 && inp.slowForMs >= cfg.lingerStillS * 1000) {
+    return decision(StoryLength.FULL, 'still');             // came to a stop during the linger window
+  }
+  if (t.recedeM >= cfg.lingerRecedeM) {
+    return decision(StoryLength.TEASER_ONLY, 'receding');   // walked past the closest point and on
+  }
+  if (t.lastInsideSampleMs - t.closestAtMs >= cfg.lingerWindowS * 1000) {
+    return decision(StoryLength.TEASER_ONLY, 'window');     // moving, but no closer for a while
+  }
+  if (inp.waitedMs >= cfg.lingerMaxS * 1000) {
+    return decision(StoryLength.TEASER_ONLY, 'maxWait');
+  }
+  return decision(StoryLength.UNDECIDED, 'approaching');
+}
+
+/**
+ * The verdict at the teaser's end with no linger window (never UNDECIDED: still approaching counts as moving).
  * speedMedianMps is FixFilter's median of the last 5 trigger-grade speeds (NaN if unknown).
  */
 export function decideStoryLength(t: StopTrigger, speedMedianMps: number, adaptiveLength: boolean,
   userAskedMore: boolean, cfg: TourConfig): StoryLength {
-  if (!adaptiveLength || userAskedMore) {
-    return StoryLength.FULL;
-  }
-  if (!t.inside) {
-    return StoryLength.TEASER_ONLY;          // moving away: EXIT already confirmed
-  }
-  if (!Number.isFinite(speedMedianMps) || speedMedianMps < cfg.slowSpeedMps) {
-    return StoryLength.FULL;
-  }
-  if (t.slowDwellMs >= cfg.fullStoryDwellS * 1000) {
-    return StoryLength.FULL;
-  }
-  return StoryLength.TEASER_ONLY;
+  const inp: LingerInput = {
+    speedMedianMps: speedMedianMps, slowForMs: 0, waitedMs: 0, adaptiveLength: adaptiveLength,
+    userAskedMore: userAskedMore
+  };
+  const d: StoryDecision = decideAfterTeaser(t, inp, cfg);
+  return d.length === StoryLength.UNDECIDED ? StoryLength.TEASER_ONLY : d.length;
 }

@@ -3,10 +3,13 @@
 // fixes => no ENTER; walk-through at 1.4 m/s => teaser only; stop 40 s => full; exit hysteresis.
 // Plus: accuracy-aware distances, enter debounce (2 fixes >= 1.5 s, or 1 fix within R/2), streak reset,
 // adaptive length off / user asked for more => full, unknown speed => full.
+// Linger window after the teaser (issue #60, decideAfterTeaser): approach while moving, then stop => full;
+// approach and walk past => teaser; GPS jitter while standing => still full; walking around the stop without getting
+// closer => teaser after the window; a 3 s slow-down while passing is not a stop.
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  StopTrigger, TriggerSample, TriggerVerdict, StoryLength, evaluateTrigger, decideStoryLength,
-  entryDistanceM, exitDistanceM
+  LingerInput, StopTrigger, StoryDecision, TriggerSample, TriggerVerdict, StoryLength, evaluateTrigger,
+  decideAfterTeaser, decideStoryLength, entryDistanceM, exitDistanceM
 } from '../main/ets/core/tour/TriggerPolicy';
 import { TourConfig, defaultTourConfig, MAX_TRIGGER_ACCURACY_M } from '../main/ets/core/tour/TourConfig';
 import { median } from '../main/ets/core/geo/FixFilter';
@@ -52,6 +55,70 @@ function feed(t: StopTrigger, s: TriggerSample, cfg: TourConfig, c: Counts, tS: 
     c.exit++;
   }
   return v;
+}
+
+/** One fix per second as the engine sees it: geofence + speed median + how long the median has been slow. */
+class Walker {
+  readonly cfg: TourConfig = defaultTourConfig();
+  readonly t: StopTrigger = new StopTrigger('p', 35);
+  readonly c: Counts = new Counts();
+  speeds: number[] = [];
+  slowSinceMs: number = Number.NaN;
+  s: number = 0;
+  lastMs: number = 0;
+  teaserEndS: number = -1;
+  verdict: StoryDecision | undefined = undefined;
+  verdictS: number = -1;
+  verdictDistanceM: number = Number.NaN;
+
+  median(): number {
+    return this.speeds.length === 0 ? Number.NaN : median(this.speeds.slice(-this.cfg.speedWindow));
+  }
+
+  /** One fix; once the teaser has ended (teaserEndS), asks decideAfterTeaser until it is no longer UNDECIDED. */
+  fix(d: number, acc: number, speed: number): void {
+    const smp: TriggerSample = sample(this.s, d, acc, speed);
+    feed(this.t, smp, this.cfg, this.c, this.s);
+    this.speeds.push(speed);
+    this.lastMs = smp.tMs;
+    const m: number = this.median();
+    if (m < this.cfg.slowSpeedMps) {
+      if (!Number.isFinite(this.slowSinceMs)) {
+        this.slowSinceMs = smp.tMs;
+      }
+    } else {
+      this.slowSinceMs = Number.NaN;
+    }
+    if (this.c.firstEnterS >= 0 && this.teaserEndS < 0 && this.s >= this.c.firstEnterS + 10) {
+      this.teaserEndS = this.s;                       // a 10 s teaser (arrival line + 2 sentences at x1)
+    }
+    if (this.teaserEndS >= 0 && this.verdict === undefined) {
+      const v: StoryDecision = decideAfterTeaser(this.t, this.input((this.s - this.teaserEndS) * 1000), this.cfg);
+      if (v.length !== StoryLength.UNDECIDED) {
+        this.verdict = v;
+        this.verdictS = this.s;
+        this.verdictDistanceM = d;
+      }
+    }
+    this.s++;
+  }
+
+  input(waitedMs: number): LingerInput {
+    const inp: LingerInput = {
+      speedMedianMps: this.median(),
+      slowForMs: Number.isFinite(this.slowSinceMs) ? this.lastMs - this.slowSinceMs : 0,
+      waitedMs: waitedMs, adaptiveLength: true, userAskedMore: false
+    };
+    return inp;
+  }
+
+  length(): string {
+    return this.verdict === undefined ? 'none' : this.verdict.length;
+  }
+
+  reason(): string {
+    return this.verdict === undefined ? 'none' : this.verdict.reason;
+  }
 }
 
 export default function triggerPolicyTest() {
@@ -205,6 +272,125 @@ export default function triggerPolicyTest() {
       expect(decideStoryLength(t, 1.4, false, false, cfg)).assertEqual(StoryLength.FULL);  // adaptive off
       expect(decideStoryLength(t, 1.4, true, true, cfg)).assertEqual(StoryLength.FULL);    // USER_MORE
       expect(decideStoryLength(t, Number.NaN, true, false, cfg)).assertEqual(StoryLength.FULL); // speed unknown
+    });
+    it('linger_approach_while_moving_then_stop_is_full', 0, () => {
+      // x1 replay shape: the zone is entered ~40 m out at 1.3 m/s, the teaser ends 10 s later 27 m out; the walker
+      // goes on to 4 m from the stop and stands there. The teaser end alone would say teaser (old behaviour).
+      const w: Walker = new Walker();
+      let x: number = -100;
+      let askedAtTeaserEnd: string = '';
+      while (x < -4) {
+        w.fix(Math.abs(x), 8, 1.3);
+        if (w.s - 1 === w.teaserEndS) {
+          askedAtTeaserEnd = decideStoryLength(w.t, w.median(), true, false, w.cfg);
+          expect(decideAfterTeaser(w.t, w.input(0), w.cfg).length).assertEqual(StoryLength.UNDECIDED);
+        }
+        x += 1.3;
+      }
+      const stopS: number = w.s;
+      for (let k = 0; k < 40; k++) {
+        w.fix(4, 8, 0.1);
+      }
+      expect(askedAtTeaserEnd).assertEqual(StoryLength.TEASER_ONLY);   // why the replay's dwell stops got teasers
+      expect(w.length()).assertEqual(StoryLength.FULL);
+      expect(w.reason()).assertEqual('still');
+      expect(w.verdictS >= stopS && w.verdictS <= stopS + 8).assertTrue();   // a few seconds after standing still
+      expect(w.c.enter).assertEqual(1);
+      expect(w.c.exit).assertEqual(0);
+    });
+
+    it('linger_approach_and_walk_past_is_teaser', 0, () => {
+      const w: Walker = new Walker();
+      let closestS: number = -1;
+      for (let x = -100; x <= 100; x += 1.3) {
+        if (closestS < 0 && x >= 0) {
+          closestS = w.s;
+        }
+        w.fix(Math.abs(x), 8, 1.3);
+      }
+      expect(w.length()).assertEqual(StoryLength.TEASER_ONLY);
+      expect(w.reason()).assertEqual('receding');
+      expect(w.verdictS > closestS && w.verdictS <= closestS + 20).assertTrue();   // soon after passing
+      expect(w.verdictDistanceM >= w.cfg.lingerRecedeM).assertTrue();
+    });
+
+    it('linger_gps_jitter_while_standing_is_still_full', 0, () => {
+      // Stands 8 m from the stop after the approach; the fix wanders +-10 m and the reported speed jumps up to
+      // 0.9 m/s now and then (single spikes), as a phone standing in a street canyon does.
+      const w: Walker = new Walker();
+      const rnd: Lcg = new Lcg(60);
+      for (let x = -100; x < -8; x += 1.3) {
+        w.fix(Math.abs(x), 8, 1.3);
+      }
+      let spikes: number = 0;
+      for (let k = 0; k < 60; k++) {
+        const spike: boolean = k % 7 === 3;
+        spikes += spike ? 1 : 0;
+        w.fix(Math.max(0, 8 + 10 * rnd.next()), 12 + 3 * rnd.next(), spike ? 0.9 : 0.25 + 0.2 * rnd.next());
+      }
+      expect(spikes > 5).assertTrue();
+      expect(w.length()).assertEqual(StoryLength.FULL);
+      expect(w.c.enter).assertEqual(1);
+      expect(w.c.exit).assertEqual(0);
+      // the jitter never looked like walking on: not receding beyond the threshold while standing
+      expect(w.t.recedeM < w.cfg.lingerRecedeM).assertTrue();
+    });
+
+    it('linger_walking_around_without_getting_closer_is_teaser_after_the_window', 0, () => {
+      const w: Walker = new Walker();
+      for (let x = -100; x < -20; x += 1.3) {
+        w.fix(Math.abs(x), 8, 1.3);
+      }
+      const circleS: number = w.s;
+      for (let k = 0; k < 60; k++) {                    // keeps walking at ~20 m from the stop (round the square)
+        w.fix(20 + (k % 2), 8, 1.2);
+      }
+      expect(w.length()).assertEqual(StoryLength.TEASER_ONLY);
+      expect(w.reason()).assertEqual('window');
+      expect(w.verdictS - circleS >= w.cfg.lingerWindowS - 1 && w.verdictS - circleS <= w.cfg.lingerWindowS + 2)
+        .assertTrue();
+    });
+
+    it('linger_short_slow_down_while_passing_is_not_a_stop', 0, () => {
+      // Replay stop 9 shape: slows to 0.3-0.4 m/s for 3 s at the corner next to the stop, then walks on.
+      const w: Walker = new Walker();
+      for (let x = -60; x < 0; x += 1.1) {
+        w.fix(Math.abs(x), 6, 1.1);
+      }
+      w.fix(2, 6, 0.4);
+      w.fix(3, 6, 0.4);
+      w.fix(3, 6, 0.3);
+      for (let x = 4; x < 80; x += 1.1) {
+        w.fix(x, 6, 1.1);
+      }
+      expect(w.length()).assertEqual(StoryLength.TEASER_ONLY);
+      expect(w.t.slowDwellMs < w.cfg.fullStoryDwellS * 1000).assertTrue();
+    });
+
+    it('linger_bounds_and_overrides', 0, () => {
+      const cfg: TourConfig = defaultTourConfig();
+      const t: StopTrigger = new StopTrigger('p', 35);
+      evaluateTrigger(t, sample(0, 30, 5, 1.3), cfg);     // two inside fixes 2 s apart => ENTER
+      evaluateTrigger(t, sample(2, 28, 5, 1.3), cfg);
+      expect(t.inside).assertTrue();
+      const inp: LingerInput = {
+        speedMedianMps: 1.3, slowForMs: 0, waitedMs: 5000, adaptiveLength: true, userAskedMore: false
+      };
+      expect(decideAfterTeaser(t, inp, cfg).length).assertEqual(StoryLength.UNDECIDED);
+      inp.waitedMs = cfg.lingerMaxS * 1000;                // safety bound
+      expect(decideAfterTeaser(t, inp, cfg).reason).assertEqual('maxWait');
+      inp.waitedMs = 5000;
+      inp.userAskedMore = true;                            // "Tell me more" during the silence
+      expect(decideAfterTeaser(t, inp, cfg).length).assertEqual(StoryLength.FULL);
+      inp.userAskedMore = false;
+      inp.speedMedianMps = 0.3;                            // slow, but not for lingerStillS yet
+      inp.slowForMs = 2000;
+      expect(decideAfterTeaser(t, inp, cfg).length).assertEqual(StoryLength.UNDECIDED);
+      inp.slowForMs = cfg.lingerStillS * 1000;
+      expect(decideAfterTeaser(t, inp, cfg).reason).assertEqual('still');
+      inp.waitedMs = 0;                                    // at the teaser's end the plain median decides
+      inp.slowForMs = 0;
+      expect(decideAfterTeaser(t, inp, cfg).reason).assertEqual('slow');
     });
   });
 }
