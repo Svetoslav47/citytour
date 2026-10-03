@@ -1,0 +1,39 @@
+# Render Blueprint for the CityTour course server (server/README.md "Deploy on Render").
+# Build context is the repo root: the image bundles the committed signed seed (server/seed) and the pack + clip
+# files it references (entry/src/main/resources/rawfile). On boot they are copied to the disk if missing.
+services:
+  - type: web
+    name: citytour-server
+    runtime: docker
+    plan: starter            # a persistent disk needs a paid instance type
+    region: frankfurt
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: false
+    buildFilter:
+      paths:
+        - server/**
+        - entry/src/main/resources/rawfile/packs/**
+        - entry/src/main/resources/rawfile/audio/**
+        - render.yaml
+    disk:
+      name: citytour-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: ELEVENLABS_VOICE_ID
+        value: JBFqnCBsd6RMkjVDRZzb
+      - key: TTS_DAILY_CHAR_BUDGET
+        value: "20000"
+      # Render's load balancer is one proxy hop in front of the app: req.ip = the real client IP (rate limits).
+      - key: TRUST_PROXY
+        value: "1"
+      - key: LOG_LEVEL
+        value: info
+      - key: ELEVENLABS_API_KEY
+        sync: false          # set in the dashboard; an exhausted/invalid key is fine (TTS -> 503, app falls back)
+      - key: TOKEN_SECRET
+        sync: false          # set in the dashboard: 32+ random bytes, e.g. `openssl rand -base64 48`
