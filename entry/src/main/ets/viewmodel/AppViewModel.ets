@@ -23,6 +23,10 @@ export class Routes {
   static readonly PLACE_DETAIL: string = 'PlaceDetail';
   static readonly ABOUT_SOURCES: string = 'AboutSources';
   static readonly ONBOARDING: string = 'Onboarding';   // A12: first run is Index's root; Settings can reopen it here
+  static readonly SETTINGS: string = 'Settings';                      // B9
+  static readonly SETTINGS_STORY_LANG: string = 'SettingsStoryLanguage';
+  static readonly SETTINGS_APP_LANG: string = 'SettingsAppLanguage';
+  static readonly SETTINGS_VOICE: string = 'SettingsVoice';
 }
 
 export enum PackState { LOADING = 'loading', READY = 'ready', ERROR = 'error' }
@@ -128,6 +132,11 @@ export class AppViewModel {
 
   openAbout(): void {
     this.push(Routes.ABOUT_SOURCES, '');
+  }
+
+  /** B9: Settings and its sub-pages (and the onboarding replay from Settings > About). */
+  openSettingsPage(name: string, param: string): void {
+    this.push(name, param);
   }
 
   back(): void {

@@ -22,6 +22,7 @@ import walkDisplayTest from './WalkDisplay.test';
 import notifyTextTest from './NotifyText.test';
 import onboardingTest from './Onboarding.test';
 import clipSelectionTest from './ClipSelection.test';
+import settingsTest from './Settings.test';
 
 export default function testsuite() {
   harnessTest();
@@ -45,4 +46,5 @@ export default function testsuite() {
   notifyTextTest();
   onboardingTest();
   clipSelectionTest();
+  settingsTest();
 }

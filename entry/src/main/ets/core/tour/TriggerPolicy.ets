@@ -34,7 +34,7 @@ export enum StoryLength { FULL = 'full', TEASER_ONLY = 'teaserOnly', UNDECIDED =
 /** A teaser/full verdict and why (logged in STORY_LINGER / STORY_SKIP_MOVING). */
 export interface StoryDecision {
   length: StoryLength;
-  /** adaptiveOff | askedMore | exited | speedUnknown | dwell | slow | still | receding | window | maxWait |
+  /** brief | adaptiveOff | askedMore | exited | speedUnknown | dwell | slow | still | receding | window | maxWait |
    *  approaching (UNDECIDED) */
   reason: string;
 }
@@ -46,6 +46,8 @@ export interface LingerInput {
   waitedMs: number;         // engine time since the teaser ended (0 = at its end)
   adaptiveLength: boolean;
   userAskedMore: boolean;
+  /** Settings detail level Brief (B9): the teaser at every stop unless the user asks for more. */
+  briefOnly?: boolean;
 }
 
 /** One fix, reduced to what the geofence needs. */
@@ -190,11 +192,14 @@ function decision(length: StoryLength, reason: string): StoryDecision {
  * has not passed the stop, is still getting closer and the linger window is open.
  */
 export function decideAfterTeaser(t: StopTrigger, inp: LingerInput, cfg: TourConfig): StoryDecision {
-  if (!inp.adaptiveLength) {
-    return decision(StoryLength.FULL, 'adaptiveOff');
-  }
   if (inp.userAskedMore) {
     return decision(StoryLength.FULL, 'askedMore');
+  }
+  if (inp.briefOnly === true) {
+    return decision(StoryLength.TEASER_ONLY, 'brief');      // Settings detail level Brief
+  }
+  if (!inp.adaptiveLength) {
+    return decision(StoryLength.FULL, 'adaptiveOff');
   }
   if (!t.inside) {
     return decision(StoryLength.TEASER_ONLY, 'exited');     // moving away: EXIT already confirmed

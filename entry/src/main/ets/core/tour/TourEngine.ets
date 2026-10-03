@@ -89,6 +89,7 @@ export interface TourInput {
   voice: VoicePlan;            // speechMode 'voice' | 'text' and the honesty label
   adaptiveLength: boolean;     // UserSettings.adaptiveLength (teaser if walking past)
   spokenDirections: boolean;   // UserSettings.spokenDirections; false = gate G9 fallback (no left/right)
+  briefOnly?: boolean;         // Settings detail level Brief (B9): teaser only unless the user asks for more
   source: FixSource;           // active location source at start (DEMO => SIMULATED welcome line)
   projection?: Projection;     // defaults to the Kraków pack projection
 }
@@ -392,6 +393,10 @@ function buildStops(st: TourState, fx: Fx, order: string[]): StopRuntime[] {
     } else if (poi.triggerRadiusM > 0) {
       trigR = poi.triggerRadiusM;
     }
+    const scale: number = st.cfg.triggerRadiusScale;
+    if (Number.isFinite(scale) && scale > 0) {
+      trigR = Math.round(trigR * scale);     // Settings trigger distance (B9); 1 = curated radii
+    }
     let appR: number = st.cfg.approachRadiusM;
     if (ts !== undefined && ts.approachRadiusM !== undefined && ts.approachRadiusM > 0) {
       appR = ts.approachRadiusM;
@@ -477,7 +482,7 @@ function onStartTour(st: TourState, fx: Fx): void {
   }
   setPhase(st, fx, TourPhase.WALKING, EngineEventType.START_TOUR, '');
   fx.log(EngineLog.TOUR_CONFIG, st.cfg.toLogKv() + ` adaptive=${st.input.adaptiveLength} ` +
-    `directions=${st.input.spokenDirections} lang=${st.input.lang} voice=${st.voiceLabel} src=${st.source}`);
+    `directions=${st.input.spokenDirections} brief=${st.input.briefOnly === true} lang=${st.input.lang} voice=${st.voiceLabel} src=${st.source}`);
   fx.mediaState(MediaPlayState.PLAY);
   const t: StopRuntime = st.stops[st.targetIdx];
   emitMeta(st, fx, t.name);
@@ -745,7 +750,8 @@ function decideLength(st: TourState, fx: Fx, atTeaserEnd: boolean): void {
   const inp: LingerInput = {
     speedMedianMps: st.speedMedianMps,
     slowForMs: f !== undefined && Number.isFinite(st.slowSinceFixMs) ? f.timestampMs - st.slowSinceFixMs : 0,
-    waitedMs: waitedMs, adaptiveLength: st.input.adaptiveLength, userAskedMore: st.userAskedMore
+    waitedMs: waitedMs, adaptiveLength: st.input.adaptiveLength, userAskedMore: st.userAskedMore,
+    briefOnly: st.input.briefOnly === true
   };
   const d: StoryDecision = decideAfterTeaser(s.trigger, inp, st.cfg);
   const dist: string = r1(s.trigger.lastDistanceM);

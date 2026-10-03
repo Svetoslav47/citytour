@@ -3,7 +3,7 @@
  * "Try a demo walk" (id btnDemoWalk, SIMULATED) and the offline place count. Root content of the Navigation.
  */
 import { StopStatus } from '../contracts/EngineTypes';
-import { AppViewModel, PackState } from '../viewmodel/AppViewModel';
+import { AppViewModel, PackState, Routes } from '../viewmodel/AppViewModel';
 import { distanceRes, durationRes } from '../viewmodel/Format';
 import { HomeViewModel } from '../viewmodel/HomeViewModel';
 import { IssueBanner } from '../views/common/IssueBanner';
@@ -85,6 +85,19 @@ export struct HomePage {
           .lineHeight(Type.TITLE1_LH)
           .fontWeight(FontWeight.Bold)
           .fontColor($r('app.color.text_primary'))
+          .layoutWeight(1)
+        // DESIGN §3.2: gearshape -> Settings (B9). 48 vp hit area.
+        Stack() {
+          SymbolGlyph($r('sys.symbol.gearshape'))
+            .fontSize(24)
+            .fontColor([$r('app.color.text_primary')])
+        }
+        .id('btnSettings')
+        .width(Size.TOUCH)
+        .height(Size.TOUCH)
+        .margin({ right: -Space.S3 })
+        .accessibilityText($r('app.string.a11y_settings'))
+        .onClick(() => this.app.openSettingsPage(Routes.SETTINGS, ''))
       }
       .height(56)
       .width('100%')
