@@ -8,7 +8,7 @@
 //
 // Inputs (committed):
 //   data/city/<cityId>.json                 hand-written city meta: {cityId, names{en,pl,zh}, sourceCourse,
-//                                           defaultBounds[minLat,minLng,maxLat,maxLng]}
+//                                           defaultBounds[minLat,minLng,maxLat,maxLng], properNouns?: string[]}
 //   data/course/<id>/packs/<id>/            the full course packs (pipeline output, never modified here)
 //   data/course/<id>/demo-walk.json         the SIMULATED Demo walk track (scripts/demo/make-demo-walk.mjs), optional
 //   lib/course.mjs COURSE_CITY              which city each course belongs to (explicit map)
@@ -16,7 +16,7 @@
 // Outputs (generated, committed; every file of each folder is generated, stale files are removed):
 //   data/city/<cityId>/      CITY PACK: pois.json, narrations/{en,pl,zh}.json, sources.json, map-detail.json
 //                            byte-identical to the sourceCourse's full pack (git and the blob store dedupe them),
-//                            city.json {schemaVersion, cityId, names, origin, bbox, defaultBounds} and manifest.json
+//                            city.json {schemaVersion, cityId, names, origin, bbox, defaultBounds, properNouns?} and manifest.json
 //                            (course-pack manifest format + cityId; version <YYYY.MM.DD of builtAt>-<8 hex>).
 //   data/course/<id>/tour/   COURSE OVERLAY: tours/routes/personas.json byte-identical; pois.json = the full pack's
 //                            records of the tour stops; narrations/<lang>.json = the stops' narrations; sources.json =
@@ -94,6 +94,10 @@ export function readCityMeta(cityId, cityRoot = CITY_ROOT) {
   if (!Array.isArray(b) || b.length !== 4 || !b.every(Number.isFinite) || b[0] >= b[2] || b[1] >= b[3]) {
     throw new Error(`data/city/${cityId}.json: defaultBounds must be [minLat, minLng, maxLat, maxLng]`);
   }
+  const pn = meta.properNouns;
+  if (pn !== undefined && (!Array.isArray(pn) || !pn.every((x) => typeof x === 'string' && x.trim() !== ''))) {
+    throw new Error(`data/city/${cityId}.json: properNouns must be an array of non-empty strings`);
+  }
   return meta;
 }
 
@@ -124,6 +128,8 @@ export function buildCity(meta, { courseRoot = COURSE_ROOT } = {}) {
     bbox: sm.bbox,
     defaultBounds: meta.defaultBounds,
   };
+  // Optional: the city-specific proper nouns of the app's NarrationValidator allowlist (the generic part is in the app).
+  if (meta.properNouns !== undefined) city.properNouns = meta.properNouns;
   files.push({ path: 'city.json', bytes: json(city) });
   files.sort(byPath);
   const entries = fileEntries(files);

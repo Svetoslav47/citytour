@@ -44,7 +44,9 @@ test('city files are byte-identical to the source course pack; city.json + manif
   assert.deepEqual(parse(c, 'city.json'), {
     schemaVersion: 1, cityId: 'krakow', names: { en: 'Kraków', pl: 'Kraków', zh: '克拉科夫' },
     origin: srcManifest.origin, bbox: srcManifest.bbox, defaultBounds: [50.0525, 19.929, 50.0675, 19.947],
+    properNouns: ['Kraków', 'Krakow', 'Poland', 'Polish', 'Vistula', 'Wawel', 'Rynek', 'Royal Route', 'Jagiellonian'],
   });
+  assert.deepEqual(parse(c, 'city.json').properNouns, meta.properNouns);
   const m = c.manifest;
   assert.equal(m.schemaVersion, 1);
   assert.equal(m.packId, 'krakow');
