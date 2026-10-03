@@ -33,6 +33,7 @@
  */
 import { common } from '@kit.AbilityKit';
 import { window } from '@kit.ArkUI';
+import { i18n } from '@kit.LocalizationKit';
 import {
   BackgroundPort, Clock, FixSource, HapticsPort, LocationSource, LoggerPort, MediaSessionPort, NotifierPort,
   PackRepository, PermissionPort, PermissionState, SpeechPort, TourControl, VoicePlan, VoicePort
@@ -44,7 +45,7 @@ import { ClipPlayer } from '../services/audio/ClipPlayer';
 import { BackgroundRunner } from '../services/background/BackgroundRunner';
 import { MediaSessionService } from '../services/media/MediaSessionService';
 import { DemoTrackText, DemoWalkSource } from '../services/location/DemoWalkSource';
-import { CityInfo } from '../core/content/CityPack';
+import { CityInfo, cityDisplayName } from '../core/content/CityPack';
 import { PermissionService } from '../services/location/PermissionService';
 import { RealLocationSource } from '../services/location/RealLocationSource';
 import { CorruptPackRepository } from '../services/debug/CorruptPackRepository';
@@ -59,7 +60,7 @@ import { Lang } from '../contracts/Model';
 import { ClipEntry } from '../core/speech/ClipSelection';
 import { ActivePackRepository } from '../services/pack/ActivePackRepository';
 import { ActiveCourse, CourseRepository } from '../services/remote/CourseRepository';
-import { demoWalkOffered } from '../core/remote/CourseRules';
+import { demoWalkOffered, InstalledCourse } from '../core/remote/CourseRules';
 import { CourseStore } from '../services/remote/CourseStore';
 import { CoverStore } from '../services/remote/CoverStore';
 import { courseClipsOffThread } from '../services/remote/ClipManifestTask';
@@ -314,7 +315,8 @@ export class AppContainer {
       liveVoiceLabel: (): VoiceLabel | undefined => {
         const p: VoicePlan | undefined = AppContainer.narration().currentPlan();
         return p !== undefined ? p.label : undefined;
-      }
+      },
+      cityName: (): string => AppContainer.cityName()
     };
     const ctrl: TourController = new TourController(deps);
     AppContainer.tourNotifier().attach(ctrl, (): Lang => ctrl.options().lang);
@@ -586,6 +588,35 @@ export class AppContainer {
     t.key = `${active.activeId()}#${text.length}`;   // another course (or another track) restarts the walk
     t.text = text;
     return t;
+  }
+
+  /** 'en' | 'pl' | 'zh': the language the app's strings resolve to (app preferred language, else the system's). */
+  static uiLangCode(): string {
+    try {
+      const l = i18n.System.getAppPreferredLanguage().toLowerCase();
+      return l.startsWith('pl') ? 'pl' : l.startsWith('zh') ? 'zh' : 'en';
+    } catch (e) {
+      return 'en';
+    }
+  }
+
+  /**
+   * The active course's city in the UI language: its city pack's city.json names, else the catalog display name
+   * (CourseSummary.city) of an older self-contained course, else '' (no course). Strings put it in a nominative slot.
+   */
+  static cityName(): string {
+    try {
+      const repo = AppContainer.courses();
+      const id = repo.activeId();
+      if (id === '') {
+        return '';
+      }
+      const inst = repo.installed().find((c: InstalledCourse) => c.id === id);
+      return cityDisplayName(AppContainer.activeCity(), AppContainer.uiLangCode(),
+        inst !== undefined ? inst.summary.city : '');
+    } catch (e) {
+      return '';
+    }
   }
 
   /** The ActivePackRepository the courses drive (undefined before courses() was first built). */

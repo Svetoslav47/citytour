@@ -202,6 +202,7 @@ export interface MediaMeta {
   artist: string;
   voiceLabel: VoiceLabel;
   demo: boolean;
+  album?: string;              // "{city} · {tour title}" (TourController, CityPack.albumLine)
 }
 
 /** Next-stop notification content ("Next: Wawel 240 m"). */

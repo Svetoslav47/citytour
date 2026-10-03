@@ -14,7 +14,7 @@
  * courses/<id>/<version> (one rename), and only then are older versions of that course removed. A failed, cancelled
  * or partial download never touches a working course. Each file is tried up to 1 + BLOB_RETRIES times with a short
  * backoff; a file already in the temp folder with the right size and SHA-256 (an earlier attempt) is not fetched
- * again, so Retry after a network drop resumes instead of starting over (Kraków: 1167 files, ~40 MB).
+ * again, so Retry after a network drop resumes instead of starting over (a course of ~1200 files, ~10 MB, plus its city places pack of ~8 MB once).
  */
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';

@@ -206,7 +206,7 @@ export class NowWalkingViewModel {
     }
   }
 
-  /** The SIMULATED Demo walk exists only for the Kraków course (its track ships in the HAP). */
+  /** The SIMULATED Demo walk exists for a course whose pack ships a demo track (CourseRules.demoWalkOffered). */
   demoOffered(): boolean {
     return AppContainer.demoWalkOffered();
   }

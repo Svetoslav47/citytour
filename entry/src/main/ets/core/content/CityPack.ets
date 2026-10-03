@@ -29,6 +29,8 @@ export class CityInfo {
   bbox: number[] = [];
   /** Where the "All places" map opens, [minLat, minLng, maxLat, maxLng]; [] = the map's own bounds. */
   defaultBounds: number[] = [];
+  /** City-specific proper nouns the narration check treats as grounded (e.g. the city's and river's names). */
+  properNouns: string[] = [];
 }
 
 function isRec(v: Object | null | undefined): boolean {
@@ -93,6 +95,19 @@ export function parseCityJson(text: string): CityInfo | undefined {
   c.origin = { lat: or['lat'] as number, lng: or['lng'] as number };
   c.bbox = latLngBox(r['bbox']);
   c.defaultBounds = latLngBox(r['defaultBounds']);
+  const pn: Object | undefined = r['properNouns'];
+  if (Array.isArray(pn)) {
+    for (const x of pn as Object[]) {
+      if (typeof x === 'string' && (x as string).trim().length > 0 && (x as string).length <= 64) {
+        c.properNouns.push((x as string).trim());
+      }
+    }
+  }
+  for (const n of [c.names.en, c.names.pl]) {
+    if (n !== '' && c.properNouns.indexOf(n) < 0) {
+      c.properNouns.push(n);   // the city's own name is always grounded
+    }
+  }
   if (c.id === '' || (c.names.en === '' && c.names.pl === '' && c.names.zh === '')) {
     return undefined;
   }
@@ -202,6 +217,16 @@ export function layerManifests(city: PackManifest, course: PackManifest, places:
   };
   out.manifest = m;
   return out;
+}
+
+/** The media session album: "{city} · {tour title}", either one alone when the other is unknown, else "CityTour". */
+export function albumLine(city: string, tourTitle: string): string {
+  const c = city.trim();
+  const t = tourTitle.trim();
+  if (c !== '' && t !== '') {
+    return `${c} · ${t}`;
+  }
+  return c !== '' ? c : t !== '' ? t : 'CityTour';
 }
 
 /** The pack file of a course's SIMULATED Demo walk track (scripts/demo/make-demo-walk.mjs). */

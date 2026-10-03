@@ -60,6 +60,8 @@ export class AppViewModel {
   @Trace packVersion: string = '';
   @Trace packBuiltAt: string = '';
   @Trace packPois: number = 0;
+  /** The active course's city in the UI language ('' = unknown): "All places in {city}", "You're far from {city}". */
+  @Trace cityName: string = '';
   /** Language of narration text and place names. B9/B10 bind it to UserSettings.textLang. */
   @Trace textLang: Lang = Lang.EN;
   /** Demo walk replay speed last applied to TourControl (TourControl has no getter for it). */
@@ -121,6 +123,7 @@ export class AppViewModel {
     this.packVersion = res.manifest !== undefined ? res.manifest.version : '';
     this.packBuiltAt = res.manifest !== undefined ? res.manifest.builtAt.substring(0, 10) : '';
     this.packPois = res.manifest !== undefined ? res.manifest.counts.pois : 0;
+    this.cityName = AppContainer.cityName();
     if (this.packState === PackState.ERROR) {
       Log.e(LogEvents.PACK_ERR, `where=ui issues=${res.issues.length}`);
     } else if (this.packState === PackState.NO_COURSE) {

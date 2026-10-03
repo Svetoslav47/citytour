@@ -96,6 +96,11 @@ export class SourcePackRepository implements PackRepository {
     this.narr.setPersonas(p);
   }
 
+  /** The city's own proper nouns for the narration check (city.json `properNouns`). */
+  useCityNouns(nouns: string[]): void {
+    this.narr.setCityNouns(nouns);
+  }
+
   poi(id: string): Poi | undefined {
     return this.poiById.get(id);
   }

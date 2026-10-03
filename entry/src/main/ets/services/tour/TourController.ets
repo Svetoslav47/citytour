@@ -58,6 +58,7 @@ import { TourConfig } from '../../core/tour/TourConfig';
 import { CityPack, PlanInputs, buildCostInputs, plan as planRoute } from '../../core/route/Planner';
 import { haversineM } from '../../core/geo/GeoMath';
 import { Projection } from '../../core/geo/Projection';
+import { albumLine } from '../../core/content/CityPack';
 import { LogEvents } from '../../app/LogEvents';
 import { Scheduler } from '../../app/Clock';
 
@@ -118,6 +119,8 @@ export interface TourControllerDeps {
   clips?: () => ClipIndex | undefined;
   /** A13: the label of the sentence playing right now (studio clip / native / fallback TTS), undefined when idle. */
   liveVoiceLabel?: () => VoiceLabel | undefined;
+  /** The active course's city name in the UI language ('' = unknown): the media session album "{city} · {tour}". */
+  cityName?: () => string;
 }
 
 /** Tour settings the controller applies at plan() time (B9: SettingsViewModel.applyToTour from UserSettings). */
@@ -1538,7 +1541,15 @@ export class TourController implements TourControl {
     const st: TourState | undefined = this.state;
     const textNow: boolean = st !== undefined && st.speechText;
     const label: VoiceLabel = !textNow && this.heardLabel !== undefined ? this.heardLabel : meta.voiceLabel;
-    const m: MediaMeta = { title: meta.title, artist: this.artist, voiceLabel: label, demo: meta.demo };
+    let city: string = '';
+    try {
+      city = this.deps.cityName !== undefined ? this.deps.cityName() : '';
+    } catch (e) {
+      city = '';
+    }
+    const m: MediaMeta = {
+      title: meta.title, artist: this.artist, voiceLabel: label, demo: meta.demo, album: albumLine(city, meta.artist)
+    };
     try {
       media.setMeta(m);                  // a session that is not active yet buffers it (A6)
     } catch (e) {

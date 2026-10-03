@@ -33,6 +33,7 @@ import courseRulesTest from './CourseRules.test';
 import voiceChainTest from './VoiceChain.test';
 import poiDotsTest from './PoiDots.test';
 import coverRulesTest from './CoverRules.test';
+import cityPackTest from './CityPack.test';
 
 export default function testsuite() {
   harnessTest();
@@ -67,4 +68,5 @@ export default function testsuite() {
   voiceChainTest();
   poiDotsTest();
   coverRulesTest();
+  cityPackTest();
 }

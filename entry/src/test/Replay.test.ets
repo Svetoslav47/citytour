@@ -784,7 +784,7 @@ class ReplayPack implements PackRepository {
   load(): Promise<PackLoadResult> {
     const m: PackManifest = {
       schemaVersion: 1, packId: 'replay-mini', version: '0', builtAt: '2026-10-03T00:00:00Z',
-      origin: { lat: 50.0617, lng: 19.9373 }, bbox: [50.0525, 19.929, 50.0675, 19.947], files: [],
+      origin: { lat: 50.06143, lng: 19.93658 }, bbox: [50.0525, 19.929, 50.0675, 19.947], files: [],
       counts: {
         pois: DEMO_MINI_STOPS.length, narrations_en: DEMO_MINI_STOPS.length * 2, narrations_pl: 0, narrations_zh: 0,
         legs: demoMiniLegs().length

@@ -19,6 +19,7 @@ export class NarrationRepository {
   private readonly poiOf: (id: string) => Poi | undefined;
   private readonly hasSource: (id: string) => boolean;
   private personas: Persona[] = [];
+  private cityNouns: string[] = [];
   private slots: Map<string, Map<string, Narration[]>> = new Map<string, Map<string, Narration[]>>();
   private counts: Map<string, number> = new Map<string, number>();
   private validator: NarrationValidator = new NarrationValidator();
@@ -32,6 +33,11 @@ export class NarrationRepository {
 
   setPersonas(p: Persona[]): void {
     this.personas = p;
+  }
+
+  /** The city's own proper nouns (city.json), grounded for the proper-noun check. Set before the first get(). */
+  setCityNouns(nouns: string[]): void {
+    this.cityNouns = nouns;
   }
 
   /** Loads one language now (used for the default language at pack load). Returns the narration count. */
@@ -128,6 +134,7 @@ export class NarrationRepository {
       }
     }
     ctx.sourceIds = ids;
+    ctx.cityNouns = this.cityNouns;
     const poi = this.poiOf(n.poiId);
     if (poi !== undefined) {
       const names: string[] = [];

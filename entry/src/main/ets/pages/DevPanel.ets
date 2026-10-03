@@ -257,7 +257,7 @@ struct DemoTourSection {
     const tours: Tour[] = AppContainer.packRepository().tours();
     const tourId: string = tours.length > 0 ? tours[0].id : '';
     if (tourId === '' || !AppContainer.demoWalkOffered()) {
-      this.line = 'tour: no Kraków course downloaded (Home > Browse walks)';   // the app ships no built-in course
+      this.line = 'tour: no course with a demo track is active (Home > Browse walks)';   // the app ships no built-in course
       return;
     }
     this.line = 'tour: planning...';

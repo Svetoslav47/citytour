@@ -66,6 +66,9 @@ export class CityCoursePackRepository implements PackRepository {
       Log.w(LogEvents.PACK_ERR, `file=${CITY_JSON} reason=missing_or_invalid blocking=false`);
     }
     this.city.usePersonas(this.course.personas());   // a city pack has no personas of its own
+    const nouns: string[] = this.info !== undefined ? this.info.properNouns : [];
+    this.city.useCityNouns(nouns);
+    this.course.useCityNouns(nouns);
     this.poiList = layerPois(this.city.pois(), this.course.pois());
     const lm = layerManifests(cm, km, this.poiList.length);
     if (lm.manifest === undefined) {

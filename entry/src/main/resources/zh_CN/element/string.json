@@ -6,7 +6,7 @@
     },
     {
       "name": "EntryAbility_desc",
-      "value": "克拉科夫语音步行导览"
+      "value": "语音步行导览"
     },
     {
       "name": "EntryAbility_label",
@@ -129,10 +129,6 @@
       "value": "请向左上方看"
     },
     {
-      "name": "offline_ready",
-      "value": "克拉科夫 · 可离线使用"
-    },
-    {
       "name": "home_title",
       "value": "CityTour"
     },
@@ -186,7 +182,11 @@
     },
     {
       "name": "home_all_places",
-      "value": "克拉科夫所有地点"
+      "value": "%s所有地点"
+    },
+    {
+      "name": "home_all_places_any",
+      "value": "所有地点"
     },
     {
       "name": "home_places_count",
@@ -434,7 +434,11 @@
     },
     {
       "name": "err_loc_out_of_area",
-      "value": "您距离克拉科夫很远。请从第一站出发，或试试演示步行。"
+      "value": "您距离%s很远。请从第一站出发，或试试演示步行。"
+    },
+    {
+      "name": "err_loc_out_of_area_any",
+      "value": "您距离这条路线很远。请从第一站出发，或试试演示步行。"
     },
     {
       "name": "err_tts_init",
@@ -830,7 +834,7 @@
     },
     {
       "name": "place_tier_register",
-      "value": "摘自克拉科夫文化遗产名录"
+      "value": "摘自城市文化遗产名录"
     },
     {
       "name": "place_tier_basic",
@@ -870,7 +874,7 @@
     },
     {
       "name": "about_ai_body",
-      "value": "每段游览讲解都由 AI 模型根据随附列出的来源协助起草，之后由人工核查和编辑；在此之前，讲解会标注为“由 AI 起草”。路线以外的地点使用维基百科或克拉科夫文化遗产名录中的简短介绍，按原文显示。您在应用中的任何操作都不会被发送出去。讲解、地图和语音均存储在您的手机上。"
+      "value": "每段游览讲解都由 AI 模型根据随附列出的来源协助起草，之后由人工核查和编辑；在此之前，讲解会标注为“由 AI 起草”。路线以外的地点使用维基百科或城市文化遗产名录中的简短介绍，按原文显示。您在应用中的任何操作都不会被发送出去。讲解、地图和语音均存储在您的手机上。"
     },
     {
       "name": "about_osm",
@@ -886,7 +890,7 @@
     },
     {
       "name": "about_arcgis",
-      "value": "古迹与纪念牌：克拉科夫市开放数据（MSIP）"
+      "value": "古迹与纪念牌：所在城市的市政开放数据（发布方见各地点的来源）"
     },
     {
       "name": "about_osrm",
@@ -970,7 +974,7 @@
     },
     {
       "name": "settings_demo_walk_note",
-      "value": "沿皇家之路回放一段录制的步行轨迹，不使用 GPS。所有模拟内容均标有“模拟”。"
+      "value": "沿当前路线回放一段录制的步行轨迹，不使用 GPS。所有模拟内容均标有“模拟”。"
     },
     {
       "name": "settings_replay_speed",
@@ -1026,7 +1030,7 @@
     },
     {
       "name": "onb1_body",
-      "value": "戴上耳机，锁定手机，出发吧。历史学家将带您游览克拉科夫，每到一处便为您讲解。"
+      "value": "戴上耳机，锁定手机，出发吧。历史学家将带您游览这座城市，每到一处便为您讲解。"
     },
     {
       "name": "onb2_title",
@@ -1086,7 +1090,7 @@
     },
     {
       "name": "onb_visual_a11y",
-      "value": "克拉科夫地图上的皇家之路，从巴比肯碉堡到瓦维尔山"
+      "value": "城市地图上的步行路线，从第一站到最后一站"
     },
     {
       "name": "onb_lang_group",
@@ -1686,7 +1690,7 @@
     },
     {
       "name": "widget_idle_title",
-      "value": "克拉科夫步行游览"
+      "value": "步行游览"
     },
     {
       "name": "widget_idle_foot",
