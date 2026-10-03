@@ -351,6 +351,14 @@ export class MapRenderer {
       ctx.stroke();
       return;
     }
+    if (st.n <= 0) {
+      // Not a tour stop (Place detail of an explore place): a plain pin, no number.
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = big ? pal.onAccent : pal.accent;
+      ctx.fill();
+      return;
+    }
     ctx.font = big ? 'bold 13vp sans-serif' : 'bold 12vp sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

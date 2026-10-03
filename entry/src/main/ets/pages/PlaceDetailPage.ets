@@ -1,5 +1,6 @@
 /*
- * Place detail (B8, DESIGN §3.8): "why should I trust this?" answered on screen. Overline (stop number + kind),
+ * Place detail (B8, DESIGN §3.8): "why should I trust this?" answered on screen. A 4:3 offline map snippet
+ * centred on the place (the pack has no photos), overline (stop number + kind),
  * name (+ Polish name), the provenance chips (TierLabel), the reviewed "where to look" box for tour stops, the
  * transcript (selectable), numbered sources with licences, and the AI / extract note. Missing narration never
  * gives an empty screen: the fallback tier label and a plain note show instead. "Tell me more" only at the stop
@@ -11,6 +12,7 @@ import { LogEvents } from '../app/LogEvents';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { PlaceViewModel } from '../viewmodel/PlaceViewModel';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
+import { MapCanvas } from '../views/map/MapCanvas';
 import { Radius, Size, Space, Type } from '../views/common/Tokens';
 import { LookBox } from '../views/place/LookBox';
 import { SourcesList } from '../views/place/SourcesList';
@@ -48,6 +50,7 @@ export struct PlaceDetailPage {
   @Param poiId: string = '';
   @Local app: AppViewModel = AppViewModel.get();
   @Local vm: PlaceViewModel = new PlaceViewModel();
+  @Local pageW: number = 0;
 
   aboutToAppear(): void {
     this.vm.load(this.poiId, this.app.textLang);
@@ -192,24 +195,31 @@ export struct PlaceDetailPage {
     .alignItems(HorizontalAlign.Start)
     .width('100%')
     .constraintSize({ maxWidth: Size.PAGE_MAX_W })
-    .padding({ left: Space.S4, right: Space.S4 })
+    .padding({ left: Space.S4, right: Space.S4, top: Space.S5 })
   }
 
   build() {
     NavDestination() {
-      Column() {
-        Row() {
-          FloatingIconButton({
-            symbol: $r('sys.symbol.chevron_backward'),
-            label: $r('app.string.a11y_back'),
-            buttonId: 'btnBackPlace',
-            onTap: () => this.app.back()
-          })
-        }
-        .width('100%')
-        .padding({ left: Space.S2, top: Space.S2 })
+      Scroll() {
+        Column() {
+          // No photos in the pack: the 4:3 map snippet centred on the place stands in (DESIGN §3.8), with the
+          // back button floating over it as on Tour detail.
+          Stack({ alignContent: Alignment.TopStart }) {
+            if (this.vm.found && this.pageW > 0) {
+              MapCanvas({ map: this.vm.map, scene: this.vm.scene, bounds: this.vm.sceneBounds,
+                boxHeight: Math.round(this.pageW * 3 / 4), mapId: 'mapPlace' })
+                .accessibilityText($r('app.string.place_map_a11y', this.vm.name))
+            }
+            FloatingIconButton({
+              symbol: $r('sys.symbol.chevron_backward'),
+              label: $r('app.string.a11y_back'),
+              buttonId: 'btnBackPlace',
+              onTap: () => this.app.back()
+            })
+              .margin({ left: Space.S2, top: Space.S2 })
+          }
+          .width('100%')
 
-        Scroll() {
           if (this.vm.found) {
             this.content()
           } else {
@@ -219,13 +229,15 @@ export struct PlaceDetailPage {
               .padding(Space.S4)
           }
         }
-        .scrollBar(BarState.Off)
-        .align(Alignment.Top)
-        .layoutWeight(1)
         .width('100%')
       }
+      .scrollBar(BarState.Off)
+      .align(Alignment.Top)
       .width('100%')
       .height('100%')
+      .onAreaChange((oldArea: Area, newArea: Area) => {
+        this.pageW = Math.min(newArea.width as number, Size.PAGE_MAX_W);
+      })
     }
     .id('pagePlace')
     .hideTitleBar(true)

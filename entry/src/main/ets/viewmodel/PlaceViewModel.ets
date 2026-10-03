@@ -4,13 +4,15 @@
  * sources with licences, and the reviewed "where to look" hint for tour stops. Content comes validated from
  * PackRepository.narration() (validator + fallback chain of B3); this class never shows unvalidated text.
  */
-import { ContentTier, Lang, LookDir, Narration, NarrationLength, Poi, PoiKind, ProvenanceKind, SourceRef, Tour, TourStop
-} from '../contracts/Model';
+import { ContentTier, Lang, LookDir, MapData, Narration, NarrationLength, Poi, PoiKind, ProvenanceKind, SourceRef, Tour,
+  TourStop } from '../contracts/Model';
 import { TourPhase } from '../contracts/EngineTypes';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
+import { MapOverlay } from '../views/map/MapRenderer';
 import { localName } from './Format';
+import { MapCache, placeBounds, placeOverlay } from './MapViewModel';
 import { safePoi } from './PackView';
 
 export class SourceRow {
@@ -56,6 +58,9 @@ export class PlaceViewModel {
   @Trace lookFeature: string = '';
   @Trace fromWikipedia: boolean = false;
   @Trace currentStop: boolean = false;
+  @Trace map: MapData | undefined = undefined;
+  @Trace scene: MapOverlay = new MapOverlay();
+  @Trace sceneBounds: number[] = [];
 
   load(poiId: string, lang: Lang): void {
     const pack = AppContainer.packRepository();
@@ -70,6 +75,9 @@ export class PlaceViewModel {
     this.localNamePl = lang !== Lang.PL && poi.names.pl !== undefined && poi.names.pl !== this.name ? poi.names.pl : '';
     this.kind = poi.kind;
     this.stopNumber = this.findStopNumber(poiId);
+    this.map = MapCache.detailMap();
+    this.scene = placeOverlay(poi.x, poi.y, this.stopNumber);
+    this.sceneBounds = placeBounds(poi.x, poi.y);
     if (poi.view !== undefined) {
       this.look = poi.view.look;
       this.lookFeature = localName(poi.view.feature, lang);

@@ -130,6 +130,24 @@ export function walkOverlay(s: EngineSnapshot, lang: Lang): MapOverlay {
   return ov;
 }
 
+/** Half-width in metres of the Place detail snippet: the place plus a block or two around it. */
+export const PLACE_SNIPPET_HALF_M: number = 140;
+
+/**
+ * Place detail snippet (DESIGN §3.8 "No photo? Show a 4:3 map snippet centred on the place"): one marker on the
+ * offline base map, numbered when the place is a tour stop (stopNumber > 0), a plain pin otherwise.
+ */
+export function placeOverlay(x: number, y: number, stopNumber: number): MapOverlay {
+  const ov = new MapOverlay();
+  ov.stops.push(new StopMark(x, y, stopNumber, PlaqueState.CURRENT, ''));
+  return ov;
+}
+
+/** Fixed box centred on (x, y), so the snippet keeps a street-level zoom whatever the place. */
+export function placeBounds(x: number, y: number): number[] {
+  return [x - PLACE_SNIPPET_HALF_M, y - PLACE_SNIPPET_HALF_M, x + PLACE_SNIPPET_HALF_M, y + PLACE_SNIPPET_HALF_M];
+}
+
 /** World box of the overlay's stops and legs (for fit-to-route). */
 export function overlayBounds(ov: MapOverlay): number[] | undefined {
   const flat: number[][] = ov.legs.slice();
