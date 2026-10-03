@@ -203,13 +203,13 @@ export class RemoteClient {
   }
 
   /** GET /v1/blobs/:sha256 (bytes, unverified: the caller checks the sha). */
-  async blob(sha: string): Promise<HttpOutcome> {
+  async blob(sha: string, deadlineMs: number = RemoteConfig.BLOB_DEADLINE_MS): Promise<HttpOutcome> {
     if (!this.enabled() || !SHA256_RE.test(sha)) {
       const o = new HttpOutcome();
       o.error = 'disabled_or_bad_sha';
       return o;
     }
-    return this.call('GET', `/v1/blobs/${sha}`, '', http.HttpDataType.ARRAY_BUFFER, RemoteConfig.BLOB_DEADLINE_MS, {});
+    return this.call('GET', `/v1/blobs/${sha}`, '', http.HttpDataType.ARRAY_BUFFER, deadlineMs, {});
   }
 
   // ---------- runtime voice ----------

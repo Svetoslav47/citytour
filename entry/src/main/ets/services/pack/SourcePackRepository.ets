@@ -24,6 +24,7 @@ import {
   emptyRoutes, parseManifest, parseMap, parsePersonas, parsePois, parseRoutes, parseSources, parseTours,
   pruneTourStops
 } from '../../core/content/PackParser';
+import { isStreamCityFile } from '../../core/remote/StreamRules';
 import { NarrationRepository } from './NarrationRepository';
 
 function hex(bytes: Uint8Array): string {
@@ -57,10 +58,16 @@ export class SourcePackRepository implements PackRepository {
   private prefetched: Map<string, string> = new Map<string, string>();
   /** A city places pack (data/city/<id>/): no tours.json, no routes, no personas (SERVER.md §3, R7). */
   private readonly placesOnly: boolean;
+  /**
+   * A STREAMED city (StreamRules): only manifest.json, city.json and the map are on the device. Its places, stories
+   * and sources are not read (no places of its own: the course overlay holds the tour's stops and stories).
+   */
+  private readonly partial: boolean;
 
-  constructor(src: PackSource, placesOnly: boolean = false) {
+  constructor(src: PackSource, placesOnly: boolean = false, partial: boolean = false) {
     this.src = src;
     this.placesOnly = placesOnly;
+    this.partial = placesOnly && partial;
     this.narr = new NarrationRepository((lang: Lang) => this.readTextSync(`narrations/${lang}.json`),
       (id: string) => this.poiById.get(id), (id: string) => this.sourceById.has(id));
   }
@@ -177,7 +184,7 @@ export class SourcePackRepository implements PackRepository {
         this.fileIndex.set(f.path, f);
       }
 
-      const ptext = await this.readText('pois.json', true);
+      const ptext = this.partial ? '[]' : await this.readText('pois.json', true);
       if (ptext === undefined) {
         return this.fail(issues, 'pois.json', 'missing_or_integrity');
       }
@@ -210,7 +217,7 @@ export class SourcePackRepository implements PackRepository {
       this.personaList = personas === undefined ? [] : personas.items;
       this.narr.setPersonas(this.personaList);
 
-      const stext = await this.readText('sources.json', true);
+      const stext = this.partial ? undefined : await this.readText('sources.json', true);
       const sources = stext === undefined ? undefined : parseSources(stext);
       this.sourceById = new Map<string, SourceRef>();
       if (sources !== undefined) {
@@ -276,7 +283,7 @@ export class SourcePackRepository implements PackRepository {
   private async prefetchLazyFiles(files: PackFile[]): Promise<number> {
     let n = 0;
     for (const f of files) {
-      if (f.path.startsWith('narrations/') || f.path.startsWith('map-')) {
+      if ((f.path.startsWith('narrations/') || f.path.startsWith('map-')) && (!this.partial || isStreamCityFile(f.path))) {
         const t = await this.readText(f.path, true);
         if (t !== undefined) {
           this.prefetched.set(f.path, t);
@@ -288,6 +295,9 @@ export class SourcePackRepository implements PackRepository {
   }
 
   private readTextSync(file: string): string | undefined {
+    if (this.partial && !isStreamCityFile(file)) {
+      return undefined;   // not on the device for a streamed city (no places of its own)
+    }
     const hit = this.prefetched.get(file);
     if (hit !== undefined) {
       this.prefetched.delete(file);   // parsed once by its reader, which keeps the result

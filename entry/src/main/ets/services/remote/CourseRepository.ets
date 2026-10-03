@@ -10,6 +10,11 @@
  *     over its city's pack (CityCoursePackRepository). The city is downloaded with the first course of that city (one
  *     progress bar for both), updated with a course when the catalog has a newer city, and removed with the last
  *     course that uses it.
+ * STREAMED courses ("Play now", core/remote/StreamRules, SERVER.md §6): filesDir/stream/<id>/<version>/ holds a
+ * course's small files (no clips; the clips stream on demand, StreamClips) and filesDir/stream-cities/<cityId>/<version>/
+ * only the city's manifest, city.json and map. Verified and installed with the same atomic installer as a download.
+ * A streamed course can be the active one (it survives a restart); a download of the same course wins, reuses the
+ * stream's verified files and then removes the stream. Delete removes both.
  * The merge/state rules are the pure core/remote/CourseRules. Nothing here blocks the UI thread: all IO is async.
  * With BASE_URL '' (RemoteConfig) the network is never used; downloaded courses (if any) still work.
  */
@@ -18,13 +23,19 @@ import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
 import { activeAfterInstall, InstalledCourse, resolveActive } from '../../core/remote/CourseRules';
 import { chooseCover, CoverChoice, CoverCredit } from '../../core/remote/CoverRules';
-import { cityName, CitySummary, CourseManifest, CourseSummary, manifestBytes } from '../../core/remote/ServerApi';
+import {
+  cityName, CitySummary, CourseFile, CourseManifest, CourseSummary, manifestBytes
+} from '../../core/remote/ServerApi';
 import { cityNeedsDownload, orphanCities } from '../../core/remote/CourseRules';
+import {
+  activeCandidates, allPlacesAvailable, streamCityFiles, streamClipFiles, streamCourseFiles, streamNeedsPrepare
+} from '../../core/remote/StreamRules';
 import { PackRepository } from '../../contracts/Ports';
 import { ActivePackRepository, PackChoice } from '../pack/ActivePackRepository';
 import { CityCoursePackRepository } from '../pack/CityCoursePackRepository';
 import { FilePackRepository } from '../pack/FilePackRepository';
-import { CancelToken, CourseRecord, CourseStore, InstallProgress } from './CourseStore';
+import { CancelToken, CourseRecord, CourseStore, InstallOptions, InstallProgress } from './CourseStore';
+import { STREAM_CLIPS_FILE } from './StreamClips';
 import { CoverStore, InstalledCover } from './CoverStore';
 import { RemoteClient } from './RemoteClient';
 
@@ -36,6 +47,8 @@ export class ActiveCourse {
   root: string = '';
   /** Course-relative clip manifest path ('' = none). */
   audioManifestPath: string = '';
+  /** A streamed course ("Play now"): its clips are fetched on demand (StreamClips). */
+  streamed: boolean = false;
 }
 
 export type ActiveCourseListener = (c: ActiveCourse) => void;
@@ -72,20 +85,35 @@ export class CourseRepository {
   private readonly pack: ActivePackRepository;
   private readonly covers: CoverStore | undefined;
   private readonly cityStore: CourseStore | undefined;
+  private readonly streamStore: CourseStore | undefined;
+  private readonly streamCityStore: CourseStore | undefined;
   private records: CourseRecord[] = [];
   private cityRecords: CourseRecord[] = [];
+  private streamRecords: CourseRecord[] = [];
+  private streamCityRecords: CourseRecord[] = [];
   private catalogState: CatalogState = new CatalogState();
   private listeners: ActiveCourseListener[] = [];
   private initP: Promise<void> | undefined = undefined;
   private busy: Set<string> = new Set<string>();
 
   constructor(client: RemoteClient, store: CourseStore, pack: ActivePackRepository, covers?: CoverStore,
-    cityStore?: CourseStore) {
+    cityStore?: CourseStore, streamStore?: CourseStore, streamCityStore?: CourseStore) {
     this.client = client;
     this.store = store;
     this.pack = pack;
     this.covers = covers;
     this.cityStore = cityStore;
+    this.streamStore = streamStore;
+    this.streamCityStore = streamCityStore;
+  }
+
+  private isStreamRec(rec: CourseRecord): boolean {
+    return this.streamRecords.indexOf(rec) >= 0;
+  }
+
+  /** The store a record lives in (a streamed course: the stream folder). */
+  private storeOf(rec: CourseRecord): CourseStore {
+    return this.isStreamRec(rec) && this.streamStore !== undefined ? this.streamStore : this.store;
   }
 
   /**
@@ -93,15 +121,47 @@ export class CourseRepository {
    * city pack fails to load: Home shows the error state and the Courses screen can re-download), else its own pack.
    */
   private packFor(rec: CourseRecord): PackRepository {
+    const store = this.storeOf(rec);
     if (rec.cityId === '' || this.cityStore === undefined) {
-      return new FilePackRepository(this.store.packPath(rec));
+      return new FilePackRepository(store.packPath(rec));
     }
     const city = this.cityRecord(rec.cityId);
+    // A streamed course without the downloaded city: the stream's partial city (manifest, city.json, map).
+    const sc = city === undefined && this.isStreamRec(rec) ? this.streamCityRecord(rec.cityId) : undefined;
+    if (sc !== undefined && this.streamCityStore !== undefined) {
+      return new CityCoursePackRepository(this.streamCityStore.packPath(sc), store.packPath(rec), true);
+    }
     const cityDir = city !== undefined ? this.cityStore.packPath(city) : `${this.cityStore.root()}/${rec.cityId}/missing`;
     if (city === undefined) {
       Log.e(LogEvents.COURSE, `event=city_missing id=${rec.id} city=${rec.cityId}`);
     }
-    return new CityCoursePackRepository(cityDir, this.store.packPath(rec));
+    return new CityCoursePackRepository(cityDir, store.packPath(rec));
+  }
+
+  private streamCityRecord(id: string): CourseRecord | undefined {
+    return this.streamCityRecords.find((r: CourseRecord) => r.id === id);
+  }
+
+  private streamRecord(id: string): CourseRecord | undefined {
+    return this.streamRecords.find((r: CourseRecord) => r.id === id);
+  }
+
+  /** Streamed (not downloaded) course ids. */
+  streamedIds(): string[] {
+    return this.streamRecords.filter((r: CourseRecord) => this.downloadedRecord(r.id) === undefined)
+      .map((r: CourseRecord) => r.id);
+  }
+
+  /** The active course streams (its clips come on demand, its city's places are not on the device). */
+  activeIsStreamed(): boolean {
+    const rec = this.record(this.pack.activeId());
+    return rec !== undefined && this.isStreamRec(rec);
+  }
+
+  /** "All places" (the whole city) can be shown for the active course: its city pack is downloaded (or it has none). */
+  allPlacesReady(): boolean {
+    const rec = this.record(this.pack.activeId());
+    return rec === undefined || allPlacesAvailable(rec.cityId, this.cityStore === undefined || this.hasCity(rec.cityId));
   }
 
   private cityRecord(id: string): CourseRecord | undefined {
@@ -139,7 +199,7 @@ export class CourseRepository {
     let saved = '';
     const chosen: Promise<PackChoice | undefined> = this.init().then(async (): Promise<PackChoice | undefined> => {
       saved = await this.store.readActive();
-      const id = resolveActive(saved, this.installed());
+      const id = resolveActive(saved, activeCandidates(this.installed(), this.streamedInstalled()));
       const rec = this.record(id);
       if (rec === undefined) {
         return undefined;
@@ -175,6 +235,14 @@ export class CourseRepository {
         await this.cityStore.cleanTemp();
         this.cityRecords = await this.cityStore.installed();
       }
+      if (this.streamStore !== undefined) {
+        await this.streamStore.cleanTemp();
+        this.streamRecords = await this.streamStore.installed();
+      }
+      if (this.streamCityStore !== undefined) {
+        await this.streamCityStore.cleanTemp();
+        this.streamCityRecords = await this.streamCityStore.installed();
+      }
       const cached = await this.store.readCatalog();
       if (cached !== undefined && this.client.canVerify()) {
         const r = await this.client.acceptCatalog(cached);
@@ -186,7 +254,8 @@ export class CourseRepository {
       }
       Log.i(LogEvents.COURSE, `event=init installed=${this.records.length}` +
         ` ids=${this.records.map((r: CourseRecord) => `${r.id}@${r.version}`).join(',') || 'none'}` +
-        ` cities=${this.installedCities().join(',') || 'none'} cachedCatalog=${this.catalogState.source === CatalogSource.CACHE}`);
+        ` cities=${this.installedCities().join(',') || 'none'}` +
+        ` streamed=${this.streamRecords.map((r: CourseRecord) => `${r.id}@${r.version}`).join(',') || 'none'} cachedCatalog=${this.catalogState.source === CatalogSource.CACHE}`);
     } catch (e) {
       Log.e(LogEvents.COURSE, `event=init_fail ${Log.errKv(e as Object)}`);
     }
@@ -198,6 +267,10 @@ export class CourseRepository {
 
   installed(): InstalledCourse[] {
     return this.records.map((r: CourseRecord) => CourseStore.toInstalled(r));
+  }
+
+  private streamedInstalled(): InstalledCourse[] {
+    return this.streamRecords.map((r: CourseRecord) => CourseStore.toInstalled(r));
   }
 
   catalog(): CatalogState {
@@ -228,8 +301,9 @@ export class CourseRepository {
       c.id = '';
       return c;
     }
-    c.root = this.store.courseDir(rec.id, rec.version);
+    c.root = this.storeOf(rec).courseDir(rec.id, rec.version);
     c.audioManifestPath = rec.audioManifestPath;
+    c.streamed = this.isStreamRec(rec);
     return c;
   }
 
@@ -314,8 +388,12 @@ export class CourseRepository {
           citySummary.city = catCity.names.en;
           citySummary.bytes = catCity.bytes;
         }
+        const cityOpts = new InstallOptions();
+        const sc = this.streamCityRecord(cityManifest.courseId);
+        cityOpts.seedDir = sc !== undefined && this.streamCityStore !== undefined ?
+          this.streamCityStore.courseDir(sc.id, sc.version) : '';
         const cr = await cityStore.install(this.client, cityManifest, citySummary, cancel,
-          (p: InstallProgress) => onProgress(CourseRepository.offset(p, 0, 0, allBytes, allFiles)));
+          (p: InstallProgress) => onProgress(CourseRepository.offset(p, 0, 0, allBytes, allFiles)), cityOpts);
         if (!cr.ok || cr.record === undefined) {
           out.error = `city_${cr.error}`;
           return out;
@@ -330,8 +408,12 @@ export class CourseRepository {
           await this.activate(act.id);
         }
       }
+      // Download after Play now: the stream's verified files (small files + every clip already played) are reused.
+      const opts = new InstallOptions();
+      const st = this.streamRecord(id);
+      opts.seedDir = st !== undefined && this.streamStore !== undefined ? this.streamStore.courseDir(st.id, st.version) : '';
       const res = await this.store.install(this.client, cm, summary, cancel,
-        (p: InstallProgress) => onProgress(CourseRepository.offset(p, cityBytes, cityFiles, allBytes, allFiles)));
+        (p: InstallProgress) => onProgress(CourseRepository.offset(p, cityBytes, cityFiles, allBytes, allFiles)), opts);
       if (!res.ok || res.record === undefined) {
         out.error = res.error;
         return out;
@@ -348,6 +430,9 @@ export class CourseRepository {
           out.error = `activate_${a.error}`;
           return out;
         }
+      }
+      if (st !== undefined) {
+        await this.dropStream(id);   // the download (now the active copy when it was playing) replaces the stream
       }
       out.ok = true;
       return out;
@@ -373,20 +458,23 @@ export class CourseRepository {
   }
 
   /**
-   * Deletes a downloaded course. When it was the active one, another installed course becomes active (CourseRules
-   * resolveActive), or none: Home goes back to "Download your first walk".
+   * Deletes a downloaded and/or streamed course. When it was the active one, another course becomes active (CourseRules
+   * resolveActive over the downloaded, then the streamed courses), or none: Home goes back to its empty state.
    */
   async remove(id: string): Promise<OpResult> {
     const out = new OpResult();
     await this.init();
-    if (this.record(id) === undefined || this.busy.has(id)) {
+    const dl = this.downloadedRecord(id);
+    const st = this.streamRecord(id);
+    if ((dl === undefined && st === undefined) || this.busy.has(id)) {
       out.error = this.busy.has(id) ? 'busy' : 'not_installed';
       return out;
     }
     const wasActive = this.pack.activeId() === id;
     this.records = this.records.filter((r: CourseRecord) => r.id !== id);
+    this.streamRecords = this.streamRecords.filter((r: CourseRecord) => r.id !== id);
     if (wasActive) {
-      const next = resolveActive('', this.installed());
+      const next = resolveActive('', activeCandidates(this.installed(), this.streamedInstalled()));
       const rec = this.record(next);
       let switched = false;
       if (rec !== undefined) {
@@ -398,13 +486,19 @@ export class CourseRepository {
       await this.store.writeActive(this.pack.activeId());
       this.announce();
     }
-    out.ok = await this.store.remove(id);
+    out.ok = true;
+    if (dl !== undefined) {
+      out.ok = await this.store.remove(id);
+    }
+    if (st !== undefined && this.streamStore !== undefined) {
+      out.ok = (await this.streamStore.remove(id)) && out.ok;
+    }
     if (!out.ok) {
       out.error = 'remove_failed';
     }
     // The last course of a city is gone: its places pack goes too (nothing else reads it).
     if (this.cityStore !== undefined) {
-      const used: string[] = this.records.map((r: CourseRecord) => r.cityId);
+      const used: string[] = this.records.concat(this.streamRecords).map((r: CourseRecord) => r.cityId);
       for (const c of orphanCities(this.cityRecords.map((r: CourseRecord) => r.id), used)) {
         if (await this.cityStore.remove(c)) {
           this.cityRecords = this.cityRecords.filter((r: CourseRecord) => r.id !== c);
@@ -413,7 +507,159 @@ export class CourseRepository {
         }
       }
     }
+    await this.pruneStreamCities();
     return out;
+  }
+
+  /** Removes the stream of `id` (after a Download replaced it). The active course is never the stream here. */
+  private async dropStream(id: string): Promise<void> {
+    this.streamRecords = this.streamRecords.filter((r: CourseRecord) => r.id !== id);
+    if (this.streamStore !== undefined) {
+      await this.streamStore.remove(id);
+    }
+    await this.pruneStreamCities();
+    Log.i(LogEvents.COURSE, `event=stream_removed id=${id} reason=downloaded`);
+  }
+
+  /** Stream cities no streamed course uses any more. */
+  private async pruneStreamCities(): Promise<void> {
+    if (this.streamCityStore === undefined) {
+      return;
+    }
+    const used: string[] = this.streamRecords.map((r: CourseRecord) => r.cityId);
+    for (const c of orphanCities(this.streamCityRecords.map((r: CourseRecord) => r.id), used)) {
+      if (await this.streamCityStore.remove(c)) {
+        this.streamCityRecords = this.streamCityRecords.filter((r: CourseRecord) => r.id !== c);
+      }
+    }
+  }
+
+  /**
+   * "Play now": streams course `id` (StreamRules). Verifies the signed manifests like a download, fetches only the
+   * small files (the course without its clips, the city's manifest, city.json and map) into the stream folder, then
+   * makes it the active course. A downloaded course, or an up-to-date stream, is just activated (works offline).
+   * Never rejects.
+   */
+  async stream(id: string, cancel: CancelToken, onProgress: (p: InstallProgress) => void): Promise<OpResult> {
+    const out = new OpResult();
+    await this.init();
+    if (this.busy.has(id)) {
+      out.error = 'busy';
+      return out;
+    }
+    const courses = this.catalogState.courses;
+    const summary = courses === undefined ? undefined : courses.find((c: CourseSummary) => c.id === id);
+    const existing = this.streamRecord(id);
+    if (this.downloadedRecord(id) !== undefined ||
+      (existing !== undefined && !streamNeedsPrepare(existing.version, summary !== undefined ? summary.version : ''))) {
+      return this.activate(id);
+    }
+    if (summary === undefined || this.streamStore === undefined) {
+      out.error = summary === undefined ? 'not_in_catalog' : 'no_stream_store';
+      return out;
+    }
+    if (!this.client.enabled()) {
+      out.error = 'disabled';
+      return out;
+    }
+    const streamStore: CourseStore = this.streamStore;
+    this.busy.add(id);
+    const t0 = Date.now();
+    try {
+      const m = await this.client.manifest(id);
+      if (!m.ok || m.manifest === undefined) {
+        Log.w(LogEvents.COURSE, `event=stream_manifest_fail id=${id} reason=${m.error}`);
+        if (existing !== undefined) {
+          this.busy.delete(id);
+          return this.activate(id);   // an older stream still plays
+        }
+        out.error = m.error;
+        return out;
+      }
+      const cm = m.manifest;
+      // The city: the downloaded one when there is one, else a partial stream city (manifest, city.json, map).
+      let cityM: CourseManifest | undefined = undefined;
+      if (cm.cityId !== '' && !this.hasCity(cm.cityId) && this.streamCityStore !== undefined) {
+        const sc = this.streamCityRecord(cm.cityId);
+        const catCity = this.catalogState.cities.find((c: CitySummary) => c.id === cm.cityId);
+        if (cityNeedsDownload(sc !== undefined ? sc.version : '', catCity !== undefined ? catCity.version : '')) {
+          const cmr = await this.client.cityManifest(cm.cityId);
+          if (cmr.ok && cmr.manifest !== undefined) {
+            if (sc === undefined || cmr.manifest.version !== sc.version) {
+              cityM = CourseRepository.withFiles(cmr.manifest, streamCityFiles(cmr.manifest.files));
+            }
+          } else if (sc === undefined) {
+            out.error = `city_${cmr.error}`;
+            Log.w(LogEvents.COURSE, `event=stream_city_fail id=${id} city=${cm.cityId} reason=${cmr.error}`);
+            return out;
+          }
+        }
+      }
+      const courseM = CourseRepository.withFiles(cm, streamCourseFiles(cm.files, cm.audioManifestPath));
+      const clips = streamClipFiles(cm.files, cm.audioManifestPath);
+      const cityBytes = cityM !== undefined ? manifestBytes(cityM) : 0;
+      const cityFiles = cityM !== undefined ? cityM.files.length : 0;
+      const allBytes = cityBytes + manifestBytes(courseM);
+      const allFiles = cityFiles + courseM.files.length;
+      if (cityM !== undefined && this.streamCityStore !== undefined) {
+        const citySummary = new CourseSummary();
+        citySummary.id = cityM.courseId;
+        citySummary.version = cityM.version;
+        citySummary.cityId = cityM.courseId;
+        const cr = await this.streamCityStore.install(this.client, cityM, citySummary, cancel,
+          (p: InstallProgress) => onProgress(CourseRepository.offset(p, 0, 0, allBytes, allFiles)));
+        if (!cr.ok || cr.record === undefined) {
+          out.error = `city_${cr.error}`;
+          return out;
+        }
+        const newCity: CourseRecord = cr.record;
+        this.streamCityRecords = this.streamCityRecords.filter((r: CourseRecord) => r.id !== newCity.id);
+        this.streamCityRecords.push(newCity);
+      }
+      const opts = new InstallOptions();
+      opts.extraFiles.set(STREAM_CLIPS_FILE, JSON.stringify(clips));
+      const res = await streamStore.install(this.client, courseM, summary, cancel,
+        (p: InstallProgress) => onProgress(CourseRepository.offset(p, cityBytes, cityFiles, allBytes, allFiles)), opts);
+      if (!res.ok || res.record === undefined) {
+        out.error = res.error;
+        return out;
+      }
+      const rec: CourseRecord = res.record;
+      this.streamRecords = this.streamRecords.filter((r: CourseRecord) => r.id !== id);
+      this.streamRecords.push(rec);
+      Log.i(LogEvents.COURSE, `event=stream_ready id=${id} version=${rec.version} files=${courseM.files.length}` +
+        ` cityFiles=${cityFiles} bytes=${allBytes} clipsOnDemand=${clips.length} ms=${Date.now() - t0}`);
+      this.busy.delete(id);
+      const a = await this.activate(id);
+      if (!a.ok) {
+        out.error = `activate_${a.error}`;
+        return out;
+      }
+      out.ok = true;
+      return out;
+    } catch (e) {
+      out.error = `exception ${Log.errKv(e as Object)}`;
+      Log.e(LogEvents.COURSE, `event=stream_fail id=${id} ${out.error}`);
+      return out;
+    } finally {
+      this.busy.delete(id);
+    }
+  }
+
+  /** A copy of a signed manifest with only `files` (what a stream fetches up front). */
+  private static withFiles(m: CourseManifest, files: CourseFile[]): CourseManifest {
+    const c = new CourseManifest();
+    c.schemaVersion = m.schemaVersion;
+    c.courseId = m.courseId;
+    c.version = m.version;
+    c.publishedAt = m.publishedAt;
+    c.packId = m.packId;
+    c.files = files;
+    c.audioManifestPath = m.audioManifestPath;
+    c.audioClips = m.audioClips;
+    c.allowedTtsSha = m.allowedTtsSha;
+    c.cityId = m.cityId;
+    return c;
   }
 
   /** Makes a downloaded course the active one. Never rejects. */
@@ -447,7 +693,7 @@ export class CourseRepository {
       await this.init();
       const rec = this.record(id);
       const inst: InstalledCover = rec === undefined ? new InstalledCover() :
-        await CoverStore.installed(this.store.packPath(rec));
+        await CoverStore.installed(this.storeOf(rec).packPath(rec));
       const courses = this.catalogState.courses;
       const cat = courses === undefined ? undefined : courses.find((c: CourseSummary) => c.id === id);
       const summary: CourseSummary | undefined = cat !== undefined ? cat : rec?.summary;
@@ -483,7 +729,13 @@ export class CourseRepository {
     return out;
   }
 
+  /** The course's record: the download when there is one, else the stream. */
   private record(id: string): CourseRecord | undefined {
+    const d = this.downloadedRecord(id);
+    return d !== undefined ? d : this.streamRecord(id);
+  }
+
+  private downloadedRecord(id: string): CourseRecord | undefined {
     return this.records.find((r: CourseRecord) => r.id === id);
   }
 
