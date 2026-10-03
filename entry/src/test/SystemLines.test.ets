@@ -1,7 +1,8 @@
 // Suite: SystemLines.test - modules under test: core/content/Phrases, core/route/Guidance, core/speech/Sha256
 // (task A13 phase 3). scripts/voice/system-lines.mjs is a Node port of the engine's fixed sentences (welcome,
 // finish, GPS lost, off-route, replan, arrival lines, A9 turn-by-turn cues) used to pre-render them in the studio
-// voice. A clip only plays when its text hash equals the hash of the exact sentence the app speaks, so this suite
+// voice (+ samples of the numeric lines: approach, next stop with distance, off-route bearing, which the course
+// server's allowed-lines set enumerates). A clip only plays when its text hash equals the hash of the exact sentence the app speaks, so this suite
 // calls the real ArkTS functions on every golden case the port wrote (fixtures/SystemLinesGolden.ets) and asserts
 // the same text and the same SHA-256 (prefix of Node's crypto hash). A template change in Phrases.ets without
 // regenerating the golden (and fixing the port) fails here.
@@ -9,7 +10,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import { Lang, LocalizedText, LookDir, ViewHint } from '../main/ets/contracts/Model';
 import { RelDir } from '../main/ets/contracts/EngineTypes';
 import {
-  arrivalSentences, finishSentences, gpsLostSentence, nextStopSentence, welcomeSentences
+  approachSentence, arrivalSentences, finishSentences, gpsLostSentence, nextStopSentence, welcomeSentences
 } from '../main/ets/core/content/Phrases';
 import { continueText, nowText, offRouteSentences, prepareText, replanSentence } from '../main/ets/core/route/Guidance';
 import { sha256Hex } from '../main/ets/core/speech/Sha256';
@@ -49,6 +50,13 @@ function produce(c: GoldenCase): string[] {
       return c.step === undefined ? [] : [nowText(lang, c.step, c.then)];
     case 'continue':
       return c.step === undefined ? [] : [continueText(lang, c.step, WALK_SPEED_MPS, c.s[0])];
+    // Numeric lines (course server allowed-lines set, docs/SERVER.md §4): s = [name, dir], n = [distM, useDir].
+    case 'nextStop':
+      return [nextStopSentence(lang, c.s[0], c.n[0], WALK_SPEED_MPS)];
+    case 'approach':
+      return [approachSentence(lang, c.s[0], c.s[1] as RelDir, c.n[0], WALK_SPEED_MPS, c.n[1] === 1)];
+    case 'offRouteDist':
+      return offRouteSentences(lang, c.s[0], c.n[0], c.s[1] as RelDir, WALK_SPEED_MPS, c.n[1] === 1);
     default:
       return [`unknown case ${c.f}`];
   }
@@ -59,7 +67,7 @@ export default function systemLinesTest() {
     it('golden covers every group and language', 0, () => {
       expect(GOLDEN_CASES.length).assertEqual(GOLDEN_CASE_COUNT);
       const fs: string[] = ['welcome', 'finish', 'gpsLost', 'offRoute', 'replan', 'nextStopNoDist', 'arrival', 'prepare',
-        'now'];
+        'now', 'nextStop', 'approach', 'offRouteDist'];
       for (const f of fs) {
         for (const l of ['en', 'pl', 'zh']) {
           expect(GOLDEN_CASES.some((c: GoldenCase) => c.f === f && c.lang === l)).assertTrue();

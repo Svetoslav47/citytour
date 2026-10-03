@@ -16,8 +16,10 @@
 //   arrival : "{stop} is {dir}." / "You're at {stop}." + the look line from Poi.view, every RelDir, directions on/off
 //   nav     : A9 cues of the pack legs: "In 10|20|30 metres, {action}[, then {next}]." and "Now {action}[, then
 //             {next}].", plus "Continue ... for about N." / "Walk straight past {stop}." for long straight steps
-// Still native TTS (live numbers): approach "In about N metres ...", "Next stop: X, about N from here.", bearing
-// guidance and the second off-route sentence ("X is about N metres behind you").
+// Still native TTS (live numbers, not pre-rendered): approach "In about N metres ...", "Next stop: X, about N from
+// here.", bearing guidance and the second off-route sentence ("X is about N metres behind you"). numericCases()
+// enumerates them anyway (every stop x direction x distance bucket) for the course server's allowed-lines set
+// (docs/SERVER.md §4), and the golden holds samples of them so their exactness is tested the same way.
 //
 // Usage: node scripts/voice/system-lines.mjs [--lang en] [--group nav] [--nav-legs all|tour]   (prints the lines)
 //        node scripts/voice/system-lines.mjs --write-golden                                     (ArkTS fixture)
@@ -65,7 +67,10 @@ const T = {
     finishThanks: 'Thank you for walking with me.', navPrepare: 'In {dist}, {action}.',
     navPrepareThen: 'In {dist}, {action}, then {next}.', navNow: 'Now {action}.', navNowThen: 'Now {action}, then {next}.',
     navContinue: 'Continue straight for about {dist}.', navContinueStreet: 'Continue along {street} for about {dist}.',
-    navPass: 'Walk straight past {name}.', offRoute: 'You\'ve left the route.', replanNew: 'New plan: we\'ll visit {name} first.'
+    navPass: 'Walk straight past {name}.', offRoute: 'You\'ve left the route.', replanNew: 'New plan: we\'ll visit {name} first.',
+    approach: 'In about {dist}, {dir}: {name}.', approachNoDir: 'In about {dist}: {name}.',
+    nextStop: 'Next stop: {name}, about {dist} from here.', navBearing: '{name} is about {dist} {dir}.',
+    navBearingNoDir: '{name} is about {dist} away.'
   },
   zh: {
     arrival: '{name}{dir}。', arrivalHere: '您已到达{name}。', lookUp: '请抬头看{feature}。', lookLevel: '请看{feature}。',
@@ -75,7 +80,9 @@ const T = {
     finish: '我们的游览到此结束。', finishThanks: '感谢您与我一同漫步。', navPrepare: '前方{dist}，{action}。',
     navPrepareThen: '前方{dist}，{action}，然后{next}。', navNow: '现在{action}。', navNowThen: '现在{action}，然后{next}。',
     navContinue: '继续直行大约{dist}。', navContinueStreet: '沿这条路继续直行大约{dist}。', navPass: '直行，经过{name}。',
-    offRoute: '您已偏离路线。', replanNew: '新的路线：我们先去{name}。'
+    offRoute: '您已偏离路线。', replanNew: '新的路线：我们先去{name}。',
+    approach: '再走大约{dist}，{name}{dir}。', approachNoDir: '再走大约{dist}，就到{name}。',
+    nextStop: '下一站：{name}，距离大约{dist}。', navBearing: '{name}{dir}，大约{dist}。', navBearingNoDir: '{name}距离大约{dist}。'
   },
   pl: {
     arrival: '{name} jest {dir}.', arrivalHere: 'Jesteś na miejscu: {name}.', lookUp: 'Spójrz w górę: {feature}.',
@@ -87,7 +94,10 @@ const T = {
     finishThanks: 'Dziękuję za wspólny spacer.', navPrepare: 'Za {dist} {action}.',
     navPrepareThen: 'Za {dist} {action}, potem {next}.', navNow: 'Teraz {action}.', navNowThen: 'Teraz {action}, potem {next}.',
     navContinue: 'Idź dalej prosto przez około {dist}.', navContinueStreet: 'Idź dalej prosto ({street}) przez około {dist}.',
-    navPass: 'Idź prosto, mijając: {name}.', offRoute: 'Zeszliśmy z trasy.', replanNew: 'Nowy plan: najpierw {name}.'
+    navPass: 'Idź prosto, mijając: {name}.', offRoute: 'Zeszliśmy z trasy.', replanNew: 'Nowy plan: najpierw {name}.',
+    approach: 'Za około {dist}, {dir}: {name}.', approachNoDir: 'Za około {dist}: {name}.',
+    nextStop: 'Następny przystanek: {name}, około {dist} stąd.', navBearing: '{name}: około {dist}, {dir}.',
+    navBearingNoDir: '{name}: około {dist} stąd.'
   }
 };
 
@@ -189,6 +199,105 @@ export function arrivalSentences(lang, name, dir, view, useDirections) {
       key = view.look === 'up' ? 'lookUp' : view.look === 'down' ? 'lookDown' : 'lookLevel';
     }
     out.push(phrase(key, lang, { feature }));
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- numeric lines (live distances)
+// Phrases.approachSentence / nextStopSentence and Guidance.bearingText / offRouteSentences. They are not pre-rendered
+// (too many), but the course server's allowed-lines set for POST /v1/tts must hold every one the app can say, so
+// numericCases() enumerates them for every stop x direction x distance bucket (server/src/publish).
+
+/** Phrases.approachSentence. */
+export function approachSentence(lang, name, dir, distanceM, useDirections, walkSpeedMps = WALK_SPEED_MPS) {
+  const dist = distancePhrase(distanceM, lang, walkSpeedMps);
+  if (!useDirections || dir === 'here') {
+    return phrase('approachNoDir', lang, { name, dist });
+  }
+  return phrase('approach', lang, { name, dist, dir: REL[lang][dir] });
+}
+
+/** Phrases.nextStopSentence (distanceM NaN = no fix yet). */
+export function nextStopSentence(lang, name, distanceM, walkSpeedMps = WALK_SPEED_MPS) {
+  if (!Number.isFinite(distanceM)) {
+    return phrase('nextStopNoDist', lang, { name });
+  }
+  return phrase('nextStop', lang, { name, dist: distancePhrase(distanceM, lang, walkSpeedMps) });
+}
+
+/** Guidance.bearingText. */
+export function bearingText(lang, name, distM, dir, useDirections, walkSpeedMps = WALK_SPEED_MPS) {
+  const dist = distancePhrase(distM, lang, walkSpeedMps);
+  if (!useDirections || dir === 'here') {
+    return phrase('navBearingNoDir', lang, { name, dist });
+  }
+  return phrase('navBearing', lang, { name, dist, dir: REL[lang][dir] });
+}
+
+/** Guidance.offRouteSentences: "You've left the route." + the bearing line when the distance is known. */
+export function offRouteSentences(lang, name, distM, dir, useDirections, walkSpeedMps = WALK_SPEED_MPS) {
+  const out = [phrase('offRoute', lang)];
+  if (Number.isFinite(distM)) {
+    out.push(bearingText(lang, name, distM, dir, useDirections, walkSpeedMps));
+  }
+  return out;
+}
+
+// The longest distance the allowed set covers, in walking minutes. Further than this the app's line is not in
+// the set and it falls back to the built-in voice.
+export const MAX_MINUTES = 60;
+
+/**
+ * Every distinct distance wording distancePhrase can produce from 0 m up to MAX_MINUTES of walking, each with one
+ * input distance (metres) that produces it: 10..100 m step 10, 150..500 m step 50, then 6..MAX_MINUTES minutes.
+ * Derived by sweeping the real function (0.5 m steps), so a change of the rounding rules changes the set.
+ */
+export function distanceBuckets(lang = 'en', walkSpeedMps = WALK_SPEED_MPS, maxMinutes = MAX_MINUTES) {
+  const out = [];
+  const seen = new Set();
+  const maxM = (maxMinutes + 0.49) * 60 * walkSpeedMps;
+  for (let d = 0; d <= maxM; d += 0.5) {
+    const p = distancePhrase(d, lang, walkSpeedMps);
+    if (!seen.has(p)) {
+      seen.add(p);
+      out.push({ distM: d, text: p });
+    }
+  }
+  return out;
+}
+
+/** Numeric cases for every stop (all tours of the pack) x direction x bucket x language. */
+export function numericCases(stopNamesByLang, opts = {}) {
+  const langs = opts.langs || LANGS;
+  const cases = [];
+  const add = (f, lang, args, out) => cases.push({ group: 'numeric', f, lang, args, out: Array.isArray(out) ? out : [out] });
+  for (const lang of langs) {
+    const buckets = opts.distances ? opts.distances.map((d) => ({ distM: d })) : distanceBuckets(lang);
+    for (const name of stopNamesByLang[lang] || []) {
+      for (const b of buckets) {
+        const d = b.distM;
+        add('nextStop', lang, { name, distM: d }, nextStopSentence(lang, name, d));
+        for (const useDir of [true, false]) {
+          for (const dir of REL_DIRS) {
+            if (!useDir && dir !== 'here') {
+              continue;
+            }
+            add('approach', lang, { name, dir, distM: d, useDir }, approachSentence(lang, name, dir, d, useDir));
+            add('offRouteDist', lang, { name, dir, distM: d, useDir }, offRouteSentences(lang, name, d, dir, useDir));
+          }
+        }
+      }
+    }
+  }
+  return cases;
+}
+
+/** Localized names of the stops of a pack tour per language. */
+export function stopNames(pack, langs = LANGS) {
+  const out = {};
+  for (const lang of langs) {
+    out[lang] = pack.tour.stops.map((s) => pack.poisById.get(s.poiId)).filter(Boolean)
+      .map((p) => localized(p.names, lang));
   }
   return out;
 }
@@ -538,6 +647,10 @@ function caseLit(c) {
     case 'prepare': return `  g('prepare', ${L}, [], [${a.distM}], ${stepLit(a.step)}, ${stepLit(a.then)}, ${out}),`;
     case 'now': return `  g('now', ${L}, [], [], ${stepLit(a.step)}, ${stepLit(a.then)}, ${out}),`;
     case 'continue': return `  g('continue', ${L}, [${q(a.landmark)}], [], ${stepLit(a.step)}, undefined, ${out}),`;
+    case 'nextStop': return `  g('nextStop', ${L}, [${q(a.name)}], [${a.distM}], undefined, undefined, ${out}),`;
+    case 'approach':
+    case 'offRouteDist':
+      return `  g(${q(c.f)}, ${L}, [${q(a.name)}, ${q(a.dir)}], [${a.distM}, ${a.useDir ? 1 : 0}], undefined, undefined, ${out}),`;
     default: return `  g(${q(c.f)}, ${L}, [], [], undefined, undefined, ${out}),`;
   }
 }
@@ -592,7 +705,21 @@ export function goldenSource(cases) {
 
 /** The golden covers every group, every language and every pack leg (the superset any render can use). */
 export function goldenCases(pack) {
-  return enumerateCases(pack, { langs: LANGS, groups: GROUPS, navLegs: 'all' });
+  return enumerateCases(pack, { langs: LANGS, groups: GROUPS, navLegs: 'all' }).concat(numericGoldenCases(pack));
+}
+
+// Sample inputs for the numeric golden: the edges of every rounding band (0 m, 94/95 m -> 90/100, 474/475 m ->
+// 450/500, 499/500 m -> 500 m / 6 min, minutes), so the ArkTS test proves the port's distancePhrase too.
+export const NUMERIC_GOLDEN_DISTANCES = [0, 37, 94, 95, 124, 474, 475, 499.5, 500, 780, 4680];
+
+/** Numeric golden: the first and last stop of the tour, every direction, the sample distances. */
+export function numericGoldenCases(pack) {
+  const names = stopNames(pack);
+  const pick = {};
+  for (const l of LANGS) {
+    pick[l] = [names[l][0], names[l][names[l].length - 1]];
+  }
+  return numericCases(pick, { distances: NUMERIC_GOLDEN_DISTANCES });
 }
 
 // ---------------------------------------------------------------- CLI

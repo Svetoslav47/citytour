@@ -33,3 +33,10 @@ CLAUDE.local.md
 # local screenshots and pipeline download cache
 .shots/
 data/cache/
+
+# course server: local keys, env and data (never commit)
+server/.keys/
+server/.env*
+server/data/
+server/node_modules/
+server/dist/
