@@ -52,6 +52,16 @@ function hasIssue(s: EngineSnapshot, code: IssueCode): boolean {
   return s.issues.some((i: AppIssue) => i.code === code);
 }
 
+/** The kv of the first LOG effect with this code, '' if none. */
+function logKv(effects: Effect[], code: string): string {
+  for (const e of effects) {
+    if (e.type === EffectType.LOG && e.logCode === code) {
+      return e.logKv === undefined ? '' : e.logKv;
+    }
+  }
+  return '';
+}
+
 function speakCount(sigs: string[]): number {
   return sigs.filter((x: string) => x.indexOf('SPEAK') === 0).length;
 }
@@ -692,6 +702,68 @@ export default function tourEngineTest() {
       expect(d.since(mark).indexOf('LOG REPLAN') >= 0).assertTrue();
       expect(d.since(mark).indexOf('NOTIFY poi_mini_st_marys') >= 0).assertTrue();
       expect(d.snap().next !== undefined && d.snap().next?.poiId === MINI_ST_MARYS).assertTrue();
+    });
+
+    it('audio_interrupt_pauses_and_its_resume_replays_but_never_undoes_a_user_or_route_pause', 0, () => {
+      // §9 rows 12/13 (A10).
+      const d: Driver = new Driver(input(false, false));
+      d.autoSpeech = false;
+      d.placeNear(MINI_BARBICAN, 150, 0);
+      d.start(ORDER_B_SM_CH);
+      const cut: Utterance | undefined = d.speaking;
+      expect(cut !== undefined).assertTrue();
+      const pause: EngineEvent = { type: EngineEventType.AUDIO_INTERRUPT, nowMs: d.t, hint: 'PAUSE' };
+      const resume: EngineEvent = { type: EngineEventType.AUDIO_INTERRUPT, nowMs: d.t, hint: 'RESUME' };
+      let mark: number = d.sigs.length;
+      expect(logKv(d.send(pause), EngineLog.AUDIO_INTERRUPT)).assertEqual('hint=PAUSE action=pause');
+      expectSeq(d.since(mark), ['LOG AUDIO_INTERRUPT', 'STOP afterCurrent=false', 'MEDIA pause']);
+      expect(d.snap().paused).assertTrue();
+      expect(hasIssue(d.snap(), IssueCode.AUDIO_INTERRUPT)).assertTrue();
+      mark = d.sigs.length;
+      expect(logKv(d.send(resume), EngineLog.AUDIO_INTERRUPT)).assertEqual('hint=RESUME action=resume');
+      // the interrupted sentence replays from its start
+      const after: string[] = d.since(mark).filter((x: string) => x.indexOf('LOG STORY') !== 0);
+      expectSeq(after, ['LOG AUDIO_INTERRUPT', 'MEDIA play', `SPEAK ${cut === undefined ? '' : cut.text}`]);
+      expect(d.snap().paused).assertFalse();
+      expect(hasIssue(d.snap(), IssueCode.AUDIO_INTERRUPT)).assertFalse();
+      // A user pause is not undone by an interrupt RESUME.
+      d.ev(EngineEventType.USER_PAUSE);
+      expect(logKv(d.send(pause), EngineLog.AUDIO_INTERRUPT)).assertEqual('hint=PAUSE action=already_paused');
+      expect(logKv(d.send(resume), EngineLog.AUDIO_INTERRUPT)).assertEqual('hint=RESUME action=stay_paused');
+      expect(d.snap().paused).assertTrue();
+      d.ev(EngineEventType.USER_RESUME);
+      expect(d.snap().paused).assertFalse();
+      // Interrupt pause, then the user pauses too: the user owns it.
+      d.send(pause);
+      d.ev(EngineEventType.USER_PAUSE);
+      d.send(resume);
+      expect(d.snap().paused).assertTrue();
+      d.ev(EngineEventType.USER_RESUME);
+      // Headphones unplugged: pause + WARN issue; an interrupt RESUME does not resume on the loudspeaker.
+      mark = d.sigs.length;
+      expect(logKv(d.ev(EngineEventType.AUDIO_ROUTE_LOST), EngineLog.AUDIO_ROUTE)).assertEqual(
+        'device=SPEAKER action=pause');
+      expectSeq(d.since(mark), ['LOG AUDIO_ROUTE', 'STOP afterCurrent=false', 'MEDIA pause']);
+      expect(hasIssue(d.snap(), IssueCode.AUDIO_ROUTE_LOST)).assertTrue();
+      d.send(resume);
+      expect(d.snap().paused).assertTrue();
+      d.ev(EngineEventType.USER_RESUME);                 // the user's tap clears the banner
+      expect(d.snap().paused).assertFalse();
+      expect(hasIssue(d.snap(), IssueCode.AUDIO_ROUTE_LOST)).assertFalse();
+      // DUCK and unknown hints change nothing.
+      const duck: EngineEvent = { type: EngineEventType.AUDIO_INTERRUPT, nowMs: d.t, hint: 'DUCK' };
+      expect(logKv(d.send(duck), EngineLog.AUDIO_INTERRUPT)).assertEqual('hint=DUCK action=none');
+      expect(d.snap().paused).assertFalse();
+    });
+
+    it('audio_events_outside_a_running_tour_are_only_logged', 0, () => {
+      const d: Driver = new Driver(input(false, false));
+      const e: EngineEvent = { type: EngineEventType.AUDIO_INTERRUPT, nowMs: d.t, hint: 'PAUSE' };
+      expect(logKv(d.send(e), EngineLog.AUDIO_INTERRUPT)).assertEqual('hint=PAUSE action=ignored phase=idle');
+      expect(logKv(d.ev(EngineEventType.AUDIO_ROUTE_LOST), EngineLog.AUDIO_ROUTE)).assertEqual(
+        'device=SPEAKER action=ignored phase=idle');
+      expect(d.snap().paused).assertFalse();
+      expect(d.snap().issues.length).assertEqual(0);
     });
 
     it('snapshot_for_the_ui', 0, () => {

@@ -139,6 +139,7 @@ export class TourState {
   storyItemId: string = '';        // queue item that drives the AT_STOP sub-state
   userAskedMore: boolean = false;
   paused: boolean = false;
+  pausedByAudio: boolean = false;  // §9 row 12: paused by an audio interrupt, so its RESUME hint may resume
   speechText: boolean;
   voiceLabel: VoiceLabel;
   signal: SignalQuality = SignalQuality.GOOD;
@@ -780,6 +781,9 @@ function resumeTour(st: TourState, fx: Fx): void {
     return;
   }
   st.paused = false;
+  st.pausedByAudio = false;
+  removeIssue(st, IssueCode.AUDIO_INTERRUPT);   // §9 rows 12/13: the banner goes with the pause
+  removeIssue(st, IssueCode.AUDIO_ROUTE_LOST);
   fx.mediaState(MediaPlayState.PLAY);
   pump(st, fx);
 }
@@ -867,16 +871,47 @@ function onEnd(st: TourState, fx: Fx): void {
   fx.persist();
 }
 
+/**
+ * §9 row 12. PAUSE/STOP pause the tour (the cut sentence replays from its start on resume). RESUME resumes only a
+ * pause the interrupt caused: a tour the user paused stays paused. Outside a running tour it is only logged.
+ */
 function onAudioInterrupt(st: TourState, fx: Fx, hint: string): void {
   const h: string = hint.toUpperCase();
-  fx.log(EngineLog.AUDIO_INTERRUPT, `hint=${h}`);
-  if (h === 'PAUSE' || h === 'STOP') {
-    addIssue(st, IssueCode.AUDIO_INTERRUPT, IssueSeverity.INFO, `hint=${h}`);
-    pauseTour(st, fx);
-  } else if (h === 'RESUME') {
-    removeIssue(st, IssueCode.AUDIO_INTERRUPT);
-    resumeTour(st, fx);
+  if (!isTouring(st.phase)) {
+    fx.log(EngineLog.AUDIO_INTERRUPT, `hint=${h} action=ignored phase=${st.phase}`);
+    return;
   }
+  if (h === 'PAUSE' || h === 'STOP') {
+    const wasPaused: boolean = st.paused;
+    fx.log(EngineLog.AUDIO_INTERRUPT, `hint=${h} action=${wasPaused ? 'already_paused' : 'pause'}`);
+    addIssue(st, IssueCode.AUDIO_INTERRUPT, IssueSeverity.INFO, `hint=${h}`);
+    if (!wasPaused) {
+      pauseTour(st, fx);
+      st.pausedByAudio = true;
+    }
+  } else if (h === 'RESUME') {
+    const mine: boolean = st.paused && st.pausedByAudio;
+    fx.log(EngineLog.AUDIO_INTERRUPT, `hint=${h} action=${mine ? 'resume' : 'stay_paused'}`);
+    if (mine) {
+      resumeTour(st, fx);
+    } else {
+      removeIssue(st, IssueCode.AUDIO_INTERRUPT);
+    }
+  } else {
+    fx.log(EngineLog.AUDIO_INTERRUPT, `hint=${h} action=none`);
+  }
+}
+
+/** §9 row 13: headphones gone -> pause, never continue on the loudspeaker. Resume is the user's call. */
+function onAudioRouteLost(st: TourState, fx: Fx): void {
+  if (!isTouring(st.phase)) {
+    fx.log(EngineLog.AUDIO_ROUTE, `device=SPEAKER action=ignored phase=${st.phase}`);
+    return;
+  }
+  fx.log(EngineLog.AUDIO_ROUTE, 'device=SPEAKER action=pause');
+  addIssue(st, IssueCode.AUDIO_ROUTE_LOST, IssueSeverity.WARN, 'headphones disconnected');
+  pauseTour(st, fx);
+  st.pausedByAudio = false;          // an interrupt RESUME must not undo this pause
 }
 
 // ---------------------------------------------------------------- public API
@@ -935,6 +970,7 @@ export class TourEngine {
         break;
       case EngineEventType.USER_PAUSE:
         pauseTour(st, fx);
+        st.pausedByAudio = false;        // the user owns this pause now: an interrupt RESUME leaves it alone
         break;
       case EngineEventType.USER_RESUME:
         resumeTour(st, fx);
@@ -955,9 +991,7 @@ export class TourEngine {
         onAudioInterrupt(st, fx, ev.hint === undefined ? '' : ev.hint);
         break;
       case EngineEventType.AUDIO_ROUTE_LOST:
-        fx.log(EngineLog.AUDIO_ROUTE, 'device=SPEAKER action=pause');
-        addIssue(st, IssueCode.AUDIO_ROUTE_LOST, IssueSeverity.WARN, 'headphones disconnected');
-        pauseTour(st, fx);
+        onAudioRouteLost(st, fx);
         break;
       case EngineEventType.BG_CANCELLED:
         fx.log(EngineLog.BG_CANCEL, `reason=${ev.reason === undefined ? '' : ev.reason}`);
