@@ -1,7 +1,7 @@
 // Boot-time seeding of DATA_DIR from the image (server/README.md "How the course data reaches the disk").
 // SEED_DIR holds the signed metadata written by `npm run publish-course -- --seed seed` (committed: public, signed,
 // no secrets): catalog.json, courses/<id>/{manifest,allowed}.json, tts-index.json (shipped clips only).
-// SEED_FILES_DIR is the app's rawfile directory copied into the image; manifest file paths are relative to it
+// SEED_FILES_DIR is the course data root (repo data/course/krakow) copied into the image; manifest file paths are relative to it
 // (packs/<packId>/..., audio/...). On boot:
 //   - catalog and course files are copied when missing or different (the image = the latest publish);
 //   - every manifest file missing from blobs/ is copied from SEED_FILES_DIR after its sha256 is verified;

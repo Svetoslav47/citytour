@@ -3,13 +3,16 @@
  * §6). Layout under the app's filesDir:
  *   courses/<id>/<version>/            one installed course (the files of its signed manifest, by their paths)
  *   courses/<id>/<version>/course.json what the app needs without the network: summary, pack folder, clip manifest
- *   courses/.tmp/<id>-<version>-<ms>/  a download in progress (deleted on failure and at start-up)
+ *   courses/.tmp/<id>-<version>/       a download in progress (kept after a failure so Retry resumes it; deleted
+ *                                      on cancel, after the swap and at start-up)
  *   courses/catalog.json               the last catalog envelope that verified (offline Courses screen)
- *   courses/active.json                {"id": "..."} the active course ('' or missing = the bundled one)
+ *   courses/active.json                {"id": "..."} the active course ('' or missing = none installed yet)
  * Install: every file is fetched by its sha256 (GET /v1/blobs/:sha), its size and SHA-256 are checked (async, off
  * the UI thread), it is written into the temp folder; only when ALL files verified is the temp folder renamed to
  * courses/<id>/<version> (one rename), and only then are older versions of that course removed. A failed, cancelled
- * or partial download never touches a working course.
+ * or partial download never touches a working course. Each file is tried up to 1 + BLOB_RETRIES times with a short
+ * backoff; a file already in the temp folder with the right size and SHA-256 (an earlier attempt) is not fetched
+ * again, so Retry after a network drop resumes instead of starting over (Kraków: 1167 files, ~40 MB).
  */
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
@@ -21,8 +24,13 @@ import {
 import { FileStore } from './FileStore';
 import { RemoteClient } from './RemoteClient';
 
-const PARALLEL: number = 3;
-const BLOB_RETRIES: number = 1;
+const PARALLEL: number = 6;
+const BLOB_RETRIES: number = 2;
+const RETRY_BACKOFF_MS: number = 700;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
 
 /** courses/<id>/<version>/course.json */
 export class CourseRecord {
@@ -35,6 +43,8 @@ export class CourseRecord {
 }
 
 export class InstallProgress {
+  /** Files found complete in the temp folder of an earlier attempt (not fetched again). */
+  resumedFiles: number = 0;
   doneBytes: number = 0;
   totalBytes: number = 0;
   doneFiles: number = 0;
@@ -256,7 +266,7 @@ export class CourseStore {
       return res;
     }
     const t0 = Date.now();
-    const tmp = `${root}/.tmp/${m.courseId}-${m.version}-${Date.now()}`;
+    const tmp = `${root}/.tmp/${m.courseId}-${m.version}`;
     if (!(await FileStore.mkdirs(tmp))) {
       res.error = 'mkdir';
       return res;
@@ -276,7 +286,16 @@ export class CourseStore {
           return;
         }
         const f = m.files[i];
-        const err = await this.fetchVerified(client, f, `${tmp}/${f.path}`);
+        const dest = `${tmp}/${f.path}`;
+        let err = '';
+        if (await CourseStore.alreadyThere(f, dest)) {
+          prog.resumedFiles++;
+        } else {
+          err = await this.fetchVerified(client, f, dest, cancel);
+        }
+        if (err === 'cancelled') {
+          return;
+        }
         if (err !== '') {
           failure = `${err} file=${f.path}`;
           return;
@@ -325,21 +344,39 @@ export class CourseStore {
       }
     }
     if (!res.ok) {
-      await FileStore.remove(tmp);
+      // Cancel: forget the partial download. Any other failure: keep it, so Retry only fetches the missing files.
+      const keep = failure !== 'cancelled' && failure !== 'rename' && failure !== 'write_record';
+      if (!keep) {
+        await FileStore.remove(tmp);
+      }
       res.error = failure;
       Log.e(LogEvents.COURSE, `event=download_fail id=${m.courseId} version=${m.version} reason=${failure}` +
-        ` ms=${Date.now() - t0}`);
+        ` done=${prog.doneFiles}/${prog.totalFiles} resumed=${prog.resumedFiles} keepTmp=${keep} ms=${Date.now() - t0}`);
     } else {
       Log.i(LogEvents.COURSE, `event=installed id=${m.courseId} version=${m.version} files=${m.files.length}` +
-        ` bytes=${prog.totalBytes} ms=${Date.now() - t0}`);
+        ` bytes=${prog.totalBytes} resumed=${prog.resumedFiles} ms=${Date.now() - t0}`);
     }
     return res;
   }
 
+  /** A file left by an earlier attempt with the right size and SHA-256 (async hash, off the UI thread). */
+  private static async alreadyThere(f: CourseFile, path: string): Promise<boolean> {
+    if ((await FileStore.size(path)) !== f.bytes) {
+      return false;
+    }
+    return (await FileStore.sha256File(path)) === f.sha256;
+  }
+
   /** '' when the file is on disk with the right size and SHA-256. */
-  private async fetchVerified(client: RemoteClient, f: CourseFile, dest: string): Promise<string> {
+  private async fetchVerified(client: RemoteClient, f: CourseFile, dest: string, cancel: CancelToken): Promise<string> {
     let last = '';
     for (let attempt = 0; attempt <= BLOB_RETRIES; attempt++) {
+      if (cancel.cancelled) {
+        return 'cancelled';
+      }
+      if (attempt > 0) {
+        await sleep(RETRY_BACKOFF_MS * attempt);
+      }
       const h = await client.blob(f.sha256);
       if (h.status !== 200 || h.bytes === undefined) {
         last = h.status === 0 ? 'offline' : `http_${h.status}`;

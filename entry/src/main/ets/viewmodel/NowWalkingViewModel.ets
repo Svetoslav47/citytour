@@ -206,8 +206,16 @@ export class NowWalkingViewModel {
     }
   }
 
+  /** The SIMULATED Demo walk exists only for the Kraków course (its track ships in the HAP). */
+  demoOffered(): boolean {
+    return AppContainer.demoWalkOffered();
+  }
+
   /** No-GPS banner action: switch the running tour to the SIMULATED Demo walk. */
   async switchToDemo(): Promise<void> {
+    if (!AppContainer.demoWalkOffered()) {
+      return;
+    }
     try {
       await AppContainer.tourControl().setSource(FixSource.DEMO);
       Log.i(LogEvents.LOC_SOURCE, 'kind=demo where=nowWalking reason=no_gps');

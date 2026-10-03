@@ -1,31 +1,29 @@
 /*
- * CourseRepository (docs/SERVER.md §6): the bundled course (rawfile, always present, never deletable) merged with
- * the downloaded ones (filesDir/courses/<id>/<version>/, CourseStore). It owns:
+ * CourseRepository (docs/SERVER.md §6): the downloaded courses (filesDir/courses/<id>/<version>/, CourseStore). The
+ * app ships NO built-in course: until the first download there is no active course and Home shows "Download your
+ * first walk". It owns:
  *   - the catalog: fetched from the server (signed, verified) and kept as the last good copy for offline use;
- *   - download / update / delete of courses, with progress;
- *   - the ACTIVE course: which pack ActivePackRepository forwards to (Home, Tour detail, the tour itself) and which
- *     clip manifest NarrationPlayer loads (listeners).
+ *   - download / update / delete of courses, with progress and cancel;
+ *   - the ACTIVE course ('' = none): which pack ActivePackRepository forwards to (Home, Tour detail, the tour itself)
+ *     and which clip manifest NarrationPlayer loads (listeners). The first successful download becomes active.
  * The merge/state rules are the pure core/remote/CourseRules. Nothing here blocks the UI thread: all IO is async.
  * With BASE_URL '' (RemoteConfig) the network is never used; downloaded courses (if any) still work.
  */
-import { PackLoadResult, PackRepository } from '../../contracts/Ports';
+import { PackLoadResult } from '../../contracts/Ports';
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
-import { InstalledCourse, resolveActive } from '../../core/remote/CourseRules';
-import { bundledCourseVersion, CourseSummary } from '../../core/remote/ServerApi';
-import { CLIP_MANIFEST_RAWFILE } from '../../core/speech/ClipSelection';
-import { application } from '@kit.AbilityKit';
-import { FileStore } from './FileStore';
-import { ActivePackRepository } from '../pack/ActivePackRepository';
+import { activeAfterInstall, InstalledCourse, resolveActive } from '../../core/remote/CourseRules';
+import { CourseSummary } from '../../core/remote/ServerApi';
+import { ActivePackRepository, PackChoice } from '../pack/ActivePackRepository';
 import { FilePackRepository } from '../pack/FilePackRepository';
 import { CancelToken, CourseRecord, CourseStore, InstallProgress } from './CourseStore';
 import { RemoteClient } from './RemoteClient';
 
 /** What the speech side needs to know about the active course. */
 export class ActiveCourse {
+  /** '' = no course installed. */
   id: string = '';
-  bundled: boolean = true;
-  /** Absolute course root ('' for the bundled course). */
+  /** Absolute course root ('' = no course). */
   root: string = '';
   /** Course-relative clip manifest path ('' = none). */
   audioManifestPath: string = '';
@@ -52,45 +50,40 @@ export class CourseRepository {
   private readonly client: RemoteClient;
   private readonly store: CourseStore;
   private readonly pack: ActivePackRepository;
-  private readonly bundledId: string;
   private records: CourseRecord[] = [];
   private catalogState: CatalogState = new CatalogState();
   private listeners: ActiveCourseListener[] = [];
   private initP: Promise<void> | undefined = undefined;
   private busy: Set<string> = new Set<string>();
-  private bundledVersionP: Promise<string> | undefined = undefined;
 
-  constructor(client: RemoteClient, store: CourseStore, pack: ActivePackRepository, bundledId: string) {
+  constructor(client: RemoteClient, store: CourseStore, pack: ActivePackRepository) {
     this.client = client;
     this.store = store;
     this.pack = pack;
-    this.bundledId = bundledId;
   }
 
   /**
    * Start-up (AppContainer.init): reads the installed courses and the active id, hands ActivePackRepository the
-   * pack to load first, and announces the active course once the pack has loaded. Never rejects.
+   * pack to load first (none when nothing is installed), and announces the active course once it has loaded.
+   * Never rejects.
    */
   start(): void {
-    let startId = this.bundledId;
     let saved = '';
-    const chosen: Promise<PackRepository | undefined> = this.init().then(async (): Promise<PackRepository | undefined> => {
+    const chosen: Promise<PackChoice | undefined> = this.init().then(async (): Promise<PackChoice | undefined> => {
       saved = await this.store.readActive();
-      const id = resolveActive(saved, this.bundledId, this.installed());
+      const id = resolveActive(saved, this.installed());
       const rec = this.record(id);
       if (rec === undefined) {
         return undefined;
       }
-      startId = id;
-      return new FilePackRepository(this.store.packPath(rec));
+      return new PackChoice(new FilePackRepository(this.store.packPath(rec)), id);
     });
-    this.pack.setStartupChoice(chosen, () => startId);
+    this.pack.setStartupChoice(chosen);
     chosen.then(async () => {
       await this.pack.load();
-      const now = this.pack.activeId() === this.bundledId && this.record(this.bundledId) === undefined ? '' :
-        this.pack.activeId();
+      const now = this.pack.activeId();
       if (now !== saved) {
-        await this.store.writeActive(now);   // the saved course is gone or failed to load: bundled from now on
+        await this.store.writeActive(now);   // the saved course is gone: another installed one, or none
       }
       this.announce();
     }).catch((e: Object) => {
@@ -130,41 +123,6 @@ export class CourseRepository {
     return this.client.enabled();
   }
 
-  bundledCourseId(): string {
-    return this.bundledId;
-  }
-
-  /**
-   * The bundled course's version as the catalog writes it (SERVER.md §3.1: `<pack version>-a<sha8 of
-   * audio/manifest.json>`), so an unchanged server course is not shown as an update. Async digest, never rejects.
-   */
-  bundledVersion(): Promise<string> {
-    if (this.bundledVersionP === undefined) {
-      this.bundledVersionP = this.computeBundledVersion();
-    }
-    return this.bundledVersionP;
-  }
-
-  private async computeBundledVersion(): Promise<string> {
-    let packVersion = '';
-    try {
-      const r = await this.pack.bundledRepo().load();
-      packVersion = r.manifest !== undefined ? r.manifest.version : '';
-      const bytes = await application.getApplicationContext().resourceManager.getRawFileContent(CLIP_MANIFEST_RAWFILE);
-      const sha = await FileStore.sha256Bytes(bytes);
-      const v = bundledCourseVersion(packVersion, sha);
-      Log.i(LogEvents.COURSE, `event=bundled_version version=${v}`);
-      return v;
-    } catch (e) {
-      Log.w(LogEvents.COURSE, `event=bundled_version_fail ${Log.errKv(e as Object)}`);
-      return packVersion;
-    }
-  }
-
-  bundledPack(): PackRepository {
-    return this.pack.bundledRepo();
-  }
-
   installed(): InstalledCourse[] {
     return this.records.map((r: CourseRecord) => CourseStore.toInstalled(r));
   }
@@ -175,6 +133,10 @@ export class CourseRepository {
 
   activeId(): string {
     return this.pack.activeId();
+  }
+
+  hasCourse(): boolean {
+    return this.pack.hasCourse();
   }
 
   isBusy(id: string): boolean {
@@ -189,11 +151,10 @@ export class CourseRepository {
     const c = new ActiveCourse();
     c.id = this.pack.activeId();
     const rec = this.record(c.id);
-    if (rec === undefined || this.pack.isBundled()) {
-      c.bundled = true;
+    if (rec === undefined) {
+      c.id = '';
       return c;
     }
-    c.bundled = false;
     c.root = this.store.courseDir(rec.id, rec.version);
     c.audioManifestPath = rec.audioManifestPath;
     return c;
@@ -251,9 +212,15 @@ export class CourseRepository {
       const rec: CourseRecord = res.record;
       this.records = this.records.filter((r: CourseRecord) => r.id !== id);
       this.records.push(rec);
-      // An update of the active course: switch to the new version now (the old folder is gone).
-      if (this.pack.activeId() === id) {
-        await this.activate(id);
+      // An update of the active course: switch to the new version now (the old folder is gone). The first course
+      // downloaded becomes the active one.
+      const before = this.pack.activeId();
+      if (before === id || activeAfterInstall(before, id) === id) {
+        const a = await this.activate(id);
+        if (!a.ok) {
+          out.error = `activate_${a.error}`;
+          return out;
+        }
       }
       out.ok = true;
       return out;
@@ -266,7 +233,10 @@ export class CourseRepository {
     }
   }
 
-  /** Deletes a downloaded course (the bundled one cannot be deleted). The active one falls back to bundled. */
+  /**
+   * Deletes a downloaded course. When it was the active one, another installed course becomes active (CourseRules
+   * resolveActive), or none: Home goes back to "Download your first walk".
+   */
   async remove(id: string): Promise<OpResult> {
     const out = new OpResult();
     await this.init();
@@ -274,16 +244,21 @@ export class CourseRepository {
       out.error = this.busy.has(id) ? 'busy' : 'not_installed';
       return out;
     }
-    if (this.pack.activeId() === id) {
-      const r = await this.pack.switchToBundled();
-      if (!r.ok) {
-        out.error = 'bundled_load_failed';
-        return out;
+    const wasActive = this.pack.activeId() === id;
+    this.records = this.records.filter((r: CourseRecord) => r.id !== id);
+    if (wasActive) {
+      const next = resolveActive('', this.installed());
+      const rec = this.record(next);
+      let switched = false;
+      if (rec !== undefined) {
+        switched = (await this.pack.switchTo(new FilePackRepository(this.store.packPath(rec)), next)).ok;
       }
-      await this.store.writeActive('');
+      if (!switched) {
+        await this.pack.switchToNone();
+      }
+      await this.store.writeActive(this.pack.activeId());
       this.announce();
     }
-    this.records = this.records.filter((r: CourseRecord) => r.id !== id);
     out.ok = await this.store.remove(id);
     if (!out.ok) {
       out.error = 'remove_failed';
@@ -291,26 +266,21 @@ export class CourseRepository {
     return out;
   }
 
-  /** Makes a course active (bundled id or a downloaded one). Never rejects. */
+  /** Makes a downloaded course the active one. Never rejects. */
   async activate(id: string): Promise<OpResult> {
     const out = new OpResult();
     await this.init();
-    let r: PackLoadResult;
-    if (id === this.bundledId && (this.record(id) === undefined)) {
-      r = await this.pack.switchToBundled();
-    } else {
-      const rec = this.record(id);
-      if (rec === undefined) {
-        out.error = 'not_installed';
-        return out;
-      }
-      r = await this.pack.switchTo(new FilePackRepository(this.store.packPath(rec)), id);
+    const rec = this.record(id);
+    if (rec === undefined) {
+      out.error = 'not_installed';
+      return out;
     }
+    const r: PackLoadResult = await this.pack.switchTo(new FilePackRepository(this.store.packPath(rec)), id);
     if (!r.ok) {
       out.error = 'load_failed';
       return out;
     }
-    await this.store.writeActive(id === this.bundledId && this.record(id) === undefined ? '' : id);
+    await this.store.writeActive(id);
     this.announce();
     out.ok = true;
     return out;
@@ -322,7 +292,7 @@ export class CourseRepository {
 
   private announce(): void {
     const c = this.activeCourse();
-    Log.i(LogEvents.COURSE, `event=active_course id=${c.id} bundled=${c.bundled}` +
+    Log.i(LogEvents.COURSE, `event=active_course id=${c.id || 'none'}` +
       ` clips=${c.audioManifestPath !== '' ? c.audioManifestPath : 'none'}`);
     for (const l of this.listeners) {
       try {

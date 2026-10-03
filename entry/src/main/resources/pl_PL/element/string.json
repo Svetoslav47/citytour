@@ -210,7 +210,7 @@
     },
     {
       "name": "home_pack_error_body",
-      "value": "Zainstaluj aplikację ponownie. Dane tras są dołączone do aplikacji i nie wymagają internetu."
+      "value": "Nie udało się odczytać pobranego spaceru. Otwórz Trasy, usuń go i pobierz ponownie."
     },
     {
       "name": "home_progress_a11y",
@@ -1362,7 +1362,7 @@
     },
     {
       "name": "settings_pack_title",
-      "value": "Pakiet Kraków"
+      "value": "Dane spaceru"
     },
     {
       "name": "settings_pack_line",
@@ -1374,7 +1374,7 @@
     },
     {
       "name": "settings_pack_included",
-      "value": "W zestawie"
+      "value": "Pobrano"
     },
     {
       "name": "settings_pack_loading",
@@ -1545,14 +1545,6 @@
       "value": "Trasy"
     },
     {
-      "name": "courses_builtin_only",
-      "value": "Tylko wbudowana trasa"
-    },
-    {
-      "name": "courses_builtin_only_note",
-      "value": "Ta wersja nie ma serwera tras. Wbudowana trasa działa w pełni offline."
-    },
-    {
       "name": "courses_loading",
       "value": "Sprawdzanie tras…"
     },
@@ -1562,7 +1554,7 @@
     },
     {
       "name": "courses_offline_empty",
-      "value": "Brak połączenia. Nie udało się wczytać listy tras; pobrane trasy nadal działają."
+      "value": "Nie można połączyć się z serwerem tras. Sprawdź połączenie i spróbuj ponownie; pobrane spacery działają offline."
     },
     {
       "name": "courses_unverified",
@@ -1579,10 +1571,6 @@
     {
       "name": "courses_meta_no_km",
       "value": "%1$d przystanków · %2$d min"
-    },
-    {
-      "name": "courses_builtin",
-      "value": "Wbudowana"
     },
     {
       "name": "courses_active",
@@ -1618,7 +1606,7 @@
     },
     {
       "name": "courses_failed",
-      "value": "Pobieranie nie powiodło się. Nic nie zmieniono; spróbuj ponownie."
+      "value": "Pobieranie nie powiodło się. Nic nie zmieniono; ponowna próba wznowi od miejsca przerwania."
     },
     {
       "name": "courses_switch_failed",
@@ -1635,10 +1623,6 @@
     {
       "name": "courses_delete_msg",
       "value": "Można ją później pobrać ponownie."
-    },
-    {
-      "name": "courses_delete_update_msg",
-      "value": "Wbudowana wersja zostaje w telefonie."
     },
     {
       "name": "courses_cancel",
@@ -1719,6 +1703,46 @@
     {
       "name": "place_card_details",
       "value": "Szczegóły"
+    },
+    {
+      "name": "home_empty_title",
+      "value": "Pobierz swój pierwszy spacer"
+    },
+    {
+      "name": "home_empty_body",
+      "value": "CityTour przechowuje spacery na serwerze tras. Pobierz spacer raz; potem działa w pełni offline."
+    },
+    {
+      "name": "home_empty_cta",
+      "value": "Przeglądaj spacery"
+    },
+    {
+      "name": "home_open_courses",
+      "value": "Otwórz trasy"
+    },
+    {
+      "name": "courses_no_server",
+      "value": "Brak serwera tras"
+    },
+    {
+      "name": "courses_no_server_note",
+      "value": "Ta wersja nie ma serwera tras, więc nie można pobrać spaceru."
+    },
+    {
+      "name": "courses_delete_active_msg",
+      "value": "To jest używany spacer. Bez niego aplikacja nie będzie miała spaceru, dopóki nie pobierzesz go ponownie."
+    },
+    {
+      "name": "courses_empty",
+      "value": "Na serwerze nie ma jeszcze opublikowanych spacerów."
+    },
+    {
+      "name": "courses_cancelling",
+      "value": "Anulowanie…"
+    },
+    {
+      "name": "settings_pack_none",
+      "value": "Nie pobrano jeszcze spaceru"
     }
   ]
 }

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Builds the offline Kraków city pack (task B2) into entry/src/main/resources/rawfile/packs/krakow/.
+# Builds the offline Kraków city pack (task B2) into data/course/krakow/packs/krakow/
+# (the app ships no course: the server publishes this folder and the app downloads it).
 #
 # Reads only committed inputs (data/raw/**, data/tours/royal-route.json); the network is disabled inside the
 # build (scripts/pack/90-emit.mjs). Deterministic: running it twice gives byte-identical files (no clock, stable

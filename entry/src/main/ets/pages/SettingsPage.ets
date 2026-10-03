@@ -156,6 +156,11 @@ export struct SettingsPage {
           title: $r('app.string.settings_pack_title'), subtitle: $r('app.string.settings_pack_loading'),
           tappable: false, busy: true, rowId: 'rowPack'
         })
+      } else if (!this.vm.hasCourse) {
+        NavRow({
+          title: $r('app.string.settings_pack_title'), subtitle: $r('app.string.settings_pack_none'),
+          tappable: false, rowId: 'rowPack'
+        })
       } else if (!this.vm.packOk) {
         NavRow({
           title: $r('app.string.settings_pack_title'), subtitle: $r('app.string.settings_pack_error'),
@@ -283,8 +288,10 @@ export struct SettingsPage {
               this.offline()
             }
 
-            Column() {
-              this.demo()
+            if (this.vm.demoOffered || this.vm.settings.useDemoWalk) {
+              Column() {
+                this.demo()
+              }
             }
 
             Column() {

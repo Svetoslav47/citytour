@@ -11,8 +11,8 @@
  * (vibrator preset with isSupportEffectSync check, timed fallback). shutdown() cancels the notification.
  * A4 wiring: voice() = VoiceManager (listVoices/downloadVoice + pure VoicePolicy), speech() = NarrationPlayer
  * (TTS playType 0 -> PcmPlayer AudioRenderer). Both share one TtsEngines, so each engine exists once per app.
- * A13 wiring: NarrationPlayer also gets a ClipPlayer (AVPlayer over rawfile/audio clips, ElevenLabs pre-rendered
- * at build time); with no rawfile/audio/manifest.json every sentence uses the TTS path as before.
+ * A13 wiring: NarrationPlayer also gets a ClipPlayer (AVPlayer over the active course's downloaded clips, ElevenLabs
+ * pre-rendered at build time); with no course (or no clip manifest) every sentence uses the TTS path.
  * A6 wiring: background() = BackgroundRunner (one continuous task ['location','audioPlayback']; it stops speech
  * before stopping the task, as the continuous-task guide requires), mediaSession() = MediaSessionService (AVSession
  * 'audio'). Both are constructed lazily and only touch the platform when start()/init() is called. shutdown()
@@ -23,11 +23,11 @@
  * ohos_window_窗口_/Interface_Window/arkts-apis-window-window, getLastWindow: .../Functions/arkts-apis-window-f,
  * FAQ faqs-arkui-1366: only effective in the foreground, reset it when the scene ends); AppConfig.DEBUG_CORRUPT_PACK
  * swaps in CorruptPackRepository (row 17 demo).
- * Optional server (docs/SERVER.md): remoteClient() = RemoteClient (Network Kit http, Ed25519-verified envelopes),
- * courses() = CourseRepository (bundled + downloaded courses; the PackRepository every caller gets is the
- * ActivePackRepository forwarding to the active course), and speech() = RemoteVoice, a SpeechPort decorator over
- * NarrationPlayer that adds the runtime studio voice. With RemoteConfig.BASE_URL '' none of it touches the network
- * and the app behaves exactly as before (bundled course, bundled clips, built-in voice).
+ * Course server (docs/SERVER.md): the app ships NO built-in course. remoteClient() = RemoteClient (Network Kit http,
+ * Ed25519-verified envelopes), courses() = CourseRepository (downloaded courses; the PackRepository every caller gets
+ * is the ActivePackRepository forwarding to the active course, or to an empty pack until the first download), and
+ * speech() = RemoteVoice, a SpeechPort decorator over NarrationPlayer that adds the runtime studio voice. Once a
+ * course is downloaded everything works offline (its pack, its clips, the built-in voice as the last resort).
  * UIAbilityContext: doc 开发指南/Ability_Kit_程序框架服务/应用模型/应用组件/UIAbility组件/
  * 启动应用内的UIAbility组件/uiability-intra-device-interaction.
  */
@@ -46,7 +46,6 @@ import { MediaSessionService } from '../services/media/MediaSessionService';
 import { DemoWalkSource } from '../services/location/DemoWalkSource';
 import { PermissionService } from '../services/location/PermissionService';
 import { RealLocationSource } from '../services/location/RealLocationSource';
-import { PackFactory } from '../services/pack/PackFactory';
 import { CorruptPackRepository } from '../services/debug/CorruptPackRepository';
 import { AudioEventListener, NarrationPlayer } from '../services/speech/NarrationPlayer';
 import { TtsEngines } from '../services/speech/TtsEngines';
@@ -58,8 +57,8 @@ import { DemoControls, TourController, TourControllerDeps } from '../services/to
 import { Lang } from '../contracts/Model';
 import { ClipEntry } from '../core/speech/ClipSelection';
 import { ActivePackRepository } from '../services/pack/ActivePackRepository';
-import { PACK_ID } from '../services/pack/RawfilePackRepository';
 import { ActiveCourse, CourseRepository } from '../services/remote/CourseRepository';
+import { demoWalkOffered } from '../core/remote/CourseRules';
 import { CourseStore } from '../services/remote/CourseStore';
 import { courseClipsOffThread } from '../services/remote/ClipManifestTask';
 import { FileStore } from '../services/remote/FileStore';
@@ -158,8 +157,7 @@ export class AppContainer {
     try {
       AppContainer.packImpl = AppContainer.makePack();
       AppContainer.buildSpeech();
-      AppContainer.narration().loadClipManifest();   // A13: early, so Settings/onboarding know Polish is spoken
-      AppContainer.startCourses();                   // SERVER.md §6: restore the active course (local, no network)
+      AppContainer.startCourses();                   // SERVER.md §6: restore the active course + its clips (local)
       AppContainer.remoteVoice().probe();            // one GET /healthz (skipped when BASE_URL is '')
       AppContainer.permImpl = new PermissionService(ctx);
       AppContainer.realLocImpl = new RealLocationSource(AppContainer.permImpl);
@@ -256,16 +254,20 @@ export class AppContainer {
   }
 
   static packKind(): string {
-    return AppConfig.DEBUG_CORRUPT_PACK ? 'corrupt-debug' : PackFactory.kind();
+    if (AppConfig.DEBUG_CORRUPT_PACK) {
+      return 'corrupt-debug';
+    }
+    const id = AppContainer.coursesImpl !== undefined ? AppContainer.coursesImpl.activeId() : '';
+    return id === '' ? 'none' : `download:${id}`;
   }
 
-  /** The real pack, or the §9 row 17 fault (AppConfig.DEBUG_CORRUPT_PACK, false in git). */
+  /** The active course's pack (none until a download), or the §9 row 17 fault (AppConfig.DEBUG_CORRUPT_PACK). */
   private static makePack(): PackRepository {
     if (AppConfig.DEBUG_CORRUPT_PACK) {
       Log.w(LogEvents.PACK_ERR, 'file=pois.json reason=parse src=debug action=inject flag=DEBUG_CORRUPT_PACK');
       return new CorruptPackRepository(AppContainer.loggerImpl);
     }
-    return new ActivePackRepository(PackFactory.create(), PACK_ID);
+    return new ActivePackRepository();
   }
 
   static tourControl(): TourControl {
@@ -416,17 +418,35 @@ export class AppContainer {
     return AppContainer.remoteImpl;
   }
 
-  /** Bundled + downloaded courses (SERVER.md §6). */
+  /** Downloaded courses (SERVER.md §6). */
   static courses(): CourseRepository {
     if (AppContainer.coursesImpl === undefined) {
       const pack = AppContainer.packRepository();
       // DEBUG_CORRUPT_PACK replaces the pack with a fake: courses then manage a private wrapper the app never shows.
       const active: ActivePackRepository = pack instanceof ActivePackRepository ? pack as ActivePackRepository :
-        new ActivePackRepository(pack, PACK_ID);
+        new ActivePackRepository();
       AppContainer.coursesImpl = new CourseRepository(AppContainer.remoteClient(),
-        new CourseStore(() => AppContainer.filesDir()), active, PACK_ID);
+        new CourseStore(() => AppContainer.filesDir()), active);
     }
     return AppContainer.coursesImpl;
+  }
+
+  /** A course is installed and active (false on first run until the first download). */
+  static hasCourse(): boolean {
+    try {
+      return AppContainer.courses().hasCourse();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** The SIMULATED Demo walk (Royal Route track in the HAP) is offered only while the Kraków course is active. */
+  static demoWalkOffered(): boolean {
+    try {
+      return demoWalkOffered(AppContainer.courses().activeId());
+    } catch (e) {
+      return false;
+    }
   }
 
   /** Restores the active course and keeps the speech side in step with it (clips, tour pack facts). */
@@ -441,22 +461,24 @@ export class AppContainer {
       if (AppContainer.tourImpl !== undefined && !AppContainer.tourImpl.isRunning()) {
         AppContainer.tourImpl.onPackSwitched();
       }
-      if (c.bundled || c.audioManifestPath === '' || c.root === '') {
+      if (c.id === '' || c.audioManifestPath === '' || c.root === '') {
         AppContainer.narration().setCourseClips([]);
         return;
       }
-      FileStore.readText(`${c.root}/${c.audioManifestPath}`).then((text: string | undefined) => {
-        if (text === undefined) {
-          Log.w(LogEvents.NARR_AUDIO, `event=course_clips_missing course=${c.id}`);
-          AppContainer.narration().setCourseClips([]);
-          return;
-        }
-        return courseClipsOffThread(text, c.root).then((entries: ClipEntry[]) => {
-          AppContainer.narration().setCourseClips(entries);
+      const load: Promise<void> = FileStore.readText(`${c.root}/${c.audioManifestPath}`)
+        .then((text: string | undefined): Promise<void> | undefined => {
+          if (text === undefined) {
+            Log.w(LogEvents.NARR_AUDIO, `event=course_clips_missing course=${c.id}`);
+            AppContainer.narration().setCourseClips([]);
+            return undefined;
+          }
+          return courseClipsOffThread(text, c.root).then((entries: ClipEntry[]) => {
+            AppContainer.narration().setCourseClips(entries);
+          });
+        }).catch((e: Object) => {
+          Log.e(LogEvents.NARR_AUDIO, `event=course_clips_fail course=${c.id} ${Log.errKv(e)}`);
         });
-      }).catch((e: Object) => {
-        Log.e(LogEvents.NARR_AUDIO, `event=course_clips_fail course=${c.id} ${Log.errKv(e)}`);
-      });
+      AppContainer.narration().trackClipLoad(load);
     } catch (e) {
       Log.e(LogEvents.UNCAUGHT, `where=AppContainer.onActiveCourse ${Log.errKv(e as Object)}`);
     }
@@ -482,7 +504,7 @@ export class AppContainer {
     const engines = new TtsEngines();
     const vm = new VoiceManager(engines);
     AppContainer.voiceImpl = vm;
-    // A13: ClipPlayer plays pre-rendered sentence clips (rawfile/audio, AVPlayer) when the manifest matches.
+    // A13: ClipPlayer plays the course's pre-rendered sentence clips (sandbox files, AVPlayer) when a hash matches.
     const np = new NarrationPlayer(vm, engines, new PcmPlayer(), AppConfig.USE_SYSTEM_PLAYBACK,
       new ClipPlayer(() => AppContainer.context()));
     AppContainer.speechImpl = np;

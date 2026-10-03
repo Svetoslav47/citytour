@@ -23,7 +23,7 @@
 | D7 | Map | **Native ArkUI `Canvas` vector map**, pre-baked from OSM into the offline pack, drawn with cached `Path2D` layers. Neither Web+Leaflet nor raster tiles. |
 | D8 | Location | A `LocationSource` interface with `RealLocationSource` (Location Kit) and `DemoWalkSource` (a timestamped replay, labelled **SIMULATED**), both feeding one pipeline. |
 | D9 | Routing | Exact **Held–Karp open path** from the user's position over an OSRM-foot duration matrix shipped in the pack. The same DP solves the **orienteering** ("I have N minutes") variant exactly. |
-| D10 | Content | An offline city pack in `rawfile/packs/krakow/`, built by Node scripts in `scripts/pack/`. Narration is validated in the pipeline **and again in the app** (`NarrationValidator`), with a deterministic fallback chain. |
+| D10 | Content | A city pack built by Node scripts in `scripts/pack/` into `data/course/krakow/packs/krakow/` (**delta, Sat night:** the HAP bundles no course; the pack + clips are published by the course server and downloaded once, then used offline from `filesDir/courses/`, docs/SERVER.md). Narration is validated in the pipeline **and again in the app** (`NarrationValidator`), with a deterministic fallback chain. |
 | D11 | Permissions | `APPROXIMATELY_LOCATION` + `LOCATION` (user grant, requested at point of use), `KEEP_BACKGROUND_RUNNING`, `VIBRATE`. **Not** `LOCATION_IN_BACKGROUND` (the continuous task makes it unnecessary, VERIFIED). **Not** `INTERNET` in v1. |
 | D12 | Tests | Local unit tests (hypium) in `entry/src/test/`, run headless with `hvigorw test`, wrapped by `scripts/test.sh` (which must parse the result file because the exit code is always 0). |
 
@@ -46,7 +46,7 @@ flowchart TB
     WIKI[Wikipedia / Wikidata en,pl,zh] --> PIPE
     OSRM[OSRM foot router: table + route] --> PIPE
     LLM[LLM drafting, optional, key from env] --> PIPE
-    PIPE[pack pipeline + validator] --> PACK[(rawfile/packs/krakow/*.json)]
+    PIPE[pack pipeline + validator] --> PACK[(data/course/krakow/packs/krakow/*.json, downloaded via the course server)]
     REV[Human review sheets] --> PIPE
   end
 
@@ -674,7 +674,7 @@ export function plan(inputs: PlanInputs, budgetS: number): TourPlan;   // picks 
 | 6 | `60-mapdata.mjs` | stage 2 map | projected, clipped, Douglas–Peucker simplified (0.8 m detail, 5 m overview), decimetre ints, per-layer feature lists + bboxes |
 | 7 | `70-narrate.mjs` | merged POIs + wiki + register text + `review/*.md` | narration drafts (LLM only if `ANTHROPIC_API_KEY` is set in env, **never committed**; otherwise the extractive tiers only) |
 | 8 | `80-validate.mjs` | everything | the validator (same rules as the app, §7.4) → `validation-report.json`; failing drafts are replaced by the fallback tier |
-| 9 | `90-emit.mjs` | validated data | `entry/src/main/resources/rawfile/packs/krakow/*.json` + `manifest.json` (byte sizes + sha256) |
+| 9 | `90-emit.mjs` | validated data | `data/course/krakow/packs/krakow/*.json` + `manifest.json` (byte sizes + sha256); published by the course server, not bundled in the HAP |
 | – | `build-pack.sh` | – | runs 10→90; **the committed pack is the source of truth**, so the app build never needs network |
 | – | `scripts/demo/make-demo-walk.mjs` | the pack's planned order + legs | `rawfile/demo/royal-route-walk.json` |
 
@@ -689,7 +689,7 @@ export function plan(inputs: PlanInputs, budgetS: number): TourPlan;   // picks 
 - Wikipedia text: **CC BY-SA 4.0**. Derived narrations are shared alike and attributed with a link.
 - Kraków MSIP/ArcGIS: open data (ASSUMPTION about the exact licence; the pipeline records the service URL and retrieval date).
 
-### 7.2 Pack files (`entry/src/main/resources/rawfile/packs/krakow/`)
+### 7.2 Pack files (`data/course/krakow/packs/krakow/`, downloaded by the app)
 
 | File | Content | Est. size |
 |---|---|---|
@@ -868,7 +868,7 @@ There is **no code change**:
   | pl | **off (no on-device voice)** / en / zh | **off**, with a visible note: "Polish voice isn't available on this device's speech engine; narration is shown as text. You can choose English or Chinese voice." |
 
   This is the brief's decision "A". It is documented as a platform limitation in the README, backed by the doc fact that TTS supports only zh/en (VERIFIED).
-  **A13 update (studio clips).** When `rawfile/audio/manifest.json` has clips for the story language, `ClipSelection.storyVoicePlan` turns the plan into voice mode labelled `PRERENDERED` ("Studio voice"): the engine emits SPEAK and NarrationPlayer plays each sentence from its clip (hash of the exact sentence) or falls back to the base plan: native TTS for en/zh, text for pl (pl "off" now means "no on-device voice", not "never speak"). Where the fallback is text, `TourController` excludes the clips of a story that is only partly covered, so a Polish story is either fully spoken or fully text. The user's text-only choice and the cross-language listen choice get no clips. The snapshot's `voiceLabel` follows the sentence in flight (clip / native / fallback TTS).
+  **A13 update (studio clips).** When the downloaded course's `audio/manifest.json` has clips for the story language, `ClipSelection.storyVoicePlan` turns the plan into voice mode labelled `PRERENDERED` ("Studio voice"): the engine emits SPEAK and NarrationPlayer plays each sentence from its clip (hash of the exact sentence) or falls back to the base plan: native TTS for en/zh, text for pl (pl "off" now means "no on-device voice", not "never speak"). Where the fallback is text, `TourController` excludes the clips of a story that is only partly covered, so a Polish story is either fully spoken or fully text. The user's text-only choice and the cross-language listen choice get no clips. The snapshot's `voiceLabel` follows the sentence in flight (clip / native / fallback TTS).
 - **Polish text-only and a locked phone** (without clips). On arrival we fire a haptic and update the AVSession title and the notification ("Now: Kościół Mariacki · open to read"). The engine advances captions on a reading timer (§4.4).
 - **Spoken system phrases** (turn cues, directions, arrival lines, GPS-lost) live in `core/content/Phrases.ets` for en/zh/pl. They are pure code and unit-tested for every `Maneuver × modifier × lang`, not resource strings: the engine composes them in pure code.
 - **Dynamic content** (POI names, narrations) uses `LocalizedText` with the fallback order `textLang → en → pl`. When a fallback language is shown, the UI tags it (for example "(PL)").
@@ -1038,7 +1038,7 @@ entry/src/main/ets/
 entry/src/main/resources/
 ├── base|en_US|pl_PL|zh_CN/element/string.json   [B owns; A adds keys only via engine_strings.json*]
 ├── base/profile/main_pages.json, form_config.json (P2)
-└── rawfile/packs/krakow/*.json  [B]   rawfile/demo/royal-route-walk.json [B generates, A consumes]
+└── rawfile/demo/royal-route-walk.json [B generates, A consumes]   (the course itself: data/course/krakow/, downloaded)
 entry/src/test/  List.test.ets, *.test.ets, fixtures/*.ets       [each owner tests own modules]
 scripts/pack/*  [B]   scripts/demo/*  [B]   scripts/test.sh, scripts/smoke.sh  [A]
 docs/ARCHITECTURE.md (this file)

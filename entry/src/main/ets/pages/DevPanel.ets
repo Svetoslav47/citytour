@@ -256,6 +256,10 @@ struct DemoTourSection {
     const tc: TourControl = AppContainer.tourControl();
     const tours: Tour[] = AppContainer.packRepository().tours();
     const tourId: string = tours.length > 0 ? tours[0].id : '';
+    if (tourId === '' || !AppContainer.demoWalkOffered()) {
+      this.line = 'tour: no Kraków course downloaded (Home > Browse walks)';   // the app ships no built-in course
+      return;
+    }
     this.line = 'tour: planning...';
     tc.setSource(FixSource.DEMO).then(() => tc.plan(tourId, 0)).then((p: TourPlan) => {
       tc.setDemoSpeed(this.speed);

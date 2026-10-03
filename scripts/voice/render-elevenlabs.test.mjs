@@ -35,7 +35,7 @@ test('parseOutputFormat', () => {
   assert.throws(() => parseOutputFormat('pcm_16000'));
 });
 
-test('clipRelPath is rawfile-relative and sanitised', () => {
+test('clipRelPath is course-root-relative and sanitised', () => {
   assert.equal(clipRelPath('en', 'poi_wd_Q807309', 'full', 2), 'audio/en/poi_wd_Q807309/full_2.mp3');
   assert.equal(clipRelPath('en', '../x', 'full', 0), 'audio/en/.._x/full_0.mp3');
 });

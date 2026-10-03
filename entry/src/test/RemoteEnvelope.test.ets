@@ -7,7 +7,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import { base64Decode, canonicalJson } from '../main/ets/core/remote/CanonicalJson';
 import {
   CourseManifest, packDir, packManifestPath, parseCatalog, parseCourseManifest, parseEnvelope, parseExpiresAt,
-  parseInstall, safeRelPath, tokenUsable, ttsBodyJson, validVersion, bundledCourseVersion
+  parseInstall, safeRelPath, tokenUsable, ttsBodyJson, validVersion, courseVersion
 } from '../main/ets/core/remote/ServerApi';
 import { sha256Hex, utf8Bytes } from '../main/ets/core/speech/Sha256';
 
@@ -61,10 +61,10 @@ export default function remoteEnvelopeTest() {
       expect(cat.courses.length).assertEqual(1);
       expect(cat.courses[0].version).assertEqual('2026.10.03-41e1482c-a572a94e2');
       expect(cat.courses[0].bytes).assertEqual(40307550);
-      // R6: the bundled pack 2026.10.03-41e1482c + sha256(rawfile/audio/manifest.json) 572a94e2... = the same version
-      expect(bundledCourseVersion('2026.10.03-41e1482c', '572a94e2' + 'f'.repeat(56)))
+      // R6: the Kraków pack 2026.10.03-41e1482c + sha256(audio/manifest.json) 572a94e2... = the same version
+      expect(courseVersion('2026.10.03-41e1482c', '572a94e2' + 'f'.repeat(56)))
         .assertEqual('2026.10.03-41e1482c-a572a94e2');
-      expect(bundledCourseVersion('1.0', 'nothex')).assertEqual('1.0');
+      expect(courseVersion('1.0', 'nothex')).assertEqual('1.0');
     });
 
     it('canonicalJsonScalarsAndNesting', 0, () => {

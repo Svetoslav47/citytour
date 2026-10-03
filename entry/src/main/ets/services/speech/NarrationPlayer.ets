@@ -24,18 +24,18 @@
  *     unchanged. Without a listener the player still pauses/resumes itself as before.
  *
  * A13 pre-rendered clips: before the voice path above, each utterance asks the pure ClipSelection.selectAudio():
- * when rawfile/audio/manifest.json has a clip whose textSha256 equals sha256(utf8(u.text)) for the same language
+ * when the active course's audio/manifest.json has a clip whose textSha256 equals sha256(utf8(u.text)) for the same language
  * and persona, the sentence plays from that clip through ClipPlayer (AVPlayer, same sentence queue: prefetch n+1,
  * pause, resume-from-start, preempt, stop; one done/error per utterance). Otherwise the TTS/text path runs as
- * before. A clip that fails to open/prepare/play (e.g. deleted from the HAP) is marked failed and that sentence
+ * before. A clip that fails to open/prepare/play (e.g. deleted from the sandbox) is marked failed and that sentence
  * falls back to TTS (or text) on the spot. One NARR_AUDIO line per utterance: src=prerendered|tts|text reason=...
- * No manifest in the HAP = exactly the previous behaviour. Phase 2: TourController runs the tour on
+ * No course (or no clip manifest) = the TTS/text path only. Phase 2: TourController runs the tour on
  * ClipSelection.storyVoicePlan (voice mode + PRERENDERED when the story language has clips, so Polish is spoken);
  * text sentences of such a tour (Polish lines without a clip) use the reading timer below. currentPlan() feeds the
  * live "Studio voice" / "Fallback voice" label.
  *
- * Remote courses (docs/SERVER.md §2, §6): the clip index is the bundled manifest PLUS the active downloaded course's
- * manifest (setCourseClips; absolute file paths, the course's entries first). A RuntimeClipSource (RemoteVoice) may
+ * Courses (docs/SERVER.md §2, §6): the app ships no course; the clip index is the active downloaded course's
+ * manifest (setCourseClips; absolute sandbox file paths, parsed off the UI thread by AppContainer). A RuntimeClipSource (RemoteVoice) may
  * supply a studio line rendered by the server for a sentence without a clip (filesDir/tts/<sha>.mp3); it plays
  * through the same ClipPlayer and is logged NARR_AUDIO src=remote|remote_cache. The user's text-only and
  * cross-language choices never get one (same rule as clips).
@@ -44,8 +44,8 @@ import { Lang } from '../../contracts/Model';
 import { SpeechCapabilities, SpeechListener, SpeechPort, Utterance, VoicePlan } from '../../contracts/Ports';
 import { estimateReadingMs, pcmDurationMs, SPEECH_MODE_TEXT } from '../../core/speech/VoicePolicy';
 import {
-  AUDIO_SRC_PRERENDERED, AUDIO_SRC_TEXT, AUDIO_SRC_TTS, AudioDecision, CLIP_MANIFEST_RAWFILE, ClipEntry, ClipIndex,
-  ClipQuery, ClipReason, parseClipManifest, selectAudio, shortSha
+  AUDIO_SRC_PRERENDERED, AUDIO_SRC_TEXT, AUDIO_SRC_TTS, AudioDecision, ClipEntry, ClipIndex,
+  ClipQuery, ClipReason, selectAudio, shortSha
 } from '../../core/speech/ClipSelection';
 import { VoiceLabel } from '../../contracts/Settings';
 import { AppConfig } from '../../app/AppConfig';
@@ -172,10 +172,9 @@ export class NarrationPlayer implements SpeechPort {
   private pcm: PcmPlayer;
   private clips: ClipPlayer | undefined;
   private clipIndex: ClipIndex | undefined = undefined;
-  private bundledEntries: ClipEntry[] = [];
   private courseEntries: ClipEntry[] = [];
   private runtime: RuntimeClipSource | undefined = undefined;
-  private clipLoad: Promise<void> | undefined = undefined;
+  private clipLoad: Promise<void> = Promise.resolve();
   private systemPlayback: boolean;
   private listener: SpeechListener | undefined = undefined;
   private audioListener: AudioEventListener | undefined = undefined;
@@ -255,35 +254,22 @@ export class NarrationPlayer implements SpeechPort {
     this.listener = l;
   }
 
-  /** A13: reads rawfile/audio/manifest.json once. Absent or malformed = no clips (native TTS as before). */
+  /**
+   * Resolves when the active course's clip manifest (if any) has been loaded, so the tour's storyVoicePlan knows the
+   * clip languages. Never rejects.
+   */
   loadClipManifest(): Promise<void> {
-    if (this.clipLoad !== undefined) {
-      return this.clipLoad;
-    }
-    const clips = this.clips;
-    if (clips === undefined) {
-      this.clipLoad = Promise.resolve();
-      return this.clipLoad;
-    }
-    const t0 = Date.now();
-    this.clipLoad = clips.readRawText(CLIP_MANIFEST_RAWFILE).then((text: string) => {
-      if (text === '') {
-        Log.i(LogEvents.NARR_AUDIO, `event=manifest clips=0 reason=no_manifest path=${CLIP_MANIFEST_RAWFILE}`);
-        return;
-      }
-      const m = parseClipManifest(text);
-      this.bundledEntries = m.entries;
-      this.rebuildIndex();
-      Log.i(LogEvents.NARR_AUDIO, `event=manifest clips=${m.entries.length} dropped=${m.dropped}` +
-        ` error=${m.error === '' ? 'none' : m.error} model=${m.model || 'none'} voice=${m.voiceId || 'none'}` +
-        ` ms=${Date.now() - t0}`);
-    }).catch((e: Object) => {
-      Log.e(LogEvents.NARR_AUDIO, `event=manifest_fail ${Log.errKv(e)}`);
-    });
     return this.clipLoad;
   }
 
-  /** The active downloaded course's clips (absolute paths), [] for the bundled course. Rebuilds the index. */
+  /** AppContainer: the active course's clip manifest is being read (off the UI thread). */
+  trackClipLoad(p: Promise<void>): void {
+    this.clipLoad = p.catch((e: Object) => {
+      Log.e(LogEvents.NARR_AUDIO, `event=manifest_fail ${Log.errKv(e)}`);
+    });
+  }
+
+  /** The active downloaded course's clips (absolute paths), [] for no course. Rebuilds the index. */
   setCourseClips(entries: ClipEntry[]): void {
     this.courseEntries = entries;
     this.rebuildIndex();
@@ -318,9 +304,6 @@ export class NarrationPlayer implements SpeechPort {
   private rebuildIndex(): void {
     const all: ClipEntry[] = [];
     for (const e of this.courseEntries) {
-      all.push(e);
-    }
-    for (const e of this.bundledEntries) {
       all.push(e);
     }
     this.clipIndex = all.length > 0 ? new ClipIndex(all) : undefined;

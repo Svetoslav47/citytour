@@ -45,7 +45,7 @@ export interface Catalog {
 export interface PublishOptions {
   courseId: string;
   packDir: string;
-  audioDir: string;          // the rawfile/audio dir (contains manifest.json and <lang>/... clips)
+  audioDir: string;          // the course audio dir, data/course/<id>/audio (contains manifest.json and <lang>/... clips)
   dataDir: string;
   seedDir?: string;
   privateKey: KeyObject;
@@ -169,7 +169,7 @@ export async function publishCourse(o: PublishOptions): Promise<PublishResult> {
   }
   log(`pack ${packId} ${packManifest.version}: ${files.length} files verified`);
 
-  // ---- audio manifest + clips (paths relative to rawfile/, as the clip manifest writes them)
+  // ---- audio manifest + clips (paths relative to the course root, as the clip manifest writes them)
   const audioManifestBytes = await readFile(join(o.audioDir, 'manifest.json'));
   const audioManifest = JSON.parse(audioManifestBytes.toString('utf8')) as { clips?: AudioClip[] };
   const clips = audioManifest.clips ?? [];

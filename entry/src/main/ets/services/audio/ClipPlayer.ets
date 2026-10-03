@@ -1,5 +1,6 @@
 /*
- * Plays pre-rendered sentence clips from rawfile with AVPlayer (task A13). One AVPlayer per clip "slot" (keyed by
+ * Plays pre-rendered sentence clips with AVPlayer (task A13). The app ships no course, so in practice every clip is
+ * an absolute sandbox file (see "Remote courses" below); a relative path is still read from rawfile. One AVPlayer per clip "slot" (keyed by
  * NarrationPlayer's segment id), so the next sentence can be prepared while the current one plays, like the PCM
  * prefetch. A slot is released when its clip completes, fails or is dropped; nothing is kept between sentences.
  *
@@ -25,7 +26,6 @@ import { media } from '@kit.MediaKit';
 import { audio } from '@kit.AudioKit';
 import { common } from '@kit.AbilityKit';
 import { resourceManager } from '@kit.LocalizationKit';
-import { util } from '@kit.ArkTS';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { fileIo as fs } from '@kit.CoreFileKit';
 import { Log } from '../../app/Log';
@@ -91,25 +91,6 @@ export class ClipPlayer {
 
   setListener(l: ClipPlayerListener): void {
     this.listener = l;
-  }
-
-  /** rawfile text (UTF-8), or '' when the file is absent/unreadable. Never rejects. */
-  readRawText(path: string): Promise<string> {
-    const ctx = this.ctxOf();
-    if (ctx === undefined) {
-      return Promise.resolve('');
-    }
-    try {
-      return ctx.resourceManager.getRawFileContent(path).then((bytes: Uint8Array) => {
-        const decoder = util.TextDecoder.create('utf-8', { ignoreBOM: true });
-        return decoder.decodeToString(bytes, { stream: false });
-      }).catch((e: Object) => {
-        Log.d(LogEvents.NARR_AUDIO, `event=raw_missing path=${path} ${Log.errKv(e)}`);
-        return '';
-      });
-    } catch (e) {
-      return Promise.resolve('');
-    }
   }
 
   has(id: string): boolean {

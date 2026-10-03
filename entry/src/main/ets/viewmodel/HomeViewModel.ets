@@ -1,6 +1,7 @@
 /*
  * Home view model (B4, DESIGN §3.2): the tour card from the pack, the "Now walking" continue card from the
- * TourControl snapshots, and the one-tap "Try a demo walk" (SIMULATED source, x8, plan, start).
+ * TourControl snapshots, and the one-tap "Try a demo walk" (SIMULATED source, x8, plan, start), offered only while
+ * the Kraków course is active (its Royal Route track ships in the HAP; CourseRules.demoWalkOffered).
  */
 import { EngineSnapshot, TourPhase } from '../contracts/EngineTypes';
 import { Lang } from '../contracts/Model';
@@ -40,6 +41,7 @@ export class HomeViewModel {
   @Trace currentStopName: string = '';
   @Trace startingDemo: boolean = false;
   @Trace demoFailed: boolean = false;
+  @Trace demoOffered: boolean = false;
   private lang: Lang = Lang.EN;
   private unsubscribe: (() => void) | undefined = undefined;
 
@@ -47,9 +49,12 @@ export class HomeViewModel {
   refresh(lang: Lang): void {
     this.lang = lang;
     const pack = AppContainer.packRepository();
+    this.demoOffered = AppContainer.demoWalkOffered();
     const tour = findTour(pack, '');
     if (tour === undefined) {
       this.hasTour = false;
+      this.tourId = '';
+      this.placesCount = 0;
       return;
     }
     const ids = tour.stops.map((s) => s.poiId);
@@ -135,7 +140,7 @@ export class HomeViewModel {
 
   /** Home "Try a demo walk": SIMULATED source at x8, plan, start. Resolves true when Now Walking should open. */
   async tryDemoWalk(): Promise<boolean> {
-    if (this.startingDemo || this.tourId === '') {
+    if (this.startingDemo || this.tourId === '' || !AppContainer.demoWalkOffered()) {
       return false;
     }
     this.startingDemo = true;

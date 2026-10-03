@@ -7,13 +7,13 @@
  *  R1 Envelope: `{payload: <object>, sig: <base64 Ed25519 signature, 64 bytes>}`; the signed bytes are
  *     utf8(canonicalJson(payload)) (CanonicalJson.ets). Standard or URL-safe base64 are both accepted.
  *  R2 `expiresAt` of POST /v1/installs: epoch seconds, epoch milliseconds (>= 1e12) or an ISO-8601 string.
- *  R3 Course layout (SERVER.md §3.1): CourseManifest.files[].path mirrors the app's rawfile/ layout:
+ *  R3 Course layout (SERVER.md §3.1): CourseManifest.files[].path is the course layout (repo data/course/<id>/):
  *     `packs/<packId>/<file>` and `audio/...`. The pack manifest is the first of `packs/<packId>/manifest.json`,
  *     `manifest.json`, `pack/manifest.json` that is listed; the pack's other files sit next to it. The clip manifest
  *     is `audio.manifestPath` (default `audio/manifest.json`) and its clip paths (`audio/...`) are relative to the
- *     course root, exactly as the bundled rawfile/audio/manifest.json is relative to rawfile/.
- *  R6 Course version (SERVER.md §3.1): `<pack version>-a<first 8 hex of sha256(audio/manifest.json)>`, so the
- *     bundled course's own version is computed the same way (bundledCourseVersion) to compare with the catalog.
+ *     course root (the app bundles no course; everything is downloaded into filesDir/courses/<id>/<version>/).
+ *  R6 Course version (SERVER.md §3.1): `<pack version>-a<first 8 hex of sha256(audio/manifest.json)>`
+ *     (courseVersion), so it changes when the pack or the clips change.
  *  R4 Version: an opaque string; a catalog version different from the installed one is an update.
  *  R5 Ids and versions become folder names, so they are restricted to [A-Za-z0-9._-] (no '..').
  */
@@ -377,8 +377,8 @@ export function tokenUsable(t: InstallToken | undefined, nowMs: number): boolean
 export const TTS_MAX_TEXT_CHARS: number = 400;
 export const TTS_MAX_BODY_BYTES: number = 2048;
 
-/** R6: the catalog version of the bundled course, from its pack version and the sha256 of its clip manifest. */
-export function bundledCourseVersion(packVersion: string, audioManifestSha: string): string {
+/** R6: a course's catalog version, from its pack version and the sha256 of its clip manifest. */
+export function courseVersion(packVersion: string, audioManifestSha: string): string {
   if (!SHA256_RE.test(audioManifestSha)) {
     return packVersion;
   }

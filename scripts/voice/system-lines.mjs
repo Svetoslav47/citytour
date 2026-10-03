@@ -31,7 +31,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(HERE, '..', '..');
-export const DEFAULT_PACK_DIR = join(ROOT, 'entry/src/main/resources/rawfile/packs/krakow');
+export const DEFAULT_PACK_DIR = join(ROOT, 'data/course/krakow/packs/krakow');
 export const DEFAULT_TOUR_ID = 'royal-route';
 export const GOLDEN_PATH = join(ROOT, 'entry/src/test/fixtures/SystemLinesGolden.ets');
 export const GROUPS = ['system', 'arrival', 'nav'];

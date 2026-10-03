@@ -1,15 +1,15 @@
 /*
- * A downloaded course's pack (docs/SERVER.md §6): the same PackRepository as the bundled RawfilePackRepository (same
+ * A downloaded course's pack (docs/SERVER.md §6): a SourcePackRepository (same
  * parsing, same per-file size + SHA-256 checks against the pack's own manifest.json, same lazy narrations and maps),
- * reading from a folder under filesDir/courses/<id>/<version>/ instead of rawfile. Every file was also verified
+ * reading from a folder under filesDir/courses/<id>/<version>/. Every file was also verified
  * against the signed course manifest when it was downloaded (CourseStore).
- * The async read (pack load) uses fileIo.open/read Promises; the lazy sync read (narrations, maps; the same calls
- * the rawfile pack makes with getRawFileContentSync) uses openSync/readSync.
+ * The async read (pack load) uses fileIo.open/read Promises; the lazy sync read (narrations, maps) uses
+ * openSync/readSync.
  * Docs: API参考/Core_File_Kit_文件基础服务/ArkTS_API/ohos_file_fs_文件管理_/js-apis-file-fs.
  */
 import { fileIo as fs } from '@kit.CoreFileKit';
 import { FileStore } from '../remote/FileStore';
-import { PackSource, RawfilePackRepository } from './RawfilePackRepository';
+import { PackSource, SourcePackRepository } from './SourcePackRepository';
 
 export class FilePackSource implements PackSource {
   private readonly dir: string;
@@ -57,7 +57,7 @@ export class FilePackSource implements PackSource {
   }
 }
 
-export class FilePackRepository extends RawfilePackRepository {
+export class FilePackRepository extends SourcePackRepository {
   constructor(dir: string) {
     super(new FilePackSource(dir));
   }

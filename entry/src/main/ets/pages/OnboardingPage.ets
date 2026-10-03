@@ -1,6 +1,7 @@
 /*
  * Onboarding, 3 steps (task A12, DESIGN §3.1, Flow A §2.3; mockups docs/design/mockups/Onboarding{1,2,3}.dc.html).
- * 1 "Your guide fits in your pocket": the Royal Route from the bundled pack with plaques 1, 5, 11 and headphones.
+ * 1 "Your guide fits in your pocket": the Royal Route from the active course with plaques 1, 5, 11 and headphones
+ *   (just the headphones on first run: the app ships no built-in course).
  * 2 "How should the guide speak?": English / 中文 / Polski with the real voice status, Download for Laura, Play a sample.
  * 3 "Two permissions, and why": Location (+ location switch) and Notifications, each Allow opens the system UI.
  * A Swiper with disableSwipe(true) and custom dots (button driven, so no accidental swipe during a system dialog).

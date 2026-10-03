@@ -4,13 +4,13 @@
 // and the A9 turn-by-turn cues of the pack legs (scripts/voice/system-lines.mjs), so the guide speaks in one voice.
 //
 // Why build time: no API key in the app, no network at runtime, deterministic demo. The app plays a clip only when
-// rawfile/audio/manifest.json has an entry whose textSha256 equals SHA-256(UTF-8 of the exact sentence the app
+// audio/manifest.json of the downloaded course has an entry whose textSha256 equals SHA-256(UTF-8 of the exact sentence the app
 // speaks) for the same language and persona (core/speech/ClipSelection.ets); otherwise it uses native TTS.
 //
 // Input : Narration[] per language (contracts/Model.ets), default
-//         entry/src/main/resources/rawfile/packs/krakow/narrations/<lang>.json (B7 output).
+//         data/course/krakow/packs/krakow/narrations/<lang>.json (B7 output).
 //         --fixture uses scripts/voice/fixtures/narrations (the developer stub pack sentences).
-// Output: entry/src/main/resources/rawfile/audio/<lang>/<poiId>/<length>_<n>.mp3 and audio/manifest.json.
+// Output: data/course/krakow/audio/<lang>/<poiId>/<length>_<n>.mp3 and audio/manifest.json.
 //         (<length>_ prefix: teaser/full/deep of one stop each have their own sentence 0.)
 //         System lines: audio/<lang>/_<group>/<sha256 prefix>.mp3, manifest length=<group> (system|arrival|nav),
 //         poiId '' (the app matches on the text hash only; ClipIndex.hasLang ignores them for the story label).
@@ -22,7 +22,7 @@
 //   node scripts/voice/render-elevenlabs.mjs --dry-run                 # counts only, no key needed
 //   ELEVENLABS_API_KEY=... ELEVENLABS_VOICE_ID=... node scripts/voice/render-elevenlabs.mjs --limit 3
 //   ELEVENLABS_API_KEY=... ELEVENLABS_VOICE_ID=... node scripts/voice/render-elevenlabs.mjs
-// Options: --narrations-dir <dir> --out <rawfileDir> --langs en,pl,zh --lengths teaser,full,deep
+// Options: --narrations-dir <dir> --out <courseDir> --langs en,pl,zh --lengths teaser,full,deep
 //          --persona historian --tour <tour.json> | --all-pois --model <id> --output-format <fmt>
 //          --limit <n> --concurrency <n> --force --no-context --no-prune --fixture
 //          System lines (on by default, off with --fixture): --no-system | --system-only
@@ -40,9 +40,9 @@ import {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(HERE, '..', '..');
-export const DEFAULT_NARRATIONS_DIR = join(ROOT, 'entry/src/main/resources/rawfile/packs/krakow/narrations');
+export const DEFAULT_NARRATIONS_DIR = join(ROOT, 'data/course/krakow/packs/krakow/narrations');
 export const FIXTURE_NARRATIONS_DIR = join(HERE, 'fixtures/narrations');
-export const DEFAULT_OUT = join(ROOT, 'entry/src/main/resources/rawfile');
+export const DEFAULT_OUT = join(ROOT, 'data/course/krakow');
 export const DEFAULT_TOUR = join(ROOT, 'data/tours/royal-route.json');
 export const AUDIO_SUBDIR = 'audio';
 export const MANIFEST_NAME = 'manifest.json';
@@ -92,7 +92,7 @@ export function parseOutputFormat(fmt) {
   return { codec: 'mp3', sampleRate: Number(m[1]), kbps: Number(m[2]) };
 }
 
-/** Clip path inside rawfile (what the app passes to resourceManager.getRawFd). */
+/** Clip path relative to the course root (the downloaded course keeps the same layout). */
 export function clipRelPath(lang, poiId, length, n) {
   const safe = (s) => String(s).replace(/[^A-Za-z0-9_.-]/g, '_');
   return `${AUDIO_SUBDIR}/${safe(lang)}/${safe(poiId)}/${safe(length)}_${n}.mp3`;

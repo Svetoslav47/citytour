@@ -2,7 +2,7 @@
  * Pure clip selection for pre-rendered stop stories (task A13). No @kit imports: unit-tested in
  * entry/src/test/ClipSelection.test.ets.
  *
- * rawfile/audio/manifest.json is written by scripts/voice/render-elevenlabs.mjs: one entry per sentence
+ * The course's audio/manifest.json (downloaded with the course) is written by scripts/voice/render-elevenlabs.mjs: one entry per sentence
  * {lang, poiId, personaId, length, n, file, textSha256, durationMs, voiceId, model, ...}.
  * For every utterance NarrationPlayer asks selectAudio():
  *   prerendered  when the manifest has an entry with textSha256 == sha256(utf8(Utterance.text)) for the same
@@ -37,8 +37,6 @@ export const AUDIO_SRC_PRERENDERED: string = 'prerendered';
 export const AUDIO_SRC_TTS: string = 'tts';
 export const AUDIO_SRC_TEXT: string = 'text';
 
-export const CLIP_MANIFEST_RAWFILE: string = 'audio/manifest.json';
-
 /** Reasons in the NARR_AUDIO log line. */
 export class ClipReason {
   static readonly HASH_MATCH: string = 'hash_match';
@@ -58,7 +56,7 @@ export interface ClipEntry {
   personaId: string;
   length: string;
   n: number;
-  file: string;          // rawfile-relative, e.g. 'audio/en/poi_wd_Q807309/full_0.mp3'
+  file: string;          // course-relative in the manifest (absolute once loaded), e.g. 'audio/en/poi_wd_Q807309/full_0.mp3'
   textSha256: string;
   durationMs: number;    // 0 when unknown
 }

@@ -11,7 +11,7 @@ import { seedDataDir } from '../src/seed.js';
 import { DataStore } from '../src/store.js';
 
 const REPO = resolve(import.meta.dirname, '..', '..');
-const RAW = join(REPO, 'entry/src/main/resources/rawfile');
+const RAW = join(REPO, 'data/course/krakow');
 const SYSTEM_LINES = join(REPO, 'scripts/voice/system-lines.mjs');
 const silent = pino({ level: 'silent' });
 const sha = (s: string): string => sha256Hex(Buffer.from(s, 'utf8'));
@@ -66,7 +66,7 @@ describe('publishCourse (krakow)', () => {
   }, 60_000);
 });
 
-describe('seedDataDir (server/seed + rawfile, as in the Docker image)', () => {
+describe('seedDataDir (server/seed + data/course/krakow, as in the Docker image)', () => {
   const seed = join(REPO, 'server/seed');
 
   it.skipIf(!existsSync(join(seed, 'catalog.json')))('the committed seed matches the repo files and seeds an empty disk', async () => {

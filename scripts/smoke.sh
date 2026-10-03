@@ -5,6 +5,8 @@
 #        DEVICE=sdk24 scripts/smoke.sh          (any device name or serial from `devecocli device list`)
 # Options (env):
 #        SMOKE_DEMO=0             skip the Demo walk part (step 3): prints only "SMOKE: PASS"
+#        The Demo walk part needs the Kraków course already downloaded on the device (the app ships no built-in
+#        course: Home > Browse walks > Download once). On a fresh install use SMOKE_DEMO=0.
 #        SMOKE_FRESH=1            uninstall first (`devecocli run --uninstall`): fresh install
 #        SMOKE_DEMO_TIMEOUT=1500  seconds to wait for "STATE ... to=finished" (the full walk at x8 takes ~10-15 min)
 #        SMOKE_OUT=<dir>          where run.log, app.log, demo.log and demo-*.png go (default: a temp dir)
