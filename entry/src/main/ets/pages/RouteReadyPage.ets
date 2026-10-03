@@ -356,19 +356,26 @@ export struct RouteReadyPage {
               diameter: 36,
               onTap: () => this.app.back()
             })
-            Text($r('app.string.route_title'))
+            // The tour's own name (long names end in "…"; the capsule shrinks before the SIMULATED badge does).
+            Text(this.vm.title.length > 0 ? this.vm.title : $r('app.string.route_title'))
               .fontSize(17)
               .fontWeight(FontWeight.Medium)
               .fontColor($r('app.color.text_primary'))
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .flexShrink(1)
               .margin({ right: 20 })
           }
+          .flexShrink(1)
           .height(Size.TOUCH)
           .borderRadius(24)
           .backgroundColor($r('app.color.bg_scrim'))
           .backgroundBlurStyle(BlurStyle.COMPONENT_THICK)
 
           Blank()
+            .constraintSize({ minWidth: Space.S2 })
           SimulatedBadge({ visible: this.vm.demo })
+            .flexShrink(0)
         }
         .width('100%')
         .padding({ left: Space.S2 + this.sa.left, right: Space.S3 + this.sa.right, top: Space.S2 + this.sa.top })
