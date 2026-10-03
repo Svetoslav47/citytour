@@ -325,7 +325,8 @@ export struct RouteReadyPage {
           Column() {
             RoutePreview({
               points: this.vm.orderPreview.length > 0 ? this.vm.orderPreview : this.vm.preview,
-              boxHeight: 300
+              boxHeight: 300,
+              topInset: 56
             })
             this.panel()
           }

@@ -30,6 +30,8 @@ export struct RoutePreview {
   @Param points: PreviewPoint[] = [];
   /** Fixed height in vp; the width follows the parent. */
   @Param boxHeight: number = 260;
+  /** Space reserved at the top for floating header controls, so no plaque hides under them. */
+  @Param topInset: number = 0;
   /** Plaques bigger than this many are drawn as small dots to keep the preview readable. */
   @Param maxPlaques: number = 11;
   @Local boxWidth: number = 0;
@@ -51,9 +53,10 @@ export struct RoutePreview {
     }
     const spanX = Math.max(1, maxX - minX);
     const spanY = Math.max(1, maxY - minY);
-    const scale = Math.min((this.boxWidth - 2 * PAD) / spanX, (this.boxHeight - 2 * PAD) / spanY);
+    const usableH = Math.max(1, this.boxHeight - this.topInset);
+    const scale = Math.min((this.boxWidth - 2 * PAD) / spanX, (usableH - 2 * PAD) / spanY);
     const offX = (this.boxWidth - spanX * scale) / 2;
-    const offY = (this.boxHeight - spanY * scale) / 2;
+    const offY = this.topInset + (usableH - spanY * scale) / 2;
     for (const p of this.points) {
       const s = new ScreenPoint();
       s.x = offX + (p.x - minX) * scale;

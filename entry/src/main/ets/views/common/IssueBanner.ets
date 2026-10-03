@@ -100,13 +100,14 @@ export struct IssueBanner {
       .width('100%')
 
       if (this.actionLabel !== '' || this.secondaryLabel !== '') {
-        Row({ space: Space.S2 }) {
+        Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
           if (this.actionLabel !== '') {
             Button(this.actionLabel, { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.NORMAL })
               .id(this.actionId)
               .height(40)
               .fontSize(Type.CALLOUT)
               .fontColor($r('app.color.accent'))
+              .margin({ right: Space.S2, top: Space.S1 })
               .onClick(() => this.onAction())
           }
           if (this.secondaryLabel !== '') {
@@ -115,6 +116,7 @@ export struct IssueBanner {
               .height(40)
               .fontSize(Type.CALLOUT)
               .fontColor($r('app.color.accent'))
+              .margin({ top: Space.S1 })
               .onClick(() => this.onSecondary())
           }
         }

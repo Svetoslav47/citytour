@@ -238,7 +238,7 @@ export struct TourDetailPage {
         Scroll() {
           Column() {
             Stack({ alignContent: Alignment.TopStart }) {
-              RoutePreview({ points: this.vm.preview, boxHeight: 260 })
+              RoutePreview({ points: this.vm.preview, boxHeight: 260, topInset: 40 })
                 .accessibilityText($r('app.string.tour_map_a11y', this.vm.title, this.vm.stops.length))
               FloatingIconButton({
                 symbol: $r('sys.symbol.chevron_backward'),
