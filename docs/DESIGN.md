@@ -124,7 +124,7 @@ The happy path is written as **spoken (🔊)** and **screen (📱)** steps, beca
 2. 📱 **Onboarding 1/3, "Your guide fits in your pocket."** The one-line value proposition, plus a quiet illustration made of real UI: a route line with three plaque markers. Buttons: **Continue**, and **Skip** (top right).
 3. 📱 **Onboarding 2/3, "How should the guide speak?"** The visitor picks a narration language: **English (spoken)**, **中文 (spoken)**, or **Polski (text only)**. Voice status is checked inline:
    - If the voice is `INSTALLED`, a checkmark shows.
-   - If the voice is `GA` (downloadable), a **Download voice** button with progress shows. Laura (en-US) is marked "需下载" in the docs ✅, so English will *usually need a download*.
+   - If the voice is `GA` (downloadable), a **Download voice** button with progress shows. Laura (en-US) is `GA` but **can't be downloaded on the emulator** (error `1002300008`, RISKS a5). **Binding decision (HACKATHON_BRIEF):** English is then spoken by the zh-CN voice (聆小珊) and labelled **"Fallback voice"**; a device with Laura installed uses it automatically.
    - **Play a sample** speaks one line.
 4. 📱 **Onboarding 3/3, "Two permissions, and why."** Two rows:
    - **Location.** "Finds the next stop and knows when you've arrived. Used only while a tour is running." Button: **Allow**.
@@ -137,15 +137,15 @@ The happy path is written as **spoken (🔊)** and **screen (📱)** steps, beca
 - ✅ The docs say `LOCATION_IN_BACKGROUND` **can't be granted through a dialog** (the user has to go to Settings).
 - ✅ The supported pattern for navigation-type apps is: foreground precise location (`APPROXIMATELY_LOCATION` + `LOCATION`) **plus a LOCATION continuous task** that starts when the user explicitly taps **Start walking**.
 - The UX consequence: the only background disclosure the user needs is in the Before-you-go sheet: "While the tour runs, CityTour keeps using your location with the screen locked. You'll see a system notification. Stop any time."
-- ⚠️ Verify on the emulator that locked-screen location updates keep arriving under the continuous task without `LOCATION_IN_BACKGROUND`. If they don't, add a Settings deep-link step to Flow A (step 4b) and use the copy in §3.14.
+- ✅ VERIFIED on the emulator (RISKS c2): locked-screen location updates keep arriving under the continuous task without `LOCATION_IN_BACKGROUND`. The emulator does not freeze apps, so this is unverified on a real phone. If a device shows otherwise, add a Settings deep-link step to Flow A (step 4b) and use the copy in §3.14.
 
 #### Flow B: Choose → plan → start → lock → walk → arrive → narrate → next → finish
 
 | # | 📱 Screen | 🔊 Audio / haptic | Notes |
 |---|---|---|---|
 | 1 | **Home**: tap the *Royal Route* card | – | |
-| 2 | **Tour detail**: map preview, 11 stops, "2.0 km · about 1 h 20 min with stories". Tap **Start tour** | – | If location isn't granted, the permission request happens *here* (in context). |
-| 3 | **Route ready**: "Starting near you at the Cloth Hall. Optimised order: 2.3 km, 32 min walking." Options: start point, time available **(proposal: "I have N minutes")**. Tap **Begin** | – | Held–Karp runs in under 50 ms, so no spinner. If it takes over 300 ms, show an inline `LoadingProgress` (§3.4). |
+| 2 | **Tour detail**: map preview, 11 stops, "2.5 km · about 1 h 20 min with stories" (2,497 m / 33 min walking by OSRM foot; the story time is an estimate). Tap **Start tour** | – | If location isn't granted, the permission request happens *here* (in context). |
+| 3 | **Route ready**: "Starting near you at the Cloth Hall. Optimised order: {d} km, {t} min walking." (computed at runtime; illustrative only) Options: start point, time available **(proposal: "I have N minutes")**. Tap **Begin** | – | Held–Karp runs in under 50 ms, so no spinner. If it takes over 300 ms, show an inline `LoadingProgress` (§3.4). |
 | 4 | **Before you go** (sheet): ① Headphones in ② Volume check: **Play a test line** ③ "Lock your phone, I'll keep talking." Tap **Start walking** | 🔊 test line on demand | `startBackgroundRunning` (LOCATION + AUDIO_PLAYBACK) is called **here**, because it's user-initiated. That's required by the Background Tasks Kit rules ✅. |
 | 5 | **Now Walking** (heading to stop 1) | 🔊 earcon *start* → Welcome line (§5.3 W1). 📳 none | The AVSession card appears on the lock screen. |
 | 6 | User locks the phone and walks | 🔊 Directions only at decision points (D1–D3). Silence otherwise. | Optional "nearby" mentions only at Standard/Deep verbosity. |
@@ -175,17 +175,17 @@ The happy path is written as **spoken (🔊)** and **screen (📱)** steps, beca
 |---|---|---|
 | Location denied (first time) | Tour detail › Start tour | Inline `ExceptionPrompt`-style banner above the button: "CityTour needs your location to know when you reach each stop." Buttons: **Allow location**, which calls `requestPermissionOnSetting` ✅ (the system's second-chance sheet). Secondary: **Try a demo walk instead**. |
 | Precise location off (approximate only) | Same place | "Turn on precise location. Approximate location is accurate only to about 5 km, which isn't enough to find a doorway." **Turn on** → `requestPermissionOnSetting(['ohos.permission.LOCATION'])` |
-| System location switch off | Same place | "Location is off for this phone." **Turn on** → `atManager.requestGlobalSwitch(ctx, SwitchType.LOCATION)` ✅ (API exists; ⚠️ behaviour unverified on the emulator). |
+| System location switch off | Same place | "Location is off for this phone." **Turn on** → `atManager.requestGlobalSwitch(ctx, SwitchType.LOCATION)` ✅ (VERIFIED on the emulator, RISKS b1/b3: a fresh emulator has the switch off and returns `3301100`). |
 | Notifications denied | Settings › Permissions only. Never nag. | Row value "Off" → **Open settings** → `openNotificationSettingsWithResult` ✅ |
 | Mid-tour revocation | Now Walking banner | "Location access was turned off. **Allow** to continue." The tour is paused. |
 
 #### Flow E: Voice not installed or unavailable
 
 1. On every **Start tour**, call `listVoices`. If the selected voice is `GA` (downloadable):
-   - **Route ready** shows the row "English voice (Laura) needs a one-time download."
-   - Buttons: **Download** (`downloadVoice` with progress events `start/progress/complete/error` ✅), **Use Chinese voice**, **Read instead (text only)**.
-2. While downloading, an inline `Progress` (linear) shows with "Downloading voice… 42%". The user can still tap **Begin**; the tour then starts in text mode and switches to voice when the download completes, with a single toast: "Voice ready."
-3. If the download fails or there's no network, the row says "Couldn't download the voice. You can read the stories now and try again later." with **Try again**.
+   - **Route ready** shows the row "English is read by the Fallback voice (Chinese voice). The English voice (Laura) needs a one-time download."
+   - Buttons: **Download** (`downloadVoice` with progress events `start/progress/complete/error` ✅; fails on the emulator with `1002300008`), **Keep Fallback voice** (the default, binding decision), **Read instead (text only)**.
+2. While downloading, an inline `Progress` (linear) shows with "Downloading voice… 42%". The user can still tap **Begin**; the tour then starts with the Fallback voice and switches to Laura when the download completes, with a single toast: "Voice ready."
+3. If the download fails or there's no network, the row says "Couldn't download the voice. The Fallback voice will read English for now; try again later." with **Try again**.
 4. ⚠️ If the TTS engine itself fails (`createEngine` errors, possible on the emulator), CityTour switches globally to **text mode**. A persistent but quiet row in Now Walking reads: "Voice isn't available on this device. Stories appear as text." Earcons and haptics keep working.
 
 #### Flow F: Polish = text-only narration
@@ -250,7 +250,7 @@ Sentence by sentence (Polish): "Polskie opowieści są wyświetlane jako tekst. 
 | Step | Visual | Title | Body | Controls |
 |---|---|---|---|---|
 | 1 | A static vector of the Royal Route: the accent line from Barbican to Wawel over the muted map, three plaque markers (1, 5, 11), and a `headphones` symbol 32 vp next to the route start. No illustration people, no gradient. | **Your guide fits in your pocket** | "Put your headphones in, lock your phone and walk. The Historian leads you through Kraków and tells you about each place as you reach it." | **Continue** |
-| 2 | – (controls are the visual) | **How should the guide speak?** | "You can change this any time." | A `List` (card style) of 3 radio rows. Row: language name (body-emph), subtitle (callout), trailing `Radio`. ① *English*, "Spoken · Laura voice" with a status chip (*Installed* / *Download, ⚠️ size TBD*) ② *中文*, "Spoken · 聆小珊" ③ *Polski*, "Text only" with an ⓘ footnote about the platform limit. Below: **Play a sample** (`Button` NORMAL, `speaker_wave_2` symbol). The voice download uses an inline `Progress` (Linear) in the row. |
+| 2 | – (controls are the visual) | **How should the guide speak?** | "You can change this any time." | A `List` (card style) of 3 radio rows. Row: language name (body-emph), subtitle (callout), trailing `Radio`. ① *English*, "Spoken · Fallback voice" (zh-CN voice reading English; "Spoken · Laura voice" only if Laura is `INSTALLED`) with a status chip (*Installed* / *Download, ⚠️ size TBD; fails on the emulator*) ② *中文*, "Spoken · 聆小珊" ③ *Polski*, "Text only" with an ⓘ footnote about the platform limit. Below: **Play a sample** (`Button` NORMAL, `speaker_wave_2` symbol). The voice download uses an inline `Progress` (Linear) in the row. |
 | 3 | – | **Two permissions, and why** | – | Two `HdsListItem`- or `ListItem`-style rows. Each has a leading symbol (32 vp, accent), title, a 2-line reason and a trailing small **Allow** button. After grant: a `checkmark_circle_fill` in accent plus "Allowed". Footer `Text` (footnote): "Location is used only while a tour is running. Nothing leaves your phone." Primary button: **Done**. Secondary: **Set up later** (TEXTUAL). |
 
 **ArkUI:** a single `Swiper` with `disableSwipe(true)` (so it's button-driven, which avoids accidental swipes during permission prompts) and `indicator(false)` with custom dots. Or use three `NavDestination`s. Either is fine; Swiper is less code.
@@ -289,7 +289,7 @@ Sentence by sentence (Polish): "Polskie opowieści są wyświetlane jako tekst. 
 │ │ The Royal Route          │ │  ← title3
 │ │ From the Barbican to     │ │
 │ │ Wawel Hill               │ │  ← callout secondary, 2 lines
-│ │ 11 stops · 2.0 km ·      │ │
+│ │ 11 stops · 2.5 km ·      │ │
 │ │ ~1 h 20 min              │ │  ← footnote, tabular numbers
 │ │ The Historian · EN 中文 PL│ │  ← chips (Chip small, outline)
 │ └──────────────────────────┘ │
@@ -314,7 +314,7 @@ Sentence by sentence (Polish): "Polskie opowieści są wyświetlane jako tekst. 
 - **Offline pack missing or corrupt** (should never happen, since it's bundled): full-screen `ExceptionPrompt` ✅ with "Tour data couldn't be loaded. Reinstall the app or contact us." It needs no retry action, because the pack is local.
 - **Dark mode:** the thumbnail map uses the dark map style (§4.8). Pre-render both variants.
 
-**Accessibility:** the tour card reads "The Royal Route. From the Barbican to Wawel Hill. 11 stops, 2.0 kilometres, about 1 hour 20 minutes. Guide: The Historian. Button." Spell out units in `accessibilityText` (screen readers read "km" badly).
+**Accessibility:** the tour card reads "The Royal Route. From the Barbican to Wawel Hill. 11 stops, 2.5 kilometres, about 1 hour 20 minutes. Guide: The Historian. Button." Spell out units in `accessibilityText` (screen readers read "km" badly).
 
 ### 3.3 Tour detail
 
@@ -332,12 +332,12 @@ Sentence by sentence (Polish): "Polskie opowieści są wyświetlane jako tekst. 
 │ from the city gate to the    │
 │ castle.                      │  ← body secondary
 │                              │
-│ ⟟ 2.0 km   ◷ ~1 h 20 min   11 │  ← 3 stat columns (title3 tabular + caption label)
+│ ⟟ 2.5 km   ◷ ~1 h 20 min   11 │  ← 3 stat columns (title3 tabular + caption label)
 │  walk        with stories  stops
 │                              │
 │ ┌ Guide ──────────────────┐  │
 │ │ ◉ The Historian       › │  │  ← persona row (§6); › only when >1 persona
-│ │ English · Laura voice   │  │
+│ │ English · Fallback voice│  │
 │ └─────────────────────────┘  │
 │                              │
 │ STOPS                        │
@@ -385,11 +385,11 @@ Sentence by sentence (Polish): "Polskie opowieści są wyświetlane jako tekst. 
 │ Starting near you            │  ← overline
 │ Cloth Hall, 120 m away       │  ← title2
 │                              │
-│ 2.3 km · 32 min walking ·    │
+│ {d} km · {t} min walking ·   │
 │ ~1 h 25 min with stories     │  ← body, tabular
-│ ✓ Optimised order: 640 m     │
+│ ✓ Optimised order: {saved} m │
 │   shorter than the listed    │
-│   order                      │  ← callout, accent checkmark; only if saving ≥ 50 m
+│   order                      │  ← callout, accent checkmark; only if saving ≥ 50 m. {saved} is computed at runtime: "640 m" in the mockups is a placeholder, not a measured value
 │                              │
 │ START FROM                   │
 │ ( My location | First stop ) │  ← SegmentButton (capsule)
@@ -452,7 +452,7 @@ Sentence by sentence (Polish): "Polskie opowieści są wyświetlane jako tekst. 
 │   status bar                 │
 │                         [◎]  │  ← recenter (only if user panned FullMap… n/a here) / "Expand"
 ├──────────────────────────────┤  ← panel: bg.surface, radius r.xl top corners, shadow e2
-│ NEXT · STOP 5                │  ← overline (caption, secondary)
+│ NEXT · STOP 4                │  ← overline (caption, secondary)
 │ Cloth Hall                   │  ← title2 22fp bold, 2 lines max
 │                              │
 │  180 m          ╭─•─╮        │  ← display 34fp tabular   |  LOOK CUE / DIRECTION DIAL (72vp)
@@ -503,12 +503,12 @@ A 72 vp half-dial that is always relative to the direction you're walking.
 
 | State | Overline | Title | Hero | Look cue | Now playing card | Extra |
 |---|---|---|---|---|---|---|
-| **Heading to stop** | NEXT · STOP 5 | Cloth Hall | 180 m / about 2 min | dot at the relative bearing | last story or a directions line "Walk down Floriańska Street…" | – |
+| **Heading to stop** | NEXT · STOP 4 | Cloth Hall | 180 m / about 2 min | dot at the relative bearing | last story or a directions line "Walk down Floriańska Street…" | – |
 | **Approaching** (≤ radius + 30 m) | IN 50 M · ON YOUR LEFT | St Mary's Basilica | 50 m | dot left, emphasised (ring) | – | earcon |
-| **Arrived / story playing** | YOU'RE HERE · STOP 4 | St Mary's Basilica | "Look left and up" (title3 replaces the distance) | dot left + arrow up | story, Story 1 of 3 | **Tell me more** button appears in the card when the main story ends and a Deep layer exists |
-| **Teaser (walking past)** (proposal) | PASSING · STOP 4 | St Mary's Basilica | – | – | teaser text + chip "Short version · stop for a moment to hear the full story" | – |
+| **Arrived / story playing** | YOU'RE HERE · STOP 3 | St Mary's Basilica | "Look left and up" (title3 replaces the distance) | dot left + arrow up | story, Story 1 of 3 | **Tell me more** button appears in the card when the main story ends and a Deep layer exists |
+| **Teaser (walking past)** (proposal) | PASSING · STOP 3 | St Mary's Basilica | – | – | teaser text + chip "Short version · stop for a moment to hear the full story" | – |
 | **Paused** | PAUSED | (same) | (same, values dimmed to `text.secondary`) | static | play_fill large | – |
-| **Reading (text-only PL)** | JESTEŚ TUTAJ · PRZYSTANEK 4 | Kościół Mariacki | – | dot | The card expands to the **full transcript** (scrollable, 20 fp/30), controls hidden, replaced by **Następny przystanek** ("next stop") | the map shrinks to 200 vp |
+| **Reading (text-only PL)** | JESTEŚ TUTAJ · PRZYSTANEK 3 | Kościół Mariacki | – | dot | The card expands to the **full transcript** (scrollable, 20 fp/30), controls hidden, replaced by **Następny przystanek** ("next stop") | the map shrinks to 200 vp |
 | **Weak GPS** (accuracy > 30 m) | (normal) | | distance shown with "~" prefix | dot shown at 50% opacity | | banner `exclamationmark_triangle_fill`: "Weak GPS: distances may jump." |
 | **No GPS** (> 20 s) | WAITING FOR GPS | Cloth Hall | "—" | hidden | | banner + **Try a demo walk** |
 | **Off route** (proposal) | OFF ROUTE | Cloth Hall | 220 m | dot behind, right | | banner "Re-planned from here." |
@@ -524,7 +524,7 @@ Location   Demo walk (SIMULATED) · 4×      ← or "Location Kit · GNSS ±6 m"
 Course     212° · 1.3 m/s
 Next       Cloth Hall · 180 m · bearing +18°
 Trigger    approach @65 m · arrive @35 m
-Voice      Core Speech TTS · en-US Laura · speaking
+Voice      Core Speech TTS · zh-CN reads EN (Fallback voice) · speaking
 Session    AVSession active · playing
 Background LOCATION + AUDIO_PLAYBACK running
 Spatial    not supported on this output     ← proposal
@@ -642,7 +642,7 @@ It's dismissable and remembers its state per session. It's for demos, but honest
 │ Saturday, 3 October          │  ← callout
 │ [SIMULATED WALK]             │  ← pill, only if demo
 │                              │
-│  11/11     2.3 km    1 h 24m │  ← stat trio (title2 tabular + caption)
+│  11/11     2.5 km    1 h 24m │  ← stat trio (title2 tabular + caption)
 │  stops     walked    total   │
 │                              │
 │ YOU HEARD                    │
@@ -665,7 +665,7 @@ A `NavDestination` with title "Settings" (Full mode) and a `List` with `ListItem
 |---|---|---|---|
 | **Narration** | Story language | → sub-page with radio `List` | English (spoken) · 中文 (spoken) · Polski (text only) · *Listen in English, read in Polish* |
 | | App language | → sub-page | System · English · Polski · 中文 → `i18n.System.setAppPreferredLanguage` ✅ |
-| | Voice | → Voice page | "Laura · Installed". The page lists the voices for the language with status, **Download**/progress, **Play a sample**, and **Speed** `Slider` 0.8×–1.4× (step 0.1, `enableHapticFeedback` ✅). TTS speed range is 0.5–2 ✅. We cap it for intelligibility. |
+| | Voice | → Voice page | "Fallback voice (Chinese voice reads English)" on the emulator; "Laura · Installed" only on a device that has it. The page lists the voices for the language with status, **Download**/progress, **Play a sample**, and **Speed** `Slider` 0.8×–1.4× (step 0.1, `enableHapticFeedback` ✅). TTS speed range is 0.5–2 ✅. We cap it for intelligibility. |
 | | Guide | → Guide page (§6) | "The Historian" |
 | | Detail level | `SegmentButton` | **Brief** · **Standard** · **Deep**. Footnote changes per value: "Brief: about 1 minute per stop." / "Standard: about 3 minutes per stop, with directions." / "Deep: the full story, plus nearby places along the way." |
 | **Walking** | Spoken directions | `Toggle` (Switch) | On. Footnote: "Short directions at turns between stops." |
@@ -757,15 +757,15 @@ Never more than **one** CityTour notification visible at a time (HIG `notificati
 **2×4: Active**
 ```
 ┌──────────────────────────────────┐
-│ NEXT · STOP 5 OF 11      [SIMUL.]│
+│ NEXT · STOP 4 OF 11      [SIMUL.]│
 │ Cloth Hall             180 m     │
 │ ahead, slightly right  ~2 min    │
-│ ●──●──●──●──◉──○──○──○──○──○──○  │  ← progress plaques (visited filled, next ringed)
+│ ●──●──●──◉──○──○──○──○──○──○──○  │  ← progress plaques (visited filled, next ringed)
 │ ▍▍ St Mary's Basilica   ⟲  ❚❚  ⏭ │  ← now playing + 3 controls (call events)
 └──────────────────────────────────┘
 ```
 
-- **2×4 Idle:** the route thumbnail at left (1:1), with "The Royal Route · 2.0 km · ~1 h 20 min" and a **Start** button at right.
+- **2×4 Idle:** the route thumbnail at left (1:1), with "The Royal Route · 2.5 km · ~1 h 20 min" and a **Start** button at right.
 - **Stale state:** if there's been no update for over 5 min while the tour is active, show "Paused" instead of a distance. Never show a stale distance as if it were live.
 - Dark: the system card background. The accent is used only for the button and the next plaque.
 
@@ -1047,7 +1047,7 @@ All haptics are optional (Settings › Vibrate on arrival). Check `vibrator.isSu
   5. **Close** with a look-again detail.
 - **Never:** "As an AI", lists read aloud, URLs, parentheses, abbreviations (write "Saint", not "St."; numbers in words for ZH where natural).
 - **Pauses:** use the Core Speech Kit pause markup `[p300]` between sentences that change the subject, and `[p600]` before a "look" instruction ✅ (`[pN]` = N ms of silence). Use `[n1]` for years so they're read as numbers ✅ (`[nN]` number-reading mode). ⚠️ Verify that `[n1]`/`[n2]` behave as expected for years like 1489.
-- **Pronunciation:** Polish proper names in EN narration use the English exonym where one exists (St Mary's Basilica, Cloth Hall, Wawel). The first mention adds the Polish name only if it's speakable by the en-US voice ("Sukiennice" will be mangled, so put it on screen, not in audio).
+- **Pronunciation:** Polish proper names in EN narration use the English exonym where one exists (St Mary's Basilica, Cloth Hall, Wawel). The first mention adds the Polish name only if it's speakable by the voice in use: Laura (en-US) or, on the emulator, the zh-CN Fallback voice, which mangles Polish names even more ("Sukiennice" will be mangled, so put it on screen, not in audio).
 
 ### 5.2 Earcons
 
@@ -1153,7 +1153,7 @@ The UI treats the guide as a first-class, swappable object. With one persona, th
 
 | Surface | Now (1 persona) | Later (≥ 2) |
 |---|---|---|
-| Tour detail "Guide" row | Shows "The Historian" + "English · Laura voice", **no chevron**, not tappable. A11y: "Guide: The Historian." | Chevron → a Guide picker sheet: a list of persona cards (monogram avatar 40 vp on `accent.subtle`, name, tagline, **Play sample**). Selection is a radio. |
+| Tour detail "Guide" row | Shows "The Historian" + "English · Fallback voice" (or "Laura voice" if installed), **no chevron**, not tappable. A11y: "Guide: The Historian." | Chevron → a Guide picker sheet: a list of persona cards (monogram avatar 40 vp on `accent.subtle`, name, tagline, **Play sample**). Selection is a radio. |
 | Settings › Guide | A page with one persona card and a sample button. Footnote: "More guides are coming." No disabled placeholders. | The same list as the picker. |
 | Now Walking | Persona name in the AVSession artist line only. | Same. Switching persona mid-tour isn't allowed (it changes stories); it's only offered before Start. |
 | Tour card on Home | Chip "The Historian" | Chips per available persona |
@@ -1206,7 +1206,7 @@ Ordered by how much it matters to the demo *and* the user. P0 must exist by the 
 ## 8. Open questions and assumptions to verify (owner: devs, on the emulator)
 
 1. ⚠️ Locked-screen location updates with the LOCATION continuous task and **without** `LOCATION_IN_BACKGROUND`. This decides whether onboarding needs a Settings step.
-2. ⚠️ TTS on the emulator: is `createEngine` OK, and what is the voice state (`GA`/`INSTALLED`)? What is the download size of Laura?
+2. ✅ ANSWERED (RISKS a1–a7): zh-CN `createEngine` works and is `INSTALLED`; en-US Laura is `GA`, `createEngine` fails (`1002300005`) and `downloadVoice` fails (`1002300008`) on the emulator. Hence the binding "Fallback voice" decision.
 3. ⚠️ AVSession card rendering on the emulator lock screen. Is `singleLyricText` displayed?
 4. ⚠️ Are `SymbolGlyph` and custom drawing allowed in ArkTS widgets?
 5. ⚠️ Is there a system "reduce motion" or "high contrast" query for ordinary apps? (None was found in the SDK search.)
@@ -1243,39 +1243,39 @@ Ordered by how much it matters to the demo *and* the user. P0 must exist by the 
 >
 > **Screens to render:**
 > 1. **Onboarding 1/3.** Top-right "Skip". A static map snippet with the accent route and plaques 1, 5, 11, and a small headphones icon. Title "Your guide fits in your pocket". Body "Put your headphones in, lock your phone and walk. The Historian leads you through Kraków and tells you about each place as you reach it." 3 progress dots. A full-width capsule button "Continue".
-> 2. **Onboarding 2/3, "How should the guide speak?"** Three radio rows in a card: English, "Spoken · Laura voice" with a small "Download" chip and a thin progress bar at 40%; 中文, "Spoken · 聆小珊"; Polski, "Text only". The footnote reads: "Polish stories are shown as text. On-device speech currently speaks English and Chinese." A "Play a sample" secondary button. "Continue".
+> 2. **Onboarding 2/3, "How should the guide speak?"** Three radio rows in a card: English, "Spoken · Fallback voice" with a small "Download English voice" chip; 中文, "Spoken · 聆小珊"; Polski, "Text only". The footnote reads: "Polish stories are shown as text. On-device speech currently speaks English and Chinese." A "Play a sample" secondary button. "Continue".
 > 3. **Onboarding 3/3, "Two permissions, and why."** Location row ("Finds the next stop and knows when you've arrived. Used only while a tour is running.") with "Allowed ✓". Notifications row ("Tells you when you arrive if your screen is off.") with a small "Allow" button. Footnote "Nothing leaves your phone." Buttons "Done" and "Set up later".
 > 4. **Home.** Large title "CityTour", subtitle "Kraków · offline ready ✓", gear icon. A "NOW WALKING" continue card: "The Royal Route · Stop 4 of 11 · Cloth Hall", an accent progress bar, "Open" and "End tour". Section "GUIDED TOURS": a tour card with a 16:9 route map thumbnail, "The Royal Route", "From the Barbican to Wawel Hill", "11 stops · 2.0 km · ~1 h 20 min", and chips "The Historian", "EN 中文 PL". Section "EXPLORE": a row "All places in Kraków, 3,412 places, offline".
-> 5. **Tour detail.** A 260-pt map preview with the full route and 11 plaques under a transparent back button. Title "The Royal Route", description "The kings' coronation path, from the city gate to the castle." A stat row: "2.0 km walk", "~1 h 20 min with stories", "11 stops". A Guide row "The Historian · English · Laura voice". "STOPS": a vertical list of 11 plaques joined by a thin line, each with a name and "3 min" story length. "ABOUT THESE STORIES: Drafted with AI, reviewed by a person. 23 sources cited." A sticky bottom button "Start tour".
-> 6. **Route ready.** Title "Your route". A map with the user dot near the Cloth Hall and renumbered plaques. "Starting near you": "Cloth Hall, 120 m away". "2.3 km · 32 min walking · ~1 h 25 min with stories". An accent check line: "Optimised order: 640 m shorter than the listed order". Segmented control "START FROM: My location | First stop". Segmented control "TIME AVAILABLE: All stops | 45 min | 90 min". Bottom button "Begin".
+> 5. **Tour detail.** A 260-pt map preview with the full route and 11 plaques under a transparent back button. Title "The Royal Route", description "The kings' coronation path, from the city gate to the castle." A stat row: "2.5 km walk", "~1 h 20 min with stories", "11 stops". A Guide row "The Historian · English · Fallback voice". "STOPS": a vertical list of 11 plaques joined by a thin line, each with a name and "3 min" story length. "ABOUT THESE STORIES: Drafted with AI, reviewed by a person. 23 sources cited." A sticky bottom button "Start tour".
+> 6. **Route ready.** Title "Your route". A map with the user dot near the Cloth Hall and renumbered plaques. "Starting near you": "Cloth Hall, 120 m away". "{d} km · {t} min walking · ~1 h 25 min with stories" (computed). An accent check line: "Optimised order: {saved} m shorter than the listed order" (computed at runtime; "640 m" in the mockups is a placeholder). Segmented control "START FROM: My location | First stop". Segmented control "TIME AVAILABLE: All stops | 45 min | 90 min". Bottom button "Begin".
 > 7. **Before you go (bottom sheet over Route ready).** Three numbered rows: "Headphones in", "Check the volume" with a "Play a test line" button, "Lock your phone. I'll keep talking and tell you where to look." Footnote about the background location notification. Button "Start walking".
 > 8. **Now Walking (hero screen).**
 >    - The top 40% is a heading-up map under the status bar. Over it, a floating capsule header: "⌄ Royal Route 4/11 ⋯".
->    - Below, a white panel with 28-pt top corners: overline "NEXT · STOP 5", title "Cloth Hall", a huge "180 m" with "about 2 min" under it, and to the right a 72-pt **Look cue**. The Look cue is a thin top-half arc with a small accent dot at about 20° right of top, captioned "ahead, slightly right".
+>    - Below, a white panel with 28-pt top corners: overline "NEXT · STOP 4", title "Cloth Hall", a huge "180 m" with "about 2 min" under it, and to the right a 72-pt **Look cue**. The Look cue is a thin top-half arc with a small accent dot at about 20° right of top, captioned "ahead, slightly right".
 >    - A sunken "now playing" card: a waveform icon, "St Mary's Basilica", the current sentence in 18-pt text ("The taller tower, on your left, is where the trumpeter plays…"), a thin progress bar and "Story 2 of 3".
 >    - A control row: replay (56), a big accent play/pause (72), skip (56). Text buttons "Transcript" and "Stops (11)".
 >    - Also render the variants: (a) **Arrived** (overline "YOU'RE HERE · STOP 4", title "St Mary's Basilica", "Look left and up" in place of the distance, the dial dot on the left with a small up arrow, a "Tell me more" button); (b) **Demo walk** with an amber "SIMULATED" pill under the header and a hollow blue user ring; (c) **Dark mode**; (d) **Reading mode (Polish, text-only)** with the map shrunk to 200 pt and the panel showing "JESTEŚ TUTAJ · PRZYSTANEK 4", "Kościół Mariacki" and the full transcript in 20-pt text.
 > 9. **Full map.** A full-bleed map, floating round back/layers/recenter buttons, "© OpenStreetMap contributors". A bottom place-card sheet at medium height: "Cloth Hall", "Market hall · 14th c.", "180 m, ahead right", a 2-line teaser, chip "Tour story", buttons "Listen" and "Details". Also render an **Explore** variant: grey dots for all places, small count clusters, a dashed "UNESCO Old Town" boundary, and filter chips "Tour stops · Monuments 395 · Plaques 923 · Heritage · Museums".
 > 10. **Place detail.**
->     - A 4:3 photo with page dots and a licence caption. Overline "STOP 4 · CHURCH · 14TH C.", title "St Mary's Basilica", "Kościół Mariacki", "180 m · ahead, slightly left".
+>     - A 4:3 photo with page dots and a licence caption. Overline "STOP 3 · CHURCH · 14TH C.", title "St Mary's Basilica", "Kościół Mariacki", "180 m · ahead, slightly left".
 >     - Buttons "▶ Listen · 4 min" (accent) and "Tell me more".
 >     - A "LOOK" box on accent-subtle: "The taller tower, on your left as you face the front. Look up to the top window."
 >     - Transcript paragraphs with the current sentence marked by a 3-pt accent left rule. FACTS rows (Built · Height · Altarpiece).
 >     - SOURCES as a numbered list with licences. An info footnote: "Drafted with AI from the sources above, reviewed by a person on 3 Oct 2026."
 >     - Light and dark.
-> 11. **Tour summary.** "Tour complete" with "Done". A map with the grey walked line and all plaques ✓. "The Royal Route · Saturday, 3 October". A stat trio "11/11 stops · 2.3 km walked · 1 h 24 min". The "YOU HEARD" list. "Sources and credits".
+> 11. **Tour summary.** "Tour complete" with "Done". A map with the grey walked line and all plaques ✓. "The Royal Route · Saturday, 3 October". A stat trio "11/11 stops · 2.5 km walked · 1 h 24 min". The "YOU HEARD" list. "Sources and credits".
 > 12. **Settings.** Grouped card list:
->     - Narration: Story language (English), App language (System), Voice (Laura · Installed), Guide (The Historian), Detail level segmented (Brief | Standard | Deep) with a footnote.
+>     - Narration: Story language (English), App language (System), Voice (Fallback voice · zh-CN reads English), Guide (The Historian), Detail level segmented (Brief | Standard | Deep) with a footnote.
 >     - Walking: Spoken directions toggle, Mention places along the way toggle, "Start the story when I'm within" segmented (20 m | 35 m | 50 m).
 >     - Sound and haptics: Arrival chime, Vibrate on arrival.
 >     - Offline data: "Kraków pack · 3,412 places · 48 MB · Included".
 >     - Demo: "Demo walk (simulated location)" toggle ON, revealing "Replay speed" 1× 2× 4× 8× and an amber footnote "Everything simulated is labelled SIMULATED".
 >     - Permissions: Location "Precise · while using", Notifications "On".
 >     - About.
-> 13. **Lock screen (light and dark).** A HarmonyOS lock screen with the system media card for CityTour: artwork = an accent plaque with "5", title "Walking to Cloth Hall", subtitle "Next: Cloth Hall · 180 m", controls ⏮ (replay), ⏯, ⏭ (skip), and a one-line lyric "Walk down Floriańska Street, towards the brick church." Below it, a small system notification "CityTour is using your location".
+> 13. **Lock screen (light and dark).** A HarmonyOS lock screen with the system media card for CityTour: artwork = an accent plaque with "4", title "Walking to Cloth Hall", subtitle "Next: Cloth Hall · 180 m", controls ⏮ (replay), ⏯, ⏭ (skip), and a one-line lyric "Walk down Floriańska Street, towards the brick church." Below it, a small system notification "CityTour is using your location".
 > 14. **Home-screen widgets** on a neutral wallpaper.
->     - 2×2 active: "NEXT · 5/11", "Cloth Hall", "180 m", "ahead, right", a play/pause icon.
->     - 2×4 active: "NEXT · STOP 5 OF 11", "Cloth Hall · 180 m · ~2 min", "ahead, slightly right", a row of 11 small plaques with 4 filled and the 5th ringed, and a now-playing line "St Mary's Basilica" with ⟲ ⏯ ⏭.
+>     - 2×2 active: "NEXT · 4/11", "Cloth Hall", "180 m", "ahead, right", a play/pause icon.
+>     - 2×4 active: "NEXT · STOP 4 OF 11", "Cloth Hall · 180 m · ~2 min", "ahead, slightly right", a row of 11 small plaques with 3 filled and the 4th ringed, and a now-playing line "St Mary's Basilica" with ⟲ ⏯ ⏭.
 >     - 2×2 idle: "The Royal Route · 11 stops", "Start".
 >
 > **Quality bar:** every text ≥ 12 pt; every touch target ≥ 48 pt; contrast ≥ 4.5:1 for text; the accent used only for primary actions, the route, the next-stop marker and progress; one SIMULATED style (amber) used consistently; sentence case everywhere except overlines.

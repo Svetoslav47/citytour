@@ -30,7 +30,7 @@
 ### Two platform risks the whole team must know (VERIFIED in the docs)
 
 1. **Region.** Location Kit (on non-wearables) and Core Speech Kit are documented as **"supported only in mainland China"**. The emulator is set to region CN (README setup step 2), so it is our primary target. On a real non-China device, TTS may fail and location may be "abnormal". That is why the **text-only fallback** (§9) and the **Demo walk** are first-class features, not afterthoughts.
-2. **The English voice must be downloaded.** In the voice docs, `person 8` (Laura, en-US) is marked "需下载" (needs download), while zh `person 13` is built in. The onboarding flow must check `listVoices()` and call `downloadVoice()`. Spike S1 tests this on the emulator in the first hour.
+2. **The English voice must be downloaded, and the download fails on the emulator.** In the voice docs, `person 8` (Laura, en-US) is marked "需下载" (needs download), while zh `person 13` is built in. Spike result (RISKS §1 a4–a6, VERIFIED-RUN): `createEngine` en-US fails with `1002300005` and `downloadVoice` fails with `1002300008`. **Binding decision (HACKATHON_BRIEF):** English text is spoken by the zh-CN voice (聆小珊, person 13), labelled **"Fallback voice"** in the UI; the `listVoices()` → `downloadVoice()` path stays in code so a device with Laura installed uses it (PLAN §0.4).
 
 ---
 
@@ -133,7 +133,7 @@ flowchart TB
 | Capability | Kit / module | Key APIs | Permission | Emulator | Status |
 |---|---|---|---|---|---|
 | Continuous location | Location Kit, `geoLocationManager` from `@kit.LocationKit` | `on('locationChange', ContinuousLocationRequest{interval:1, locationScenario: UserActivityScenario.NAVIGATION}, cb)`, `off(...)`, `on('locationError')` (API 12), `isLocationEnabled()`, `getLastLocation()` | `APPROXIMATELY_LOCATION` + `LOCATION` | Kit supports emulator; GPS set from the emulator GUI only | VERIFIED |
-| Background run | Background Tasks Kit, `backgroundTaskManager` from `@kit.BackgroundTasksKit` | `startBackgroundRunning(ctx, ['location','audioPlayback'], wantAgent)` (API 12), `stopBackgroundRunning(ctx)`, `on('continuousTaskCancel')` (15), `on('continuousTaskSuspend')` (20) | `KEEP_BACKGROUND_RUNNING` + `backgroundModes` in module.json5 | ASSUMPTION: works on emulator (spike S2) | VERIFIED API |
+| Background run | Background Tasks Kit, `backgroundTaskManager` from `@kit.BackgroundTasksKit` | `startBackgroundRunning(ctx, ['location','audioPlayback'], wantAgent)` (API 12), `stopBackgroundRunning(ctx)`, `on('continuousTaskCancel')` (15), `on('continuousTaskSuspend')` (20) | `KEEP_BACKGROUND_RUNNING` + `backgroundModes` in module.json5 | VERIFIED-RUN on the emulator, screen off, 100 s (RISKS c1–c5); the emulator does not freeze apps, so a real phone is unverified | VERIFIED API |
 | TTS | Core Speech Kit, `textToSpeech` from `@kit.CoreSpeechKit` | `createEngine`, `listVoices` (19), `downloadVoice` (19), `setListener({onStart,onData,onComplete,onStop,onError})`, `speak(text, {requestId, extraParams:{playType:0,...}})`, `stop()`, `shutdown()` | none | "supported on emulator from 6.0.0(20)" | VERIFIED |
 | Audio out | Audio Kit, `audio` from `@kit.AudioKit` | `audio.createAudioRenderer(options)`, `on('writeData')` (11), `on('audioInterrupt')` (9), `on('outputDeviceChangeWithInfo')` (11), `start/pause/stop/release`, `getAudioTimestampInfo` (19) | none | yes (speaker only) | VERIFIED |
 | Lock-screen and headset controls | AVSession Kit, `avSession` from `@kit.AVSessionKit` | `createAVSession(ctx, 'CityTour', 'audio')`, `on('play'/'pause'/'playNext'/'playPrevious'/'toggleFavorite'/'stop')`, then `activate()`, `setAVMetadata`, `setAVPlaybackState`, `destroy` | none | supported (no casting, speaker only) | VERIFIED |
@@ -231,7 +231,7 @@ backgroundTaskManager.on('continuousTaskSuspend', (i) => log.w('BG_SUSPEND', `re
 
 - **When.** At `START_TOUR`, from the foreground: `NowWalkingPage`'s "Start" button triggers `TourController.start()`, which holds the `UIAbilityContext` from `AppContainer`. Stop at `Finished`/`Aborted`/`shutdown()`. Stop it *before or with* stopping audio (VERIFIED: "停止长时任务的同时，需要暂停或停止音频流，否则应用会被系统强制终止").
 - **Notification.** From API 20, once AVSession is connected, "the background task module sends no notification; AVSession sends it" (VERIFIED). Our lock-screen and notification-shade presence is therefore the **AVSession media card**, whose metadata we keep meaningful (§2.6).
-- **Spike S2 (ASSUMPTION to prove in hour 1–2).** Lock the emulator screen, run the Demo walk for 3 min, and check for: no `BG_SUSPEND` log; the next story playing; fixes keeping arriving.
+- **Spike S2 (partly VERIFIED-RUN, RISKS c2/c5: 100 s screen-off with fixes and speech; the 3 min silent gap is still unproven).** Lock the emulator screen, run the Demo walk for 3 min, and check for: no `BG_SUSPEND` log; the next story playing; fixes keeping arriving.
   - **Fallback B, if suspension happens during silent gaps:** keep the `AudioRenderer` started for the whole tour and write zero-PCM between items. The session really is an active narration session; we would disclose this in README.
   - **Fallback C:** `setWindowKeepScreenOn(true)` plus a "keep screen on" banner.
 
@@ -242,7 +242,7 @@ backgroundTaskManager.on('continuousTaskSuspend', (i) => log.w('BG_SUSPEND', `re
 | lang | `CreateEngineParams` |
 |---|---|
 | zh-CN | `{ language:'zh-CN', person:13, online:1, extraParams:{ style:'interaction-broadcast', locate:'CN', name:'citytour-zh', isBackStage:true } }` (聆小珊, built in) |
-| en-US | `{ language:'en-US', person:8, online:1, extraParams:{ style:'interaction-broadcast', locate:'CN', name:'citytour-en', isBackStage:true } }` (Laura, **needs download**) |
+| en-US | `{ language:'en-US', person:8, online:1, extraParams:{ style:'interaction-broadcast', locate:'CN', name:'citytour-en', isBackStage:true } }` (Laura, **needs download; download fails on the emulator**, RISKS a4/a5) |
 
 - `online` must be `1` (offline): online mode is unsupported (VERIFIED).
 - `name` must be unique, otherwise `shutdown()` of one engine kills the other (VERIFIED, FAQ faqs-core-speech-1).
@@ -253,7 +253,7 @@ backgroundTaskManager.on('continuousTaskSuspend', (i) => log.w('BG_SUSPEND', `re
 2. If en/8 is `GA`, show "Download English voice" and call `downloadVoice({requestId, language:'en-US', person:8, style:'interaction-broadcast'}, cb)`. This shows a system dialog. Track `DownloadResponse.on('progress'|'complete'|'error'|'cancel')`.
    - Error `1002300010` means "already downloaded", which counts as success.
    - Error `1002300008` means the download failed.
-3. **Fallback if the English voice is unavailable (ASSUMPTION, spike S1).** The docs list "中文语境下的英文" (English in a Chinese context) as supported, so the zh engine can read English text. Offer "Speak English with the Chinese voice (accented)". If that is also unusable, go **text-only** (§9).
+3. **Fallback if the English voice is unavailable (VERIFIED-RUN that it synthesizes, RISKS a6; quality judged by a human at gate G1).** The docs list "中文语境下的英文" (English in a Chinese context) as supported, so the zh engine can read English text. **This is the default on the emulator (binding decision), labelled "Fallback voice".** If G1 rejects it, go **text-only** for English (§9, PLAN §0.4 `AUTO_NATIVE_THEN_TEXT`).
 
 **Speaking.**
 - `speak(sentence, { requestId: '<itemId>#<idx>#<uuid>', extraParams: { playType: 0, queueMode: 0, speed: persona.speed, pitch: persona.pitch, volume: 1.0, languageContext: lang, audioType: 'pcm' } })`.
@@ -523,7 +523,7 @@ Then `rel = normalize(bearing(user → poi) − course)` in (−180, 180]:
 
 ### 4.6 Turn-by-turn between stops (`core/route/LegTracker.ets` + `Guidance.ets`)
 
-- **Input.** The pack ships an OSRM route (`steps=true`, `overview=full`) for **every directed pair of tour stops** (12 stops → 132 legs). The order is decided at runtime, so all pairs are needed.
+- **Input.** The pack ships an OSRM route (`steps=true`, `overview=full`) for **every directed pair of tour stops** (11 stops → 110 legs). The order is decided at runtime, so all pairs are needed.
 - **Leg 0 (user → first stop).** It has no precomputed geometry. We use **bearing guidance** ("Wawel Cathedral is 420 m ahead on your left") until the user is within 30 m of any precomputed leg polyline, then snap to it. (Stretch: one online OSRM route call with a 5 s timeout. It would need `INTERNET`, so it is not in v1.)
 - **Progress.** Project the fix onto the leg polyline (`pointToSegment`, monotonic search from the last index) to get `alongM` and `crossTrackM`, the next step and `distToManeuverM`.
 - **Cues** (P1, dedupe per step):
@@ -796,7 +796,7 @@ ArkTS notes for implementers:
 
 | Tier | Used for | Produced by | Label in UI |
 |---|---|---|---|
-| `REVIEWED_HISTORIAN` | the 10–12 tour stops: teaser + full + deep, en (and zh/pl) | LLM draft from source claims → **human review** (`reviewedBy` required) | "Historian script · reviewed · N sources" |
+| `REVIEWED_HISTORIAN` | the 11 tour stops: teaser + full + deep, en (and zh/pl) | LLM draft from source claims → **human review** (`reviewedBy` required) | "Historian script · reviewed · N sources" |
 | `GROUNDED_AI` | top ~500 non-tour POIs by importance (P2) | LLM condensation **only from the attached source text**, auto-validated | "Short summary based on Wikipedia/City register · AI-assisted" |
 | `SOURCE_EXTRACT` | all other POIs with any source text | the first 1–2 sentences of the Wikipedia summary or register description, verbatim | "From Wikipedia" / "From Kraków heritage register" |
 | `NAME_ONLY` | POIs without text | template "{name}, {kind}{, built in {year} if from Wikidata}" | "Basic info" |
@@ -855,7 +855,7 @@ There is **no code change**:
 
   | `textLang` (captions, PlaceDetail) | `voiceLang` options | Default `voiceLang` |
   |---|---|---|
-  | en | en (Laura) / off | en |
+  | en | en (Laura if `INSTALLED`, else the zh-CN voice reading English, labelled "Fallback voice") / off | en |
   | zh | zh (聆小珊) / off | zh |
   | pl | **off (text only)** / en / zh | **off**, with a visible note: "Polish voice isn't available on this device's speech engine; narration is shown as text. You can choose English or Chinese voice." |
 
@@ -1102,6 +1102,8 @@ export interface EngineSnapshot {
 
 ### 12.3 Ownership and branches
 
+> **Superseded for execution by `docs/PLAN.md` §1 (ownership, with four listed adjustments) and §3 (timeline, sleep, freezes).** Kept here as the original design rationale.
+
 | Person | Focus | Branches (in order) |
 |---|---|---|
 | **A: Engine & Platform** | contracts, core geo/route/tour, location sources, TTS/audio, background, AVSession, notification, haptics, controller, test/smoke scripts, module.json5 | `feat/contracts` → `cap/tts-pcm` (spike S1) → `cap/background-lock` (spike S2) → `feat/core-geo-route` → `feat/tour-engine` → `cap/location-sources` → `feat/controller-wiring` → `cap/avsession-notify-haptics` → `feat/turn-by-turn` |
@@ -1121,7 +1123,7 @@ export interface EngineSnapshot {
 | 15:15–17:00 | **S1** TTS playType 0 → PcmPlayer on the emulator (voices, en download, zh) · **S2** background with screen locked | stages 40–60 (merge, OSRM, map); `PackParser` + tests; **S3** canvas perf |
 | 17:00–19:15 | HeldKarp, TriggerPolicy, AnnouncementQueue, TourEngine + tests; DemoWalkSource; TourController | RawfilePackRepository; Index/Home/TourDetail/NowWalking with FakeTourControl; MapCanvas v1; strings en/pl/zh |
 | 19:15–20:00 | **Integrate on main**: real controller replaces the fake; Demo walk triggers en narration on the emulator; smoke; **checkpoint upload** (.hap + README capability table) | same |
-| 20:00–01:00 | AVSession + background in the tour flow; error matrix rows 1–16; turn-by-turn + off-route; notification + haptics | narration drafting for 12 stops (LLM) → **both humans review en**; validator in pipeline; PlaceDetail with sources/tier labels; Settings; Summary |
+| 20:00–01:00 | AVSession + background in the tour flow; error matrix rows 1–16; turn-by-turn + off-route; notification + haptics | narration drafting for 11 stops (LLM) → **both humans review en**; validator in pipeline; PlaceDetail with sources/tier labels; Settings; Summary |
 | Night | sleep shifts: **A 01:00–05:00**, **B 03:00–07:00** (the awake one only does low-risk polish/docs) | |
 | 07:00–09:00 | feature freeze 08:00; bug fixes from the demo dry-run; orienteering slider (if green) | map polish; zh/pl text pass; widget only if everything else is green |
 | 09:00–10:00 | **Record the demo** (emulator; Demo walk at x4; logs split screen; lock-screen segment) | README "Mocked/simulated", "Platform capabilities used" with code links, AI_WORKFLOW |
@@ -1136,6 +1138,8 @@ export interface EngineSnapshot {
 ---
 
 ## 13. Spikes and open risks
+
+> **Results so far (RISKS §1, Sat 14:10):** S1 answered: PCM via `onData` works (16 kHz mono); en `person 8` is `GA` but `createEngine` and `downloadVoice` fail on the emulator, so the zh-CN "Fallback voice" is the default. S2 partly answered: `['location','audioPlayback']` + AVSession kept fixes and speech alive for 100 s screen-off; the 3 min silent gap is unproven. S3–S5 are open.
 
 | ID | Question | How to prove it (≤ 45 min each) | If it fails |
 |---|---|---|---|

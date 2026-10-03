@@ -1664,7 +1664,7 @@ Helper prompt: "Draft docs/submission/description.md (<= 500 words, English) and
 - `entry/src/main/ets/viewmodel/TourPlanViewModel.ets`
 
 **Scope.**
-- Segmented "All stops | 45 min | 90 min" calling TourControl.plan(tourId, budgetMin); show "Best 7 of 11 stops · 2.9 km · solved exactly in N ms".
+- Segmented "All stops | 45 min | 90 min" calling TourControl.plan(tourId, budgetMin); show "Best {k} of 11 stops · {d} km · solved exactly in {ms} ms (values computed at runtime; the full route is 2.5 km)".
 
 **Definition of Done.**
 - [ ] Changing the budget re-plans instantly; ROUTE_PLAN log shows budget and chosen stops.

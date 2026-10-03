@@ -4,13 +4,13 @@
 
 **Status: work in progress (built during HackYeah 2026, 3–4 Oct 2026).**
 
-CityTour is a mobile tour guide that follows you through the city. It tracks where you are and which way you are facing. When you reach a place of historic or cultural significance, it explains that place to you.
+CityTour is a mobile tour guide that follows you through the city. It tracks where you are and which way you are walking. When you reach a place of historic or cultural significance, it explains that place to you.
 
 Project scope and decisions are recorded in [`HACKATHON_BRIEF.md`](HACKATHON_BRIEF.md).
 
 ## Challenge area
 
-To be confirmed in `HACKATHON_BRIEF.md`. Candidates: Spatial Experiences (positioning, sensing), Human-Centric Technology (cultural experiences, accessibility) and Intelligent Experiences (contextual awareness).
+**Spatial Experiences** (lead), with Human-Centric Technology (cultural experiences) as the secondary area. Recorded in `HACKATHON_BRIEF.md`.
 
 ## Platform capabilities used
 
@@ -69,7 +69,7 @@ The debug `.hap` is written to `entry/build/default/outputs/default/`.
 
 ### Signing
 
-Debug builds run unsigned on the emulator. For the signed `.hap` we submit, open the project in DevEco Studio and go to **File → Project Structure → Signing Configs → Automatically generate** (this needs a Huawei account). Signing material stays out of git (see `.gitignore`).
+Debug builds run unsigned on the emulator, and the `.hap` we submit is the **unsigned debug build** from a tagged commit (verified to install and run on the emulator; see `docs/PLAN.md` task S4). Signing is only needed for a physical device: open the project in DevEco Studio and go to **File → Project Structure → Signing Configs → Automatically generate** (this needs a Huawei account). That writes `signingConfigs` into `build-profile.json5`; never commit it. Signing material stays out of git (see `.gitignore`).
 
 ## Development workflow
 

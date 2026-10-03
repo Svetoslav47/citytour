@@ -55,6 +55,8 @@ Make these visible in the demo through four moments:
 
 ### 1.3 Demo video: the first 60 seconds, shot by shot
 
+> **For the actual recording, PLAN task S5 is the storyboard** (≤ 60 s, P0 features only). Shots 3 ("I have 45 min", X1), 8 (mid-tour 中文 switch, X2) and 9 (HUD, B12) below depend on P2 stretch tasks and are only usable if they ship.
+
 The workshop said "the emulator is the expected default" and "say plainly what is real and what is faked". So the video runs mostly on the **Pura 90 emulator**, with an always-visible `SIMULATED WALK` badge, plus one optional real-world clip that is clearly labelled.
 
 **Production format:**
@@ -66,9 +68,9 @@ The workshop said "the emulator is the expected default" and "say plainly what i
 |---|---|---|---|---|
 | 1 | 0:00–0:05 | **Cold open (optional real-world clip).** A teammate in Kraków puts in earbuds, locks the phone, pockets it and starts walking. | Caption: *"Real street, staged shot. Audio below is the app's actual output, recorded from the emulator."* If no clip is filmed, use a single still photo of the Rynek with the same caption. | Usefulness, honesty |
 | 2 | 0:05–0:10 | Title card | **CityTour: a guide in your pocket.** Built at HackYeah 2026 · HarmonyOS 6.1.1 (API 24) · runs offline. | Demo clarity |
-| 3 | 0:10–0:17 | Emulator: Home → **"I have 45 min"** chip | The route draws on the Canvas map. Caption overlay shows the pill: `Best 7 of 11 stops · 2.9 km · 43 min · solved exactly in 9 ms`. | Usefulness, tech |
+| 3 | 0:10–0:17 | Emulator: Home → **"I have 45 min"** chip | The route draws on the Canvas map. Caption overlay shows the pill: `Best {k} of 11 stops · {d} km · {t} min · solved exactly in {ms} ms` (all values computed at runtime; the full 11-stop route is 2.5 km / 33 min walking, so a subset must be shorter). | Usefulness, tech |
 | 4 | 0:17–0:22 | Tap **Start**, press the emulator's power button | Lock screen shows the media card: **"Stop 1/7 · Sukiennice (Cloth Hall)"** with ⏯ ⏭ controls (AVSession). | **Platform** |
-| 5 | 0:22–0:35 | Split screen: lock screen on the left; on the right the **live Demo-walk map** with a moving dot labelled `SIMULATED`, plus a scrolling `hilog` filtered to `CityTour` | Voice (Laura, en-US): *"You're entering the Main Square. The long arcaded hall straight ahead, slightly to your left, is the Cloth Hall…"* The log shows `LOC course=212° speed=1.3m/s → TRIGGER arrive Sukiennice → LOOK left 34°`. | **Spatial**, platform, tech |
+| 5 | 0:22–0:35 | Split screen: lock screen on the left; on the right the **live Demo-walk map** with a moving dot labelled `SIMULATED`, plus a scrolling `hilog` filtered to `CityTour` | Voice (the zh-CN **"Fallback voice"** reading English, per the binding decision; Laura en-US only on a device that has it installed): *"You're entering the Main Square. The long arcaded hall straight ahead, slightly to your left, is the Cloth Hall…"* The log shows `LOC course=212° speed=1.3m/s → TRIGGER arrive Sukiennice → LOOK left 34°`. | **Spatial**, platform, tech |
 | 6 | 0:35–0:41 | The demo walk passes a minor plaque without stopping | Short teaser only: *"On your right, a plaque marks where Copernicus lodged. Tap 'more' later."* Caption: **"Walk past → teaser. Stop → full story."** | Intelligence, originality |
 | 7 | 0:41–0:47 | Toggle **airplane mode** in the emulator's quick settings | Tour continues. Caption: **"Offline. No cloud, no API keys, no map vendor."** | **Sovereignty**, platform |
 | 8 | 0:47–0:54 | Unlock, tap **中文** | The same stop continues in 聆小珊 (zh-CN). The UI switches to Chinese, and the Polish text transcript shows on swipe. Caption: *"Spoken: EN/中文. Text: EN/PL/中文."* | Human-centric, platform |
@@ -153,7 +155,7 @@ All of these were verified in the offline docs on 2026-10-03.
 | 2 | Background execution | **Background Tasks Kit** `backgroundTaskManager.startBackgroundRunning(context, ['location', 'audioPlayback'], wantAgent)`. The multi-mode overload is verified (returns `ContinuousTaskNotification`); `updateBackgroundRunning` also exists. | Keeps the guide alive while locked | ✅ |
 | 3 | On-device speech | **Core Speech Kit** `textToSpeech.createEngine`, `speak` with `extraParams: { playType: 0 }`, then the `onData` PCM stream (verified FAQ) | The guide's voice, EN and 中文 | ❌ HarmonyOS-only, so it sits behind the `VoiceEngine` interface |
 | 4 | Our own audio pipeline | **Audio Kit** `AudioRenderer` (PCM), audio focus/interrupt handling | Avoids the Xiaoyi (Celia) channel volume issue; enables ducking and spatial audio later | ✅ |
-| 5 | System media integration | **AVSession Kit** `createAVSession(…, 'audio')`, metadata, playback state, control commands | Lock screen, control centre, headset buttons; and (per the docs FAQ) automatic Live View | ✅ (the OpenHarmony avsession module) |
+| 5 | System media integration | **AVSession Kit** `createAVSession(…, 'audio')`, metadata, playback state, control commands | Lock screen, control centre, headset buttons (lock-screen pill and Control Center card VERIFIED-RUN, RISKS d1); automatic Live View is a docs claim, **unverified** on the emulator | ✅ (the OpenHarmony avsession module) |
 | 6 | Glanceable status | **Notification Kit** (continuous-task notification); **Form Kit** widget | "Next stop" without opening the app | ✅ |
 | 7 | Spatial audio awareness | **Audio Kit** `AudioSpatializationManager` (API 18+); **OHAudioSuite** space render (API 23, C) | Directional narration (STRETCH) | ⚠️ AudioSuite is likely HarmonyOS-only. Unverified for Oniro. |
 | 8 | Haptics | **Sensor Service Kit** `@ohos.vibrator` | Arrival and turn cues | ✅ |
@@ -184,7 +186,7 @@ Jurors skim, so every capability needs **three proofs**: README row, in-app evid
   ⏱ Continuous task   modes=[location, audioPlayback]  ✓ running
   🧠 Trigger engine    nearest=Sukiennice 18 m · state=ARRIVED · queue=[teaser:Plaque#311]
   🧭 Look cue          relative bearing −34° → "on your left"
-  🗣 Core Speech TTS   engine=en-US Laura (INSTALLED) · playType=0 · PCM 16 kHz
+  🗣 Core Speech TTS   engine=zh-CN 聆小珊 reading EN (Fallback voice; en-US Laura not installable on the emulator) · playType=0 · PCM 16 kHz
   🔊 AudioRenderer     state=RUNNING · focus=granted
   🎛 AVSession         active · metadata "Stop 1/7 Sukiennice" · cmds [play,pause,next,prev]
   🎧 Spatialization    supported=false (emulator)   ← honest
@@ -192,9 +194,9 @@ Jurors skim, so every capability needs **three proofs**: README row, in-app evid
 - Every row is a real value read from the service. Nothing in it is decorative.
 
 **3. Logs.**
-- `hilog` domain `0xC170`, tags `CT.Loc`, `CT.Trig`, `CT.TTS`, `CT.AVS`, `CT.BG`.
+- `hilog` domain `0xC17A`, one tag `CityTour`, format `EVENT k=v` (ARCHITECTURE §10 and PLAN §0.3 are binding; the per-area tags below are illustrative only).
 - One structured line per event, e.g. `CT.Trig arrive poi=sukiennice d=17.8m v=1.2 course=212 rel=-34 cue=LEFT`.
-- The README contains a copy-paste command: `hdc hilog | grep "CT\."`.
+- The README contains a copy-paste command: `devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --follow`.
 - The video shows the log panel scrolling **while the screen is locked**. That is the strongest available proof of background execution.
 
 **4. Tests as evidence.**
@@ -246,7 +248,7 @@ Jurors skim, so every capability needs **three proofs**: README row, in-app evid
 4. **Sovereign by construction (the framing for this jury):**
    - **Content:** comes from the city of Kraków's own open ArcGIS services, OSM and Wikipedia. Each script cites its source; AI-drafted text is human-reviewed and labelled.
    - **Distribution:** an open **Tour Pack** format (JSON plus a schema). A municipality, museum, school or local historian can publish a tour **without asking Google, Apple, Huawei or a content marketplace for permission.** The app is a *player*, the same way a podcast app plays RSS.
-   - **Runtime:** no API keys in the repo, no cloud calls at runtime, no Map Kit, no account. The core is pure OpenHarmony API and so runs on **Oniro**. HarmonyOS-only Kits sit behind interfaces with fallbacks.
+   - **Runtime:** no API keys in the repo, no cloud calls at runtime, no Map Kit, no account. The core is pure OpenHarmony API and so *should* run on **Oniro** (untested; do not claim it in the submission without a run). HarmonyOS-only Kits sit behind interfaces with fallbacks.
    - **Pitch line:** *"Kraków publishes the data. Your phone tells the story. Nobody in between."*
 
 ---

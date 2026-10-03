@@ -62,6 +62,7 @@
      - The weak point is that the jury does not understand the narration.
    - **C. Keep en-US in the code**, with the `listVoices` → `downloadVoice` flow and graceful fallback to A or B when the voice is not installed. Claim en-US only as "works on devices with the Laura voice", and mark it UNVERIFIED.
    - **Recommendation: C + A.** The fallback is real error handling, which scores technical-execution points, and the demo still talks in English.
+   - **DECIDED (user, 2026-10-03, HACKATHON_BRIEF):** C + A. English is spoken by the zh-CN voice, labelled "Fallback voice"; Laura is used automatically where installed. Gate G1 (a human listens) still decides whether the fallback is intelligible; if not, PLAN §0.4 switches English to text-only.
    - Ask the Huawei mentors **today** whether they have a device or emulator image with Laura installed.
 2. **The docs say both Core Speech Kit and Location Kit are "China mainland only".**
    - Core Speech Kit intro, 支持的国家/地区: "仅适用于中国境内".
@@ -131,10 +132,10 @@
 - **Mitigation:**
   - Data is built offline by a script: Python or Node, run once.
   - Sources in order: Wikidata SPARQL (P131 = Kraków, P625 coordinates, sitelinks for pl/en/zh) → Kraków ArcGIS (`Pomnik`, `EOZ_Zabytki_*`) → Overpass only as an optional enrichment.
-  - The OSRM matrix covers tour stops only (12×12 = 1 request).
+  - The OSRM matrix covers tour stops only (11×11 = 1 request).
   - **Commit the raw snapshots** (`data/raw/*.json` with fetch date) so the build never needs the network.
 - **CUT/fallback:**
-  - If the full POI pack is not committed by **18:00**, ship the tour stops (hand-curated JSON, 10–12 stops) plus the 395 ArcGIS monuments only.
+  - If the full POI pack is not committed by **18:00**, ship the tour stops (hand-curated JSON, 11 stops) plus the 395 ArcGIS monuments only.
   - If OSRM fails, use haversine × 1.3 as the walking-distance proxy, labelled in README.
 
 **T16. Native Canvas vector map.** P4 × I4.
@@ -216,7 +217,7 @@
 - **Wikipedia (CC BY-SA 4.0):** any narration adapted from Wikipedia text (including AI-drafted paraphrase) is an adaptation. It must be CC BY-SA, credited with the article title, a link and "Wikipedia contributors", and must be **separate from the code licence**.
 - **Wikidata:** CC0, so no obligation; credit it anyway.
 - **Kraków ArcGIS:** **licence UNVERIFIED.** Check the item's "Terms of use" before shipping. If unclear, use it only for coordinates and cite it.
-- **OSRM demo server:** fair use only. One 12×12 matrix is fine; batch thousands of POIs is not.
+- **OSRM demo server:** fair use only. One 11×11 matrix (plus 110 leg routes at 1 request/s) is fine; batch thousands of POIs is not.
 - **Mitigation:** `data/ATTRIBUTION.md`, an in-app About/Sources screen, and per-place `sources[]` in the schema (already in the brief).
 - **CUT:** if time runs out, the minimum by **Sun 08:00** is a README section plus the About screen with static text.
 
@@ -296,6 +297,8 @@
 
 ## 4. Timeline with hard decision points
 
+> **Superseded for execution by `docs/PLAN.md` §3** (gates G1–G12, merge windows, sleep A 00:30–04:00 / B 04:00–07:30, **feature freeze Sun 03:00**, code freeze 09:30, own upload target 10:00). Where this table differs (e.g. the 15:30 default, the 09:30 "feature" freeze in §3.6, the sleep shifts in §3.4), PLAN wins. The 15:30 fallback is now English **text-only** (PLAN §0.4), not option B, because the user chose A.
+
 | When (CEST) | Gate | If not met |
 |---|---|---|
 | Sat 15:30 | A human listens to the zh voice reading English; the user picks T1 option A, B or C+A | Default to **B** (Chinese voice + trilingual subtitles) |
@@ -328,7 +331,7 @@
 ## 6. Recommended MVP cut line
 
 **Above the line (must ship; this is the demo):**
-1. One tour, the Royal Route, 10–12 stops: hand-checked coordinates, Historian scripts in **EN/PL/ZH text**, with `sources[]`.
+1. One tour, the Royal Route, 11 stops (2,497 m, 33 min OSRM foot): hand-checked coordinates, Historian scripts in **EN/PL/ZH text**, with `sources[]`.
 2. Held–Karp order from the start position, using the committed OSRM matrix (haversine fallback).
 3. A `LocationSource` with real Location Kit (permission + `requestGlobalSwitch` + error states) **and** DemoWalk (SIMULATED badge) producing speed and course.
 4. Arrival detection with hysteresis, never interrupting mid-sentence (a queue), unit-tested.
