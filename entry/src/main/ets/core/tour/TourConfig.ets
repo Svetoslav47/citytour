@@ -16,6 +16,11 @@ export class TourConfig {
   // ---- Triggers (§4.3) ----
   /** Arrival geofence when neither the tour stop nor the POI sets one. */
   defaultTriggerRadiusM: number = 35;
+  /**
+   * Settings "Start the story when I'm within" (B9): every stop's arrival radius is multiplied by this (20 m -> 0.57,
+   * 35 m -> 1, 50 m -> 1.43; the curated radii are tuned for 35 m). 1 = the curated radii unchanged.
+   */
+  triggerRadiusScale: number = 1;
   /** "Coming up" cue radius. */
   approachRadiusM: number = 110;
   /** Approaching -> Walking when farther than approachR * 1.3 ... */
@@ -80,7 +85,7 @@ export class TourConfig {
 
   /** One log line with every tunable, for `TOUR_CONFIG` at the start of a tour. */
   toLogKv(): string {
-    return `trigR=${this.defaultTriggerRadiusM} approachR=${this.approachRadiusM} ` +
+    return `trigR=${this.defaultTriggerRadiusM} trigScale=${this.triggerRadiusScale} approachR=${this.approachRadiusM} ` +
       `approachExit=${this.approachExitFactor}x/${this.approachExitHoldMs}ms exitFactor=${this.exitFactor} ` +
       `maxAcc=${this.maxTriggerAccuracyM} netMaxAcc=${this.networkMaxTriggerAccuracyM} ` +
       `accCap=${this.accuracyAllowanceCapM} enter=${this.enterConfirmFixes}/${this.enterConfirmMinSpanMs}ms ` +
