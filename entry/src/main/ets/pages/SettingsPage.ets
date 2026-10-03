@@ -6,8 +6,8 @@
  * segDetail<brief|standard|deep>, rowSpokenDirections, segTrigger<20|35|50>, rowVibrate, rowDemoWalk,
  * segSpeed<1|2|4|8>, rowLocation, rowNotifications, rowHowMade, rowSources, rowShowIntro.
  *
- * Honesty: "Mention places along the way" and "Arrival chime" have no engine behind them in this build, so they are
- * shown disabled with "Not in this build yet" instead of a switch that does nothing.
+ * Honesty: "Mention places along the way" and "Arrival chime" have no engine behind them in this build, so their
+ * rows are left out (DESIGN §3.11 lists them; the strings stay for when they ship).
  */
 import { LocRow, NotifRow } from '../core/onboarding/OnboardingRules';
 import { DetailLevel, TRIGGER_DISTANCES_M, DEMO_SPEEDS } from '../core/settings/SettingsRules';
@@ -124,11 +124,6 @@ export struct SettingsPage {
         onToggle: (on: boolean) => this.vm.setSpokenDirections(on)
       })
       RowDivider()
-      ToggleRow({
-        title: $r('app.string.settings_mention_places'), subtitle: $r('app.string.settings_not_in_build'),
-        isOn: false, active: false, rowId: 'rowMentionPlaces'
-      })
-      RowDivider()
       SegmentRow({
         title: $r('app.string.settings_trigger'), options: TRIGGER_OPTIONS, selected: `${this.vm.triggerM()}`,
         idPrefix: 'segTrigger', onSelect: (k: string) => this.vm.setTriggerM(Number(k))
@@ -141,11 +136,6 @@ export struct SettingsPage {
   sound() {
     SectionHeader({ label: $r('app.string.settings_sound_haptics') })
     SettingsCard() {
-      ToggleRow({
-        title: $r('app.string.settings_arrival_chime'), subtitle: $r('app.string.settings_not_in_build'),
-        isOn: false, active: false, rowId: 'rowChime'
-      })
-      RowDivider()
       ToggleRow({
         title: $r('app.string.settings_vibrate'), subtitle: $r('app.string.settings_vibrate_note'),
         isOn: this.vm.extras.vibrateOnArrival, rowId: 'rowVibrate', onToggle: (on: boolean) => this.vm.setVibrate(on)
