@@ -363,6 +363,16 @@ export struct NowWalkingPage {
               .fontSize(Type.CALLOUT)
               .fontColor($r('app.color.accent'))
               .onClick(() => this.vm.openStops())
+              .bindSheet(this.vm.showStopsSheet, this.stopsSheet(), {
+                detents: [SheetSize.MEDIUM, SheetSize.LARGE],
+                dragBar: true,
+                showClose: true,
+                preferType: SheetType.BOTTOM,
+                title: { title: $r('app.string.stops_sheet_title') },
+                onDisappear: () => {
+                  this.vm.showStopsSheet = false;
+                }
+              })
           }
           .width('100%')
         }
@@ -441,16 +451,6 @@ export struct NowWalkingPage {
     .id('pageNowWalking')
     .hideTitleBar(true)
     .backgroundColor($r('app.color.bg_canvas'))
-    .bindSheet(this.vm.showStopsSheet, this.stopsSheet(), {
-      detents: [SheetSize.MEDIUM, SheetSize.LARGE],
-      dragBar: true,
-      showClose: true,
-      preferType: SheetType.BOTTOM,
-      title: { title: $r('app.string.stops_sheet_title') },
-      onDisappear: () => {
-        this.vm.showStopsSheet = false;
-      }
-    })
     .onShown(() => {
       Log.i(LogEvents.APP_PAGE, 'page=NowWalking shown');
     })

@@ -9,6 +9,7 @@ import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from '../app/LogEvents';
 import { PreviewPoint } from '../views/common/RoutePreview';
+import { AppViewModel } from './AppViewModel';
 import { withTimeout } from './Async';
 import { localName } from './Format';
 import { findTour, listedMetres, personaName, poiName, previewPoints } from './PackView';
@@ -126,6 +127,7 @@ export class HomeViewModel {
       await withTimeout(tc.setSource(FixSource.DEMO).then((): boolean => true), CONTROL_TIMEOUT_MS, false,
         'tour.setSource.demo');
       tc.setDemoSpeed(DEMO_HOME_SPEED);
+      AppViewModel.get().demoSpeed = DEMO_HOME_SPEED;
       Log.i(LogEvents.LOC_SOURCE, `kind=demo where=home speed=${DEMO_HOME_SPEED}`);
       const planned = await withTimeout(tc.plan(this.tourId, 0).then((): boolean => true), CONTROL_TIMEOUT_MS, false,
         'tour.plan');
