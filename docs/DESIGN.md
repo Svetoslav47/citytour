@@ -190,6 +190,8 @@ The happy path is written as **spoken (🔊)** and **screen (📱)** steps, beca
 
 #### Flow F: Polish = text-only narration
 
+> **A13 update.** With the ElevenLabs clips in the app, Polish stop stories are **spoken** by the pre-recorded studio voice (onboarding row "Spoken · Studio voice", Settings "Polski (spoken · studio voice)", Now Walking chip "Studio voice"). Directions, arrival lines and deep stories have no clip and stay on-screen text in Polish. The text-only flow below applies when no clips ship.
+
 When the narration language is **Polski**, there are two modes, chosen in onboarding step 2 and in Settings:
 - **Read in Polish (text only)** is the default for PL. Arrival = earcon + haptic + an **arrival notification** ("Jesteś przy: Kościół Mariacki", meaning "You're at St Mary's Basilica") that opens the transcript. Now Walking puts the transcript first (§3.6, Reading state) at 20 fp. Directions arrive as short notifications only at decision points, with no audio.
 - **Listen in English, read in Polish.** The voice is English. The transcript and on-screen text are Polish (the same content IDs). This is the "subtitles" mode.
