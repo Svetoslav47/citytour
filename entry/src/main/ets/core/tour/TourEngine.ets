@@ -58,7 +58,7 @@ import { RemapResult, firstUnplayedIndex, matchStory, remapItemTexts } from './L
 import { FilteredFix, FixFilter } from '../geo/FixFilter';
 import { CourseEstimate, CourseEstimator, CourseSource } from '../geo/CourseEstimator';
 import { bearingDeg, haversineM, relDir } from '../geo/GeoMath';
-import { KRAKOW_PROJECTION, Projection } from '../geo/Projection';
+import { Projection } from '../geo/Projection';
 import {
   approachSentence, arrivalSentences, finishSentences, gpsLostSentence, localized, nextStopSentence,
   welcomeSentences
@@ -113,7 +113,7 @@ export interface TourInput {
   spokenDirections: boolean;   // UserSettings.spokenDirections; false = gate G9 fallback (no left/right)
   briefOnly?: boolean;         // Settings detail level Brief (B9): teaser only unless the user asks for more
   source: FixSource;           // active location source at start (DEMO => SIMULATED welcome line)
-  projection?: Projection;     // defaults to the Kraków pack projection
+  projection?: Projection;     // the pack's projection (manifest origin); defaults to Projection() (pipeline origin)
   legs?: RouteLeg[];           // A9: the pack's legs (RouteData.legs, every directed stop pair); none = bearing only
   nav?: NavConfig;             // A9: turn-by-turn / off-route tunables (defaults: NavConfig)
 }
@@ -211,7 +211,7 @@ export class TourState {
   constructor(input: TourInput, cfg: TourConfig) {
     this.input = input;
     this.cfg = cfg;
-    this.projection = input.projection !== undefined ? input.projection : KRAKOW_PROJECTION;
+    this.projection = input.projection !== undefined ? input.projection : new Projection();
     this.speechText = input.voice.speechMode === 'text';
     this.voiceLabel = input.voice.label;
     this.source = input.source;

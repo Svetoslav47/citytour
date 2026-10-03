@@ -92,7 +92,7 @@ export class TourPlanViewModel {
   @Trace showSheet: boolean = false;
   @Trace starting: boolean = false;
   @Trace startFailed: boolean = false;
-  /** The SIMULATED Demo walk is offered only for the Kraków course (CourseRules.demoWalkOffered). */
+  /** The SIMULATED Demo walk is offered for a course whose pack ships a demo track (CourseRules.demoWalkOffered). */
   @Trace demoOffered: boolean = false;
   private pendingStart: boolean = false;
   private personaId: string = '';

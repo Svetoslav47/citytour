@@ -1,28 +1,20 @@
 /*
  * Native offline map (B6, ARCHITECTURE §3, DESIGN §4.7-4.8): an ArkUI Canvas drawn by MapRenderer, no Map Kit,
- * no web view. Base map: the vector layers of the pack's map-detail.json when present; otherwise (B6 step 1,
- * gate G8 fallback) the pre-rendered OSM base image of the Old Town (media map_oldtown, light + dark variants,
- * rendered from the same OSM data, bbox lon 19.929-19.947 / lat 50.0525-50.0675) placed under a transparent
- * canvas by the same camera. Modes: static fit-to-route (previews), follow the user (Now Walking mini map), interactive
+ * no web view. Base map: the vector layers of the map-detail.json of the active course's pack (its own map, or its
+ * city's map); without one only the route and places are drawn (no city-specific image is bundled in the app). Modes: static fit-to-route (previews), follow the user (Now Walking mini map), interactive
  * (full map: pan, pinch, double-tap zoom, recenter). "© OpenStreetMap contributors" is always shown when the
  * base map is drawn (ODbL). Logs MAP_FRAME ms= (sampled) so the perf gate G8 can be read from the log.
  */
 import { common, ConfigurationConstant } from '@kit.AbilityKit';
 import { MapData } from '../../contracts/Model';
 import { Log } from '../../app/Log';
-import { Camera, fitBounds, pan, worldToScreen, zoomAt } from '../../core/map/Camera';
-import { KRAKOW_PROJECTION } from '../../core/geo/Projection';
+import { Camera, fitBounds, pan, zoomAt } from '../../core/map/Camera';
 import { DARK, LIGHT, MapPalette } from './MapStyle';
 import { MapOverlay, MapRenderer } from './MapRenderer';
 import { PoiLayer } from './PoiLayer';
 
 const MAP_FRAME: string = 'MAP_FRAME';
 
-/** World box of the pre-rendered base image (projected metres, Rynek origin). */
-const BASE_IMG_MIN_X: number = KRAKOW_PROJECTION.x(19.929);
-const BASE_IMG_MAX_X: number = KRAKOW_PROJECTION.x(19.947);
-const BASE_IMG_MIN_Y: number = KRAKOW_PROJECTION.y(50.0525);
-const BASE_IMG_MAX_Y: number = KRAKOW_PROJECTION.y(50.0675);
 const FIT_PAD: number = 28;
 
 @ComponentV2
@@ -47,12 +39,6 @@ export struct MapCanvas {
   @Event onTapPlace: (poiId: string) => void = (poiId: string) => {};
   @Local w: number = 0;
   @Local userMoved: boolean = false;
-  /** Screen rect of the base image (vp), updated with the camera. */
-  @Local imgX: number = 0;
-  @Local imgY: number = 0;
-  @Local imgW: number = 0;
-  @Local imgH: number = 0;
-  @Local imageBase: boolean = true;
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
   private ctx: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
   private renderer: MapRenderer = new MapRenderer();
@@ -106,21 +92,12 @@ export struct MapCanvas {
     }
     try {
       this.renderer.setMap(this.map);
-      this.imageBase = !this.renderer.hasBase();
-      if (this.imageBase) {
-        const tl = worldToScreen(this.cam, BASE_IMG_MIN_X, BASE_IMG_MAX_Y, this.w, this.boxHeight);
-        const br = worldToScreen(this.cam, BASE_IMG_MAX_X, BASE_IMG_MIN_Y, this.w, this.boxHeight);
-        this.imgX = tl.x;
-        this.imgY = tl.y;
-        this.imgW = br.x - tl.x;
-        this.imgH = br.y - tl.y;
-      }
       const ms = this.renderer.draw(this.ctx, this.w, this.boxHeight, this.cam, this.scene, this.palette(), fast,
-        this.imageBase, this.places);
+        false, this.places);
       this.frames++;
       if (this.frames % 30 === 1 || ms > 33) {
         Log.i(MAP_FRAME, `id=${this.mapId} ms=${ms} s=${this.cam.s.toFixed(2)} layers=${this.renderer.layerCount()} ` +
-          `base=${this.imageBase ? 'image' : 'vector'} fast=${fast} n=${this.frames}` +
+          `base=${this.renderer.hasBase() ? 'vector' : 'none'} fast=${fast} n=${this.frames}` +
           (this.places !== undefined ? ` dots=${this.places.shown()}/${this.places.size()}` : ''));
       }
     } catch (e) {
@@ -136,16 +113,6 @@ export struct MapCanvas {
 
   build() {
     Stack({ alignContent: Alignment.BottomStart }) {
-      if (this.imageBase && this.imgW > 0) {
-        Image($r('app.media.map_oldtown'))
-          .width(this.imgW)
-          .height(this.imgH)
-          .position({ x: this.imgX, y: this.imgY })
-          .objectFit(ImageFit.Fill)
-          .interpolation(ImageInterpolation.Medium)
-          .draggable(false)
-          .accessibilityLevel('no')
-      }
       Canvas(this.ctx)
         .width('100%')
         .height(this.boxHeight)
@@ -216,7 +183,7 @@ export struct MapCanvas {
             this.onTapPlace(this.places.hit(e.fingerList[0].localX, e.fingerList[0].localY));
           })))
 
-      if (this.map !== undefined || this.imageBase) {
+      if (this.map !== undefined) {
         Text($r('app.string.map_attribution'))
           .fontSize(10)
           .fontColor($r('app.color.text_secondary'))

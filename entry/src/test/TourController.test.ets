@@ -274,7 +274,7 @@ class FakePack implements PackRepository {
     }
     const m: PackManifest = {
       schemaVersion: 1, packId: 'mini', version: '0', builtAt: '2026-10-03T00:00:00Z',
-      origin: { lat: 50.0617, lng: 19.9373 }, bbox: KRAKOW_BBOX, files: [],
+      origin: { lat: 50.06143, lng: 19.93658 }, bbox: KRAKOW_BBOX, files: [],
       counts: { pois: 4, narrations_en: 2, narrations_pl: 0, narrations_zh: 0, legs: 0 }, licenses: []
     };
     const r: PackLoadResult = { ok: true, manifest: m, issues: [] };

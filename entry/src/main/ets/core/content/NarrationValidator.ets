@@ -27,6 +27,8 @@ export class Check {
 export class ValidationCtx {
   sourceIds: string[] = [];
   poiNames: string[] = [];
+  /** City-specific proper nouns that count as grounded (city.json `properNouns`, e.g. the city's own name). */
+  cityNouns: string[] = [];
   /** Tier of the English original when this narration is a machine translation (mt of reviewed => numbers). */
   translatedFromTier: string = '';
 }
@@ -45,9 +47,9 @@ const PROV_KINDS: string[] = [ProvenanceKind.LLM, ProvenanceKind.HUMAN, Provenan
   ProvenanceKind.MACHINE_TRANSLATION];
 const REVIEW_STATUSES: string[] = ['approved', 'edited'];
 
-export const PROPER_NOUN_ALLOWLIST: string[] = ['Kraków', 'Krakow', 'Poland', 'Polish', 'Vistula', 'Wawel', 'Rynek',
-  'Old Town', 'Main Square', 'UNESCO', 'Royal Route', 'Gothic', 'Renaissance', 'Baroque', 'Romanesque', 'Catholic',
-  'Jagiellonian'];
+/** City-independent proper nouns; a city adds its own (city.json `properNouns` -> ValidationCtx.cityNouns). */
+export const PROPER_NOUN_ALLOWLIST: string[] = ['Old Town', 'Main Square', 'UNESCO', 'Gothic', 'Renaissance', 'Baroque',
+  'Romanesque', 'Catholic'];
 
 const FORBIDDEN_PATTERNS: RegExp[] = [
   /https?:\/\//i,
@@ -143,10 +145,10 @@ function numbersGrounded(text: string, quotes: string): boolean {
   return true;
 }
 
-function properNounsGrounded(sentences: string[], quotes: string, names: string[]): boolean {
+function properNounsGrounded(sentences: string[], quotes: string, names: string[], cityNouns: string[]): boolean {
   let total = 0;
   let found = 0;
-  const haystacks: string[] = [quotes].concat(names).concat(PROPER_NOUN_ALLOWLIST);
+  const haystacks: string[] = [quotes].concat(names).concat(PROPER_NOUN_ALLOWLIST).concat(cityNouns);
   for (const s of sentences) {
     const tokens = s.split(/\s+/).map((t: string) => t.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, ''))
       .filter((t: string) => t.length > 0);
@@ -207,7 +209,7 @@ export function validateNarration(n: Narration, ctx: ValidationCtx): ValidationR
     if ((authored || mtOfReviewed) && !numbersGrounded(text, quotes)) {
       fail(Check.NUMBERS);
     }
-    if (authored && n.lang !== Lang.ZH && !properNounsGrounded(n.sentences, quotes, ctx.poiNames)) {
+    if (authored && n.lang !== Lang.ZH && !properNounsGrounded(n.sentences, quotes, ctx.poiNames, ctx.cityNouns)) {
       fail(Check.PROPER_NOUNS);
     }
     if (FORBIDDEN_PATTERNS.some((re: RegExp) => re.test(text))) {

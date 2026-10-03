@@ -6,7 +6,7 @@
 import { describe, it, expect } from '@ohos/hypium';
 import { base64Decode, canonicalJson } from '../main/ets/core/remote/CanonicalJson';
 import {
-  CourseManifest, packDir, packManifestPath, parseCatalog, parseCourseManifest, parseEnvelope, parseExpiresAt,
+  cityName, CourseManifest, packDir, packManifestPath, parseCatalog, parseCityManifest, parseCourseManifest, parseEnvelope, parseExpiresAt,
   parseInstall, safeRelPath, tokenUsable, ttsBodyJson, validVersion, courseVersion
 } from '../main/ets/core/remote/ServerApi';
 import { sha256Hex, utf8Bytes } from '../main/ets/core/speech/Sha256';
@@ -159,6 +159,57 @@ export default function remoteEnvelopeTest() {
       expect(safeRelPath('a/')).assertFalse();
       expect(validVersion('2026.10.03')).assertTrue();
       expect(validVersion('..')).assertFalse();
+    });
+
+    it('catalogCitiesAndCourseCity', 0, () => {
+      const cat = parseCatalog(parseObj('{"courses":[{"id":"krakow-scholars","version":"1","cityId":"krakow",' +
+        '"city":"Kraków"},{"id":"old","version":"1"},{"id":"bad","version":"1","cityId":"../x"}],' +
+        '"cities":[{"id":"krakow","version":"2026.10.03-67db603d","names":{"en":"Kraków","pl":"Kraków","zh":"克拉科夫"},' +
+        '"places":4290,"bytes":8200000},{"id":"../x","version":"1"},{"id":"krakow","version":"2"},' +
+        '{"id":"gdansk","version":"1","places":-1}]}'));
+      expect(cat.error).assertEqual('');
+      expect(cat.courses.length).assertEqual(3);
+      expect(cat.courses[0].cityId).assertEqual('krakow');
+      expect(cat.courses[1].cityId).assertEqual('');             // an older self-contained course
+      expect(cat.courses[2].cityId).assertEqual('');             // unsafe city id ignored
+      expect(cat.cities.length).assertEqual(2);
+      expect(cat.cities[0].id).assertEqual('krakow');
+      expect(cat.cities[0].places).assertEqual(4290);
+      expect(cat.cities[0].bytes).assertEqual(8200000);
+      expect(cat.cities[1].places).assertEqual(0);
+      expect(cat.dropped).assertEqual(2);                        // bad id + duplicate city
+      expect(cityName(cat.cities[0].names, 'krakow', 'zh')).assertEqual('克拉科夫');
+      expect(cityName(cat.cities[1].names, 'gdansk', 'pl')).assertEqual('gdansk');
+      // an older catalog has no cities at all
+      expect(parseCatalog(parseObj('{"courses":[]}')).cities.length).assertEqual(0);
+    });
+
+    it('cityManifestAndTourLayout', 0, () => {
+      const city = parseCityManifest(parseObj('{"schemaVersion":1,"cityId":"krakow","version":"2026.10.03-67db603d",' +
+        `"publishedAt":"x","packId":"krakow","files":[{"path":"manifest.json","sha256":"${SHA_A}","bytes":3},` +
+        `{"path":"narrations/en.json","sha256":"${SHA_B}","bytes":4}]}`), 'krakow');
+      expect(city.error).assertEqual('');
+      const cm = city.manifest as CourseManifest;
+      expect(cm.courseId).assertEqual('krakow');
+      expect(cm.cityId).assertEqual('krakow');
+      expect(cm.audioManifestPath).assertEqual('');
+      expect(packDir(cm)).assertEqual('');
+      expect(parseCityManifest(parseObj(`{"schemaVersion":1,"cityId":"krakow","version":"1","files":` +
+        `[{"path":"manifest.json","sha256":"${SHA_A}","bytes":3}]}`), 'gdansk').error).assertEqual('city_id');
+      expect(parseCityManifest(parseObj(`{"schemaVersion":1,"cityId":"krakow","version":"1","files":` +
+        `[{"path":"../manifest.json","sha256":"${SHA_A}","bytes":3}]}`), 'krakow').error.startsWith('file_entry'))
+        .assertTrue();
+      expect(parseCityManifest(parseObj('{"schemaVersion":2}'), 'krakow').error).assertEqual('schema_2');
+      // a course of a city: its own pack under tour/, plus cityId
+      const course = parseCourseManifest(parseObj(manifestJson(
+        `[{"path":"tour/manifest.json","sha256":"${SHA_A}","bytes":10},{"path":"tour/demo-walk.json","sha256":"${SHA_B}","bytes":5}]`,
+        ',"cityId":"gdansk-city"')), 'gdansk');
+      expect(course.error).assertEqual('');
+      const m = course.manifest as CourseManifest;
+      expect(m.cityId).assertEqual('gdansk-city');
+      expect(packDir(m)).assertEqual('tour/');
+      expect(parseCourseManifest(parseObj(manifestJson(`[{"path":"tour/manifest.json","sha256":"${SHA_A}","bytes":1}]`,
+        ',"cityId":"Bad City"')), 'gdansk').error).assertEqual('city_id');
     });
 
     it('installTokenExpiry', 0, () => {

@@ -1,5 +1,5 @@
 // DATA_DIR access (docs/SERVER.md §5). The API never takes a path from a request: blobs are addressed by a
-// validated sha256, courses by a validated id, everything else is a fixed name.
+// validated sha256, courses and cities by a validated id, everything else is a fixed name.
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -74,6 +74,14 @@ export class DataStore {
       return Promise.resolve(null);
     }
     return this.cachedFile(join(this.dataDir, 'courses', courseId, 'manifest.json'));
+  }
+
+  /** Signed manifest of a city pack (cities live in their own namespace: city krakow and course krakow coexist). */
+  cityManifest(cityId: string): Promise<Buffer | null> {
+    if (!COURSE_ID_RE.test(cityId)) {
+      return Promise.resolve(null);
+    }
+    return this.cachedFile(join(this.dataDir, 'cities', cityId, 'manifest.json'));
   }
 
   /** The allowed-lines set of a course (null = unknown course). */

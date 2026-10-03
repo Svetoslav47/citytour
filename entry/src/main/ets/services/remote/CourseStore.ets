@@ -7,12 +7,14 @@
  *                                      on cancel, after the swap and at start-up)
  *   courses/catalog.json               the last catalog envelope that verified (offline Courses screen)
  *   courses/active.json                {"id": "..."} the active course ('' or missing = none installed yet)
+ *   cities/<cityId>/<version>/         a city's places pack (same installer: a second CourseStore with the folder
+ *                                      'cities'; downloaded with the first course of that city, SERVER.md §3 R7)
  * Install: every file is fetched by its sha256 (GET /v1/blobs/:sha), its size and SHA-256 are checked (async, off
  * the UI thread), it is written into the temp folder; only when ALL files verified is the temp folder renamed to
  * courses/<id>/<version> (one rename), and only then are older versions of that course removed. A failed, cancelled
  * or partial download never touches a working course. Each file is tried up to 1 + BLOB_RETRIES times with a short
  * backoff; a file already in the temp folder with the right size and SHA-256 (an earlier attempt) is not fetched
- * again, so Retry after a network drop resumes instead of starting over (Kraków: 1167 files, ~40 MB).
+ * again, so Retry after a network drop resumes instead of starting over (a course of ~1200 files, ~10 MB, plus its city places pack of ~8 MB once).
  */
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
@@ -40,6 +42,8 @@ export class CourseRecord {
   packDir: string = '';                       // '' or 'pack/' ... (ends in '/')
   audioManifestPath: string = DEFAULT_AUDIO_MANIFEST;
   summary: CourseSummary = new CourseSummary();
+  /** The course's city (signed manifest `cityId`); '' = a self-contained pack (or this record IS a city). */
+  cityId: string = '';
 }
 
 export class InstallProgress {
@@ -98,19 +102,24 @@ function summaryFrom(v: Object | undefined): CourseSummary {
   const cover = str(r, 'coverBlob');
   s.coverBlob = SHA256_RE.test(cover) ? cover : '';
   s.coverCredit = s.coverBlob !== '' ? str(r, 'coverCredit') : '';
+  const city = str(r, 'cityId');
+  s.cityId = validId(city) ? city : '';
   return s;
 }
 
 export class CourseStore {
   private readonly dirOf: () => string;
+  private readonly folder: string;
 
-  constructor(dirOf: () => string) {
+  /** folder: 'courses' (default) or 'cities' (city places packs). */
+  constructor(dirOf: () => string, folder: string = 'courses') {
     this.dirOf = dirOf;
+    this.folder = folder;
   }
 
   root(): string {
     const d = this.dirOf();
-    return d === '' ? '' : `${d}/courses`;
+    return d === '' ? '' : `${d}/${this.folder}`;
   }
 
   courseDir(id: string, version: string): string {
@@ -181,6 +190,8 @@ export class CourseStore {
       rec.packDir = str(r, 'packDir');
       rec.audioManifestPath = str(r, 'audioManifestPath');
       rec.summary = summaryFrom(r['summary']);
+      const city = str(r, 'cityId');
+      rec.cityId = validId(city) ? city : '';
       if (rec.id !== id || rec.version !== version || (rec.packDir !== '' && !safeRelPath(rec.packDir + 'x')) ||
         (rec.audioManifestPath !== '' && !safeRelPath(rec.audioManifestPath))) {
         return undefined;
@@ -328,6 +339,7 @@ export class CourseStore {
       rec.packDir = packDir(m);
       rec.audioManifestPath = m.files.some((f: CourseFile) => f.path === m.audioManifestPath) ? m.audioManifestPath : '';
       rec.summary = summary;
+      rec.cityId = m.cityId;
       if (!(await FileStore.writeText(`${tmp}/course.json`, JSON.stringify(rec)))) {
         failure = 'write_record';
       } else {

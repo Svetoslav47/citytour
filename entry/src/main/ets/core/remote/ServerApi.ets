@@ -8,13 +8,16 @@
  *     utf8(canonicalJson(payload)) (CanonicalJson.ets). Standard or URL-safe base64 are both accepted.
  *  R2 `expiresAt` of POST /v1/installs: epoch seconds, epoch milliseconds (>= 1e12) or an ISO-8601 string.
  *  R3 Course layout (SERVER.md §3.1): CourseManifest.files[].path is the course layout (repo data/course/<id>/):
- *     `packs/<packId>/<file>` and `audio/...`. The pack manifest is the first of `packs/<packId>/manifest.json`,
- *     `manifest.json`, `pack/manifest.json` that is listed; the pack's other files sit next to it. The clip manifest
+ *     `packs/<packId>/<file>` (or `tour/<file>` for a course of a city) and `audio/...`. The pack manifest is the first
+ *     of `packs/<packId>/manifest.json`, `tour/manifest.json`, `manifest.json`, `pack/manifest.json` that is listed; the pack's other files sit next to it. The clip manifest
  *     is `audio.manifestPath` (default `audio/manifest.json`) and its clip paths (`audio/...`) are relative to the
  *     course root (the app bundles no course; everything is downloaded into filesDir/courses/<id>/<version>/).
  *  R6 Course version (SERVER.md §3.1): `<pack version>-a<first 8 hex of sha256(audio/manifest.json)>`
  *     (courseVersion), plus `-c<8 hex>` with a cover photo, so it changes when the pack, the clips or the cover change.
  *  R4 Version: an opaque string; a catalog version different from the installed one is an update.
+ *  R7 Cities (additive): a catalog `cities[]` row and a course's `cityId` name the city places pack (all places of the
+ *     city, their stories and the city map; GET /v1/cities/:id/manifest, paths relative to the city root). A course
+ *     without `cityId` is a self-contained older pack.
  *  R5 Ids and versions become folder names, so they are restricted to [A-Za-z0-9._-] (no '..').
  */
 import { base64Decode, canonicalJson } from './CanonicalJson';
@@ -46,6 +49,17 @@ export class CourseSummary {
   coverBlob: string = '';
   /** "<author>, <licence>" of the cover photo (catalog `coverCredit`, SERVER.md §3); '' when none. */
   coverCredit: string = '';
+  /** The city whose places pack this course uses (catalog `cityId`); '' = a self-contained (older) course pack. */
+  cityId: string = '';
+}
+
+/** Catalog `cities[]` (SERVER.md §3): a city's places pack, downloaded with the first course of that city. */
+export class CitySummary {
+  id: string = '';
+  version: string = '';
+  names: CourseTitle = new CourseTitle();
+  places: number = 0;
+  bytes: number = 0;
 }
 
 export class CourseFile {
@@ -64,6 +78,8 @@ export class CourseManifest {
   audioManifestPath: string = DEFAULT_AUDIO_MANIFEST;
   audioClips: number = 0;
   allowedTtsSha: string = '';
+  /** The course's city ('' = none). For a CITY manifest (parseCityManifest) `courseId` holds the city id. */
+  cityId: string = '';
 }
 
 export class EnvelopeParse {
@@ -76,6 +92,7 @@ export class EnvelopeParse {
 
 export class CatalogParse {
   courses: CourseSummary[] = [];
+  cities: CitySummary[] = [];
   dropped: number = 0;
   error: string = '';
 }
@@ -193,7 +210,43 @@ function parseSummary(v: Object | undefined): CourseSummary | undefined {
   c.coverBlob = SHA256_RE.test(cover) ? cover : '';
   const credit = str(r, 'coverCredit');
   c.coverCredit = c.coverBlob !== '' && credit.length <= 160 ? credit : '';
+  const city = str(r, 'cityId');
+  c.cityId = validId(city) ? city : '';
   return c;
+}
+
+function parseCity(v: Object | undefined): CitySummary | undefined {
+  if (!isRecord(v)) {
+    return undefined;
+  }
+  const r = v as Record<string, Object>;
+  const c = new CitySummary();
+  c.id = str(r, 'id');
+  c.version = str(r, 'version');
+  if (!validId(c.id) || !validVersion(c.version)) {
+    return undefined;
+  }
+  const t: Object | undefined = r['names'];
+  if (isRecord(t)) {
+    const tr = t as Record<string, Object>;
+    c.names.en = str(tr, 'en');
+    c.names.pl = str(tr, 'pl');
+    c.names.zh = str(tr, 'zh');
+  }
+  const places = num(r, 'places');
+  const bytes = num(r, 'bytes');
+  c.places = Number.isFinite(places) && places >= 0 ? Math.round(places) : 0;
+  c.bytes = Number.isFinite(bytes) && bytes >= 0 ? Math.round(bytes) : 0;
+  return c;
+}
+
+/** A city's display name in the UI language, falling back to English, then any name, then the id. */
+export function cityName(names: CourseTitle, id: string, uiLang: string): string {
+  const t = uiLang === 'pl' ? names.pl : uiLang === 'zh' ? names.zh : names.en;
+  if (t !== '') {
+    return t;
+  }
+  return names.en !== '' ? names.en : names.pl !== '' ? names.pl : names.zh !== '' ? names.zh : id;
 }
 
 /** GET /v1/catalog payload `{courses: CourseSummary[]}`. Malformed rows are dropped and counted. */
@@ -217,6 +270,20 @@ export function parseCatalog(payload: Object | undefined): CatalogParse {
     }
     seen.add(c.id);
     out.courses.push(c);
+  }
+  // `cities` is additive (older catalogs have none); malformed rows are dropped.
+  const cities: Object | undefined = (payload as Record<string, Object>)['cities'];
+  if (Array.isArray(cities)) {
+    const seenCity = new Set<string>();
+    for (const item of cities as Object[]) {
+      const c = parseCity(item);
+      if (c === undefined || seenCity.has(c.id)) {
+        out.dropped++;
+        continue;
+      }
+      seenCity.add(c.id);
+      out.cities.push(c);
+    }
   }
   return out;
 }
@@ -251,29 +318,10 @@ export function parseCourseManifest(payload: Object | undefined, expectId: strin
     out.error = 'pack_id';
     return out;
   }
-  const files: Object | undefined = r['files'];
-  if (!Array.isArray(files) || (files as Object[]).length === 0 || (files as Object[]).length > MAX_COURSE_FILES) {
-    out.error = 'files';
+  const fe = parseFiles(r['files'], m);
+  if (fe !== '') {
+    out.error = fe;
     return out;
-  }
-  const seen = new Set<string>();
-  for (const f of files as Object[]) {
-    if (!isRecord(f)) {
-      out.error = 'file_entry';
-      return out;
-    }
-    const fr = f as Record<string, Object>;
-    const cf = new CourseFile();
-    cf.path = str(fr, 'path');
-    cf.sha256 = str(fr, 'sha256').toLowerCase();
-    const b = num(fr, 'bytes');
-    cf.bytes = Number.isFinite(b) && b >= 0 ? Math.round(b) : -1;
-    if (!safeRelPath(cf.path) || !SHA256_RE.test(cf.sha256) || cf.bytes < 0 || seen.has(cf.path)) {
-      out.error = `file_entry ${cf.path}`;
-      return out;
-    }
-    seen.add(cf.path);
-    m.files.push(cf);
   }
   const audio: Object | undefined = r['audio'];
   if (isRecord(audio)) {
@@ -291,6 +339,86 @@ export function parseCourseManifest(payload: Object | undefined, expectId: strin
   }
   const allowed = str(r, 'allowedTtsSha').toLowerCase();
   m.allowedTtsSha = SHA256_RE.test(allowed) ? allowed : '';
+  const city = str(r, 'cityId');
+  if (city !== '' && !validId(city)) {
+    out.error = 'city_id';
+    return out;
+  }
+  m.cityId = city;
+  if (packManifestPath(m) === '') {
+    out.error = 'no_pack_manifest';
+    return out;
+  }
+  out.manifest = m;
+  return out;
+}
+
+/** The `files` list of a course or city manifest into `m.files`; '' or the error. */
+function parseFiles(files: Object | undefined, m: CourseManifest): string {
+  if (!Array.isArray(files) || (files as Object[]).length === 0 || (files as Object[]).length > MAX_COURSE_FILES) {
+    return 'files';
+  }
+  const seen = new Set<string>();
+  for (const f of files as Object[]) {
+    if (!isRecord(f)) {
+      return 'file_entry';
+    }
+    const fr = f as Record<string, Object>;
+    const cf = new CourseFile();
+    cf.path = str(fr, 'path');
+    cf.sha256 = str(fr, 'sha256').toLowerCase();
+    const b = num(fr, 'bytes');
+    cf.bytes = Number.isFinite(b) && b >= 0 ? Math.round(b) : -1;
+    if (!safeRelPath(cf.path) || !SHA256_RE.test(cf.sha256) || cf.bytes < 0 || seen.has(cf.path)) {
+      return `file_entry ${cf.path}`;
+    }
+    seen.add(cf.path);
+    m.files.push(cf);
+  }
+  return '';
+}
+
+/**
+ * GET /v1/cities/:id/manifest payload `{schemaVersion:1, cityId, version, publishedAt, packId, files}` (the city's
+ * places pack; paths relative to the city root, the pack manifest is `manifest.json`). Returned as a CourseManifest
+ * whose `courseId` is the city id and which has no clips, so the same verified installer (CourseStore) installs it.
+ */
+export function parseCityManifest(payload: Object | undefined, expectId: string): ManifestParse {
+  const out = new ManifestParse();
+  if (!isRecord(payload)) {
+    out.error = 'not_object';
+    return out;
+  }
+  const r = payload as Record<string, Object>;
+  const m = new CourseManifest();
+  m.schemaVersion = num(r, 'schemaVersion');
+  if (m.schemaVersion !== 1) {
+    out.error = `schema_${String(m.schemaVersion)}`;
+    return out;
+  }
+  m.courseId = str(r, 'cityId');
+  m.cityId = m.courseId;
+  m.version = str(r, 'version');
+  m.publishedAt = str(r, 'publishedAt');
+  m.packId = str(r, 'packId');
+  m.audioManifestPath = '';
+  if (!validId(m.courseId) || m.courseId !== expectId) {
+    out.error = 'city_id';
+    return out;
+  }
+  if (!validVersion(m.version)) {
+    out.error = 'version';
+    return out;
+  }
+  if (m.packId !== '' && !validId(m.packId)) {
+    out.error = 'pack_id';
+    return out;
+  }
+  const fe = parseFiles(r['files'], m);
+  if (fe !== '') {
+    out.error = fe;
+    return out;
+  }
   if (packManifestPath(m) === '') {
     out.error = 'no_pack_manifest';
     return out;
@@ -305,6 +433,7 @@ export function packManifestPath(m: CourseManifest): string {
   if (m.packId !== '') {
     candidates.push(`packs/${m.packId}/manifest.json`);
   }
+  candidates.push('tour/manifest.json');   // a course of a city: only its tour-specific files (SERVER.md §3.1)
   candidates.push('manifest.json');
   candidates.push('pack/manifest.json');
   for (const c of candidates) {

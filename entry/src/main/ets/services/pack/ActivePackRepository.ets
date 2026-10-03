@@ -13,7 +13,10 @@ import { Lang, MapData, Narration, NarrationLength, Persona, Poi, RouteData, Sou
 import { PackLoadResult, PackRepository } from '../../contracts/Ports';
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
+import { CityInfo, DEMO_WALK_FILE } from '../../core/content/CityPack';
+import { CityCoursePackRepository } from './CityCoursePackRepository';
 import { EmptyPackRepository } from './EmptyPackRepository';
+import { SourcePackRepository } from './SourcePackRepository';
 
 const STARTUP_CHOICE_TIMEOUT_MS: number = 3000;
 
@@ -43,6 +46,32 @@ export class ActivePackRepository implements PackRepository {
 
   hasCourse(): boolean {
     return this.currentId !== '';
+  }
+
+  /** city.json of the active course's city (undefined: no course, an older self-contained pack, or not loaded). */
+  cityInfo(): CityInfo | undefined {
+    return this.current instanceof CityCoursePackRepository ? (this.current as CityCoursePackRepository).cityInfo() :
+      undefined;
+  }
+
+  /** The active course's own pack (where its Demo walk track lives). */
+  private ownPack(): SourcePackRepository | undefined {
+    if (this.current instanceof CityCoursePackRepository) {
+      return (this.current as CityCoursePackRepository).coursePack();
+    }
+    return this.current instanceof SourcePackRepository ? this.current as SourcePackRepository : undefined;
+  }
+
+  /** The active course ships a SIMULATED Demo walk track (demo-walk.json listed in its pack manifest). */
+  hasDemoTrack(): boolean {
+    const p = this.ownPack();
+    return p !== undefined && p.hasFile(DEMO_WALK_FILE);
+  }
+
+  /** The active course's demo-walk.json, verified against its pack manifest; undefined when it has none. */
+  async demoTrack(): Promise<string | undefined> {
+    const p = this.ownPack();
+    return p === undefined ? undefined : p.readVerifiedText(DEMO_WALK_FILE);
   }
 
   /**

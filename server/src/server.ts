@@ -31,7 +31,7 @@ async function main(): Promise<void> {
   const store = new DataStore(env.DATA_DIR);
   await store.init();
   if (env.SEED_DIR) {
-    await seedDataDir(store, env.SEED_DIR, env.SEED_FILES_DIR, log);
+    await seedDataDir(store, env.SEED_DIR, env.SEED_FILES_DIR, log, env.SEED_CITY_FILES_DIR);
   }
   const synth = new ElevenLabs({
     apiKey: env.ELEVENLABS_API_KEY, voiceId: env.ELEVENLABS_VOICE_ID, model: env.ELEVENLABS_MODEL,

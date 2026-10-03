@@ -8,11 +8,14 @@ import {
   SegmentHit
 } from '../main/ets/core/geo/GeoMath';
 import {
-  KRAKOW_PROJECTION, M_PER_DEG_LAT, M_PER_DEG_LNG_EQUATOR, PACK_ORIGIN_LAT, PACK_ORIGIN_LNG, Projection, XY
+  M_PER_DEG_LAT, M_PER_DEG_LNG_EQUATOR, PACK_ORIGIN_LAT, PACK_ORIGIN_LNG, Projection, XY
 } from '../main/ets/core/geo/Projection';
 import { GridHit, GridIndex } from '../main/ets/core/geo/GridIndex';
 import { RelDir } from '../main/ets/contracts/EngineTypes';
 import { LatLng } from '../main/ets/contracts/Model';
+
+/** The Kraków fixture pack's projection (origin Rynek Główny), as its manifest.json origin gives it. */
+const KRAKOW_PROJECTION: Projection = new Projection(PACK_ORIGIN_LAT, PACK_ORIGIN_LNG);
 
 const RYNEK_LAT: number = 50.06143;
 const RYNEK_LNG: number = 19.93658;

@@ -1,5 +1,7 @@
 /*
- * Local equirectangular (ENU) projection shared by the pack pipeline and the app (task A1).
+ * Local equirectangular (ENU) projection shared by the pack pipeline and the app (task A1). The app always builds it
+ * from the loaded pack manifest's `origin` (Projection.fromOrigin); PACK_ORIGIN_* is only the pipeline's current
+ * origin, the default for tests and fixtures.
  * Source: docs/ARCHITECTURE.md §3.2. Origin O = Rynek Główny (50.06143, 19.93658):
  *   x = (lng - lng0) * cos(lat0 * PI / 180) * 111320.0   // metres east
  *   y = (lat - lat0) * 110574.0                          // metres north
@@ -54,6 +56,3 @@ export class Projection {
     return ll;
   }
 }
-
-/** The Kraków pack projection (origin Rynek Główny). */
-export const KRAKOW_PROJECTION: Projection = new Projection(PACK_ORIGIN_LAT, PACK_ORIGIN_LNG);

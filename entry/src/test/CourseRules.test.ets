@@ -3,12 +3,13 @@
 // catalog-only = Download; installed + same version = Downloaded; another version = Update; installed courses stay
 // listed offline; the active id resolves to '' with nothing installed, to the saved one, or to the first installed;
 // the first download becomes active, a later one does not; delete (active -> another installed course or none);
-// install replaces an older version; Home's mode (loading / empty state / ready / error); the Demo walk only for
-// the Kraków Royal Route course (not krakow-scholars); two Kraków courses side by side; titles, sizes and progress.
+// install replaces an older version; Home's mode (loading / empty state / ready / error); the Demo walk for any active
+// course whose pack ships a demo track (no course id is special); two courses of one city side by side; the city
+// places pack: download when missing/outdated, removal with the last course of the city; titles, sizes and progress.
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  activeAfterInstall, afterDelete, afterInstall, CourseRow, CourseState, courseTitle, DEMO_COURSE_ID,
-  demoWalkOffered, HomeMode, homeMode, InstalledCourse, mergeCourses, progressPct, resolveActive, sizeLabel
+  activeAfterInstall, afterDelete, afterInstall, cityNeedsDownload, downloadBytes, CourseRow, CourseState, courseTitle,
+  demoWalkOffered, orphanCities, HomeMode, homeMode, InstalledCourse, mergeCourses, progressPct, resolveActive, sizeLabel
 } from '../main/ets/core/remote/CourseRules';
 import { CourseSummary } from '../main/ets/core/remote/ServerApi';
 
@@ -115,13 +116,30 @@ export default function courseRulesTest() {
       expect(homeMode(false, true, false)).assertEqual(HomeMode.ERROR);       // installed but unreadable
     });
 
-    it('demoWalkOnlyForKrakow', 0, () => {
-      expect(DEMO_COURSE_ID).assertEqual('krakow');
-      expect(demoWalkOffered('krakow')).assertTrue();
-      expect(demoWalkOffered('')).assertFalse();
-      expect(demoWalkOffered('gdansk')).assertFalse();
-      // the second Kraków course (Scholars and Saints) has no simulated track in the HAP
-      expect(demoWalkOffered('krakow-scholars')).assertFalse();
+    it('demoWalkWhereverThePackHasATrack', 0, () => {
+      expect(demoWalkOffered('krakow', true)).assertTrue();
+      expect(demoWalkOffered('gdansk', true)).assertTrue();          // any city, any course id
+      expect(demoWalkOffered('krakow-scholars', false)).assertFalse();   // its pack ships no demo-walk.json
+      expect(demoWalkOffered('', true)).assertFalse();               // no active course
+      expect(demoWalkOffered('', false)).assertFalse();
+    });
+
+    it('cityPackDownloadAndCleanup', 0, () => {
+      expect(cityNeedsDownload('', '')).assertTrue();                // first course of the city, catalog unknown
+      expect(cityNeedsDownload('', 'c1')).assertTrue();
+      expect(cityNeedsDownload('c1', 'c1')).assertFalse();           // second course of the city: shared, no download
+      expect(cityNeedsDownload('c1', 'c2')).assertTrue();            // the catalog has a newer city pack
+      expect(cityNeedsDownload('c1', '')).assertFalse();             // offline / older catalog: keep the installed one
+      // removal: only cities no remaining course uses
+      expect(orphanCities(['krakow', 'gdansk'], ['krakow', 'krakow']).join(',')).assertEqual('gdansk');
+      expect(orphanCities(['krakow'], ['krakow', '']).length).assertEqual(0);
+      expect(orphanCities(['krakow'], ['']).join(',')).assertEqual('krakow');   // only a self-contained course left
+      expect(orphanCities([], []).length).assertEqual(0);
+      // the Download size includes the city pack only while that city is not installed
+      expect(downloadBytes(1000, 'krakow', 9000, false)).assertEqual(10000);
+      expect(downloadBytes(1000, 'krakow', 9000, true)).assertEqual(1000);
+      expect(downloadBytes(1000, '', 9000, false)).assertEqual(1000);
+      expect(downloadBytes(1000, 'krakow', 0, false)).assertEqual(1000);   // older catalog: size unknown
     });
 
     it('twoKrakowCourses', 0, () => {
@@ -135,8 +153,6 @@ export default function courseRulesTest() {
       expect(ids(rows)).assertEqual('krakow:downloaded,krakow-scholars:downloaded');
       expect(rows[1].active).assertTrue();
       expect(rows[0].active).assertFalse();
-      expect(demoWalkOffered(resolveActive('krakow-scholars', both))).assertFalse();
-      expect(demoWalkOffered(resolveActive('krakow', both))).assertTrue();
       // deleting the active Scholars course makes the Royal Route active again
       expect(afterDelete(both, 'krakow-scholars', 'krakow-scholars').activeId).assertEqual('krakow');
     });

@@ -7,7 +7,9 @@
 !server/src
 !server/seed
 !server/docker-entrypoint.sh
-!data/course/krakow
+# every course (tour/ + audio/ + cover/, and the full packs/ the seed may still point at) and every city pack
+!data/course
+!data/city
 **/.DS_Store
 **/.env*
 **/.keys

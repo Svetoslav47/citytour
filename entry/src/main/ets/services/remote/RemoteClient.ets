@@ -18,7 +18,8 @@ import { RemoteConfig } from '../../app/RemoteConfig';
 import { Log } from '../../app/Log';
 import { LogEvents } from '../../app/LogEvents';
 import {
-  CatalogParse, CourseManifest, CourseSummary, InstallToken, parseCatalog, parseCourseManifest, parseEnvelope,
+  CatalogParse, CitySummary, CourseManifest, CourseSummary, InstallToken, parseCatalog, parseCityManifest,
+  parseCourseManifest, parseEnvelope,
   parseInstall, SHA256_RE, tokenUsable, ttsBodyJson
 } from '../../core/remote/ServerApi';
 import { RemoteResult } from '../../core/remote/VoiceChain';
@@ -45,6 +46,7 @@ export class SignedResult {
 
 export class CatalogResult extends SignedResult {
   courses: CourseSummary[] = [];
+  cities: CitySummary[] = [];
 }
 
 export class ManifestResult extends SignedResult {
@@ -152,18 +154,28 @@ export class RemoteClient {
     }
     r.ok = true;
     r.courses = cat.courses;
+    r.cities = cat.cities;
     r.text = text;
-    Log.i(LogEvents.COURSE, `event=catalog_ok courses=${cat.courses.length} dropped=${cat.dropped}`);
+    Log.i(LogEvents.COURSE, `event=catalog_ok courses=${cat.courses.length} cities=${cat.cities.length} dropped=${cat.dropped}`);
     return r;
   }
 
-  async manifest(courseId: string): Promise<ManifestResult> {
+  manifest(courseId: string): Promise<ManifestResult> {
+    return this.signedManifest(courseId, false);
+  }
+
+  /** GET /v1/cities/:cityId/manifest: a city's places pack (SERVER.md §3, R7), verified like a course manifest. */
+  cityManifest(cityId: string): Promise<ManifestResult> {
+    return this.signedManifest(cityId, true);
+  }
+
+  private async signedManifest(id: string, city: boolean): Promise<ManifestResult> {
     const r = new ManifestResult();
     if (!this.enabled()) {
       r.error = 'disabled';
       return r;
     }
-    const h = await this.call('GET', `/v1/courses/${encodeURIComponent(courseId)}/manifest`, '',
+    const h = await this.call('GET', `/v1/${city ? 'cities' : 'courses'}/${encodeURIComponent(id)}/manifest`, '',
       http.HttpDataType.STRING, RemoteConfig.JSON_DEADLINE_MS, {});
     r.status = h.status;
     if (h.status !== 200) {
@@ -179,7 +191,7 @@ export class RemoteClient {
       r.error = this.verifier.configured() ? 'bad_signature' : 'no_public_key';
       return r;
     }
-    const m = parseCourseManifest(env.payload, courseId);
+    const m = city ? parseCityManifest(env.payload, id) : parseCourseManifest(env.payload, id);
     if (m.manifest === undefined) {
       r.error = `manifest_${m.error}`;
       return r;

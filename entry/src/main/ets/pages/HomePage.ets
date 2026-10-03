@@ -1,7 +1,8 @@
 /*
  * Home (DESIGN §3.2): the "Now walking" continue card when a tour runs, the tour card (cover photo, or the route map
  * when the course has no cover), a one-tap
- * "Try a demo walk" (id btnDemoWalk, SIMULATED; only for the Kraków course) and the offline place count. Root
+ * "Try a demo walk" (id btnDemoWalk, SIMULATED; for a course whose pack ships a demo track) and "All places in
+ * {city}" with the offline place count (the city comes from the course's city pack; no city is built in). Root
  * content of the Navigation. The app ships no built-in course: with none installed Home shows the empty state
  * "Download your first walk" (id cardNoCourse, button btnBrowseWalks -> Courses); a course that fails to load shows
  * the error state with a way to Courses (btnHomeCourses).
@@ -111,17 +112,6 @@ export struct HomePage {
       .height(56)
       .width('100%')
 
-      if (this.app.packState === PackState.READY) {
-        Row({ space: Space.S1 }) {
-          Text($r('app.string.offline_ready'))
-            .fontSize(Type.CALLOUT)
-            .lineHeight(Type.CALLOUT_LH)
-            .fontColor($r('app.color.text_secondary'))
-          SymbolGlyph($r('sys.symbol.checkmark'))
-            .fontSize(14)
-            .fontColor([$r('app.color.accent')])
-        }
-      }
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
@@ -338,7 +328,8 @@ export struct HomePage {
       .backgroundColor($r('app.color.bg_surface_sunken'))
 
       Column() {
-        Text($r('app.string.home_all_places'))
+        Text(this.app.cityName !== '' ? $r('app.string.home_all_places', this.app.cityName) :
+          $r('app.string.home_all_places_any'))
           .fontSize(Type.BODY)
           .lineHeight(Type.BODY_LH)
           .fontWeight(FontWeight.Medium)

@@ -6,7 +6,7 @@
     },
     {
       "name": "EntryAbility_desc",
-      "value": "Spacery z audioprzewodnikiem po Krakowie"
+      "value": "Spacery z audioprzewodnikiem"
     },
     {
       "name": "EntryAbility_label",
@@ -129,10 +129,6 @@
       "value": "Spójrz w lewo i w górę"
     },
     {
-      "name": "offline_ready",
-      "value": "Kraków · gotowe offline"
-    },
-    {
       "name": "home_title",
       "value": "CityTour"
     },
@@ -186,7 +182,11 @@
     },
     {
       "name": "home_all_places",
-      "value": "Wszystkie miejsca w Krakowie"
+      "value": "Wszystkie miejsca: %s"
+    },
+    {
+      "name": "home_all_places_any",
+      "value": "Wszystkie miejsca"
     },
     {
       "name": "home_places_count",
@@ -434,7 +434,11 @@
     },
     {
       "name": "err_loc_out_of_area",
-      "value": "Jesteś daleko od Krakowa. Zacznij od pierwszego przystanku lub wypróbuj spacer demonstracyjny."
+      "value": "Jesteś daleko od trasy (%s). Zacznij od pierwszego przystanku lub wypróbuj spacer demonstracyjny."
+    },
+    {
+      "name": "err_loc_out_of_area_any",
+      "value": "Jesteś daleko od trasy. Zacznij od pierwszego przystanku lub wypróbuj spacer demonstracyjny."
     },
     {
       "name": "err_tts_init",
@@ -830,7 +834,7 @@
     },
     {
       "name": "place_tier_register",
-      "value": "Z krakowskiego rejestru zabytków"
+      "value": "Z miejskiego rejestru zabytków"
     },
     {
       "name": "place_tier_basic",
@@ -870,7 +874,7 @@
     },
     {
       "name": "about_ai_body",
-      "value": "Każda opowieść na trasie powstała z pomocą modelu AI na podstawie podanych przy niej źródeł. Następnie sprawdza ją i redaguje człowiek; do tego czasu ma oznaczenie „opracowane przez AI”. Miejsca poza trasą mają krótkie opisy z Wikipedii lub rejestru zabytków Krakowa, pokazane bez zmian. Nic, co robisz w aplikacji, nie jest nigdzie wysyłane. Opowieści, mapy i głosy są zapisane w telefonie."
+      "value": "Każda opowieść na trasie powstała z pomocą modelu AI na podstawie podanych przy niej źródeł. Następnie sprawdza ją i redaguje człowiek; do tego czasu ma oznaczenie „opracowane przez AI”. Miejsca poza trasą mają krótkie opisy z Wikipedii lub miejskiego rejestru zabytków, pokazane bez zmian. Nic, co robisz w aplikacji, nie jest nigdzie wysyłane. Opowieści, mapy i głosy są zapisane w telefonie."
     },
     {
       "name": "about_osm",
@@ -886,7 +890,7 @@
     },
     {
       "name": "about_arcgis",
-      "value": "Zabytki i tablice: otwarte dane Miasta Krakowa (MSIP)"
+      "value": "Zabytki i tablice: otwarte dane miasta (wydawca podany w źródłach każdego miejsca)"
     },
     {
       "name": "about_osrm",
@@ -970,7 +974,7 @@
     },
     {
       "name": "settings_demo_walk_note",
-      "value": "Odtwarza nagrany spacer Drogą Królewską zamiast korzystać z GPS. Wszystko, co symulowane, ma oznaczenie SYMULACJA."
+      "value": "Odtwarza nagrany spacer trasą wycieczki zamiast korzystać z GPS. Wszystko, co symulowane, ma oznaczenie SYMULACJA."
     },
     {
       "name": "settings_replay_speed",
@@ -1026,7 +1030,7 @@
     },
     {
       "name": "onb1_body",
-      "value": "Załóż słuchawki, zablokuj telefon i ruszaj. Historyk poprowadzi Cię przez Kraków i opowie o każdym miejscu, gdy do niego dojdziesz."
+      "value": "Załóż słuchawki, zablokuj telefon i ruszaj. Historyk poprowadzi Cię przez miasto i opowie o każdym miejscu, gdy do niego dojdziesz."
     },
     {
       "name": "onb2_title",
@@ -1086,7 +1090,7 @@
     },
     {
       "name": "onb_visual_a11y",
-      "value": "Droga Królewska na mapie Krakowa, od Barbakanu do Wzgórza Wawelskiego"
+      "value": "Trasa spaceru na mapie miasta, od pierwszego do ostatniego przystanku"
     },
     {
       "name": "onb_lang_group",
@@ -1686,7 +1690,7 @@
     },
     {
       "name": "widget_idle_title",
-      "value": "Spacery po Krakowie"
+      "value": "Spacery"
     },
     {
       "name": "widget_idle_foot",

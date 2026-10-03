@@ -1,7 +1,7 @@
 /*
  * Home view model (B4, DESIGN §3.2): the tour card from the pack, the "Now walking" continue card from the
  * TourControl snapshots, and the one-tap "Try a demo walk" (SIMULATED source, x8, plan, start), offered only while
- * the Kraków course is active (its Royal Route track ships in the HAP; CourseRules.demoWalkOffered).
+ * the active course ships a SIMULATED track in its pack (demo-walk.json; CourseRules.demoWalkOffered).
  */
 import { EngineSnapshot, TourPhase } from '../contracts/EngineTypes';
 import { Lang } from '../contracts/Model';

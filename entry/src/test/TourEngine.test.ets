@@ -21,11 +21,14 @@ import { Fix, FixSource, Utterance, VoicePlan } from '../main/ets/contracts/Port
 import {
   ContentTier, Lang, LatLng, Maneuver, Narration, NarrationLength, Poi, ProvenanceKind, RouteLeg, RouteStep
 } from '../main/ets/contracts/Model';
-import { KRAKOW_PROJECTION } from '../main/ets/core/geo/Projection';
+import { Projection } from '../main/ets/core/geo/Projection';
 import { VoiceLabel } from '../main/ets/contracts/Settings';
 import {
   MINI_BARBICAN, MINI_CLOTH_HALL, MINI_PERSONA_ID, MINI_ST_MARYS, MINI_TOUR_ID, miniNarrations, miniPois, miniTour
 } from './fixtures/MiniPack';
+
+/** The fixture pack's projection (its manifest origin, Rynek Główny). */
+const KRAKOW_PROJECTION: Projection = new Projection(50.06143, 19.93658);
 
 const T0: number = 1000000;
 const M_PER_DEG_LAT: number = 111195;

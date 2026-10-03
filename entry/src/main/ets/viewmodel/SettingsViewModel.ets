@@ -197,6 +197,7 @@ export class SettingsViewModel {
     } catch (e) {
       Log.e(LogEvents.UNCAUGHT, `where=SettingsViewModel.applyUiLang lang=${lang} ${Log.errKv(e as Object)}`);
     }
+    app.cityName = AppContainer.cityName();   // the city's name in the new UI language
   }
 
   /** `lang=en voice=fallback-zh source=demo speed=4` for every SETTINGS line. */
@@ -229,7 +230,7 @@ export class SettingsViewModel {
   @Trace packOk: boolean = true;
   /** A course is installed (the app ships none; false until the first download). */
   @Trace hasCourse: boolean = true;
-  /** The SIMULATED Demo walk is offered only for the Kraków course (its track ships in the HAP). */
+  /** The SIMULATED Demo walk is offered for a course whose pack ships a demo track (CourseRules.demoWalkOffered). */
   @Trace demoOffered: boolean = false;
   @Trace pack: PackLine = packLine(0, 0, []);
   @Trace guideName: string = '';

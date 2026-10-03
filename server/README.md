@@ -8,8 +8,9 @@ The app works without this server; it is an optional download and voice upgrade.
 ```
 GET  /healthz                         {ok, version}
 POST /v1/installs                     {token, expiresAt}          (rate-limited per IP)
-GET  /v1/catalog                      {payload:{courses}, sig}    (Ed25519, canonical JSON)
+GET  /v1/catalog                      {payload:{courses, cities}, sig}    (Ed25519, canonical JSON)
 GET  /v1/courses/:courseId/manifest   {payload:CourseManifest, sig}
+GET  /v1/cities/:cityId/manifest      {payload:CityManifest, sig}
 GET  /v1/blobs/:sha256                bytes, immutable, ETag
 POST /v1/tts                          audio/mpeg, X-Text-Sha256, X-Cache: hit|miss   (Bearer token)
 ```
@@ -20,8 +21,12 @@ POST /v1/tts                          audio/mpeg, X-Text-Sha256, X-Cache: hit|mi
 cd server
 npm ci
 npm run keygen                      # Ed25519 keypair -> server/.keys/ (gitignored); prints the PUBLIC key
-R=../data/course/krakow               # the course data (the app ships no course; it downloads this)
-npm run publish-course -- --course krakow --pack $R/packs/krakow --audio $R/audio --data ./data --seed ./seed
+# the city pack first, then its courses (the app ships no course; it downloads these)
+npm run publish-city -- --city krakow --pack ../data/city/krakow --data ./data --seed ./seed
+for c in krakow krakow-scholars krakow-kazimierz; do
+  npm run publish-course -- --course $c --pack ../data/course/$c/tour --audio ../data/course/$c/audio \
+    --city-id krakow --data ./data --seed ./seed
+done
 cp .env.example .env                # then set TOKEN_SECRET (openssl rand -base64 48); a dummy ElevenLabs key is fine
 npm run dev                         # or: npm run build && node --env-file=.env dist/server.js
 npm run smoke -- http://127.0.0.1:8080 .keys/signing-public.pem
@@ -54,15 +59,37 @@ Validated with zod at boot; the process exits with a list of the bad variables (
 | `TRUST_PROXY` | `false` | Express `trust proxy`: `false`, `true`, a hop count (Render: `1`) or a subnet list. Needed so rate limits see the real client IP. |
 | `RATE_INSTALLS_PER_HOUR` | `20` | Per IP. |
 | `RATE_TTS_PER_10MIN` | `300` | Per install token + IP. |
-| `SEED_DIR`, `SEED_FILES_DIR` | unset (Docker: `/app/seed`, `/app/seed-files`) | Boot-time seeding, see below. |
+| `SEED_DIR`, `SEED_FILES_DIR`, `SEED_CITY_FILES_DIR` | unset (Docker: `/app/seed`, `/app/seed-files`, `/app/seed-city-files`) | Boot-time seeding, see below. |
 | `HOST`, `PORT`, `LOG_LEVEL` | `0.0.0.0`, `8080`, `info` | |
-| `SIGNING_PRIVATE_KEY` | - | **Only for `publish-course`** (PEM; else `--key-file`, default `.keys/signing-private.pem`). The API never needs it. |
+| `SIGNING_PRIVATE_KEY` | - | **Only for `publish-city` / `publish-course`** (PEM; else `--key-file`, default `.keys/signing-private.pem`). The API never needs it. |
+
+## Publishing a city
+
+```bash
+npm run publish-city -- --city krakow --pack ../data/city/krakow --data <DATA_DIR> [--seed ./seed] [--key-file ...]
+```
+
+The city pack (`data/city/<cityId>/`, built by `node scripts/pack/split-city.mjs`) holds the city's places: all POIs,
+their narrations, sources and the map. publish-city copies every file to `blobs/<sha256>` (checked against the city
+pack's own `manifest.json`, re-read and re-hashed), writes the signed `cities/<cityId>/manifest.json` (paths relative
+to the city root: `city.json`, `pois.json`, `narrations/en.json`, ...) and re-signs `catalog.json` with the city in
+`cities` (`{id, version, names, places, bytes}`), keeping `courses`. Re-publishing an unchanged city changes
+nothing. **Publish a city before its courses.**
 
 ## Publishing a course
 
 ```bash
-npm run publish-course -- --course krakow --pack <packDir> --audio <data/course/<id>/audio> --data <DATA_DIR> [--seed ./seed]
+npm run publish-course -- --course krakow --pack ../data/course/krakow/tour --audio ../data/course/krakow/audio \
+  --city-id krakow --data <DATA_DIR> [--seed ./seed] [--root <course root>] [--city <name>]
 ```
+
+`--pack` is the course overlay `data/course/<id>/tour/` (its tour, stops, legs, demo walk, cover); the older
+self-contained full pack `data/course/<id>/packs/<id>/` still works without `--city-id`. Manifest paths are the pack
+folder's path relative to the course root (`--root`, default the parent of `--audio`): `tour/...` or
+`packs/<id>/...`. With `--city-id` the city must already be published in `DATA_DIR` (its manifest must verify with
+the same key), else publish-course fails with "publish the city first"; the course manifest and catalog entry get
+`cityId`, the catalog `city` is the city's English name unless `--city` is given, and the allowed set also holds
+every narration sentence of the city pack.
 
 1. Copies every pack file and every clip (+ `audio/manifest.json`) to `blobs/<sha256>`; pack files are checked
    against the pack's own manifest and every blob is re-read and re-hashed after writing.
@@ -82,17 +109,20 @@ seed whose files no longer match (and a vitest case checks the committed seed ag
 Signing happens only on the maintainer's machine; the private key never leaves `server/.keys/` (or your password
 manager). The **image** carries the result:
 
-- `server/seed/` (committed): `catalog.json`, `courses/<id>/{manifest,allowed}.json` per course, `tts-index.json`;
-- the course files in `data/course/<id>/` (`packs/<id>/...`, `audio/...`, exactly the manifest's paths; the
-  app bundles none of them and downloads them from here). The image copies the whole `data/course/` to
-  `SEED_FILES_DIR`, one folder per course id (a `SEED_FILES_DIR` without a `<id>/` folder is read as that one course's
-  root, as older images did). The Docker build context is the repo root for this reason.
+- `server/seed/` (committed): `catalog.json`, `cities/<id>/manifest.json` per city, `courses/<id>/{manifest,allowed}.json`
+  per course, `tts-index.json`;
+- the course files in `data/course/<id>/` (`tour/...` or the older `packs/<id>/...`, `audio/...`, exactly the
+  manifest's paths; the app bundles none of them and downloads them from here). The image copies the whole
+  `data/course/` to `SEED_FILES_DIR`, one folder per course id (a `SEED_FILES_DIR` without a `<id>/` folder is read as
+  that one course's root, as older images did);
+- the city packs in `data/city/<cityId>/`, copied to `SEED_CITY_FILES_DIR` (one folder per city id, same fallback).
+  The Docker build context is the repo root for this reason.
 
 Publishing a second course (for example `krakow-scholars`, built with `scripts/pack/build-pack.sh --course
 krakow-scholars` and rendered with `render-elevenlabs.mjs --course krakow-scholars`) adds its entry to the same
 signed `catalog.json` and keeps the others; `test/multi-course.test.ts` checks two courses end to end.
 
-On every boot (`SEED_DIR` set) the server copies changed metadata to `DATA_DIR`, copies every manifest file that is
+On every boot (`SEED_DIR` set) the server copies changed metadata (catalog, city and course manifests) to `DATA_DIR`, copies every manifest file that is
 missing from `blobs/` (verifying its sha256), and merges the shipped clips into `tts-index.json` while keeping lines
 rendered at runtime. So a new deploy = the latest publish, and runtime TTS renders survive on the disk.
 
@@ -119,7 +149,8 @@ freshly mounted `/var/data`, then drops privileges with `su-exec`); `HEALTHCHECK
    `DATA_DIR=/var/data`.
 3. Keys: run `npm run keygen` once on your machine, keep `server/.keys/signing-private.pem` safe (password manager),
    put the **public** key in the app's `RemoteConfig.ets` together with the Render URL.
-4. Publish: `npm run publish-course -- ... --seed ./seed`, commit `server/seed/`, push. Deploy (auto-deploy is
+4. Publish: `npm run publish-city -- ... --seed ./seed`, then `npm run publish-course -- ... --city-id <city> --seed ./seed`
+   for each course, commit `server/seed/`, push. Deploy (auto-deploy is
    off: use **Manual Deploy** or turn it on).
 5. Smoke test: `node server/scripts/smoke.mjs https://<service>.onrender.com server/.keys/signing-public.pem`.
 6. Check the logs for `evt:"SEED"` (first boot copies ~1167 blobs) and `evt:"LISTEN"`.

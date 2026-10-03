@@ -234,7 +234,7 @@ export class MediaSessionService implements MediaSessionPort {
       return;
     }
     const md: avSession.AVMetadata = {
-      assetId: ASSET_ID, title: meta.title, artist: artist, album: 'Kraków · Royal Route', duration: -1
+      assetId: ASSET_ID, title: meta.title, artist: artist, album: meta.album !== undefined && meta.album !== '' ? meta.album : 'CityTour', duration: -1
     };
     try {
       await s.setAVMetadata(md);

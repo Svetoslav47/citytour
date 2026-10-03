@@ -57,6 +57,8 @@ import { StepResult, TourEngine, TourInput, TourState } from '../../core/tour/To
 import { TourConfig } from '../../core/tour/TourConfig';
 import { CityPack, PlanInputs, buildCostInputs, plan as planRoute } from '../../core/route/Planner';
 import { haversineM } from '../../core/geo/GeoMath';
+import { Projection } from '../../core/geo/Projection';
+import { albumLine } from '../../core/content/CityPack';
 import { LogEvents } from '../../app/LogEvents';
 import { Scheduler } from '../../app/Clock';
 
@@ -68,7 +70,7 @@ export const NO_FIRST_FIX_MS: number = 30000;
 export const TICK_MS: number = 1000;
 /** Snapshot publisher throttle: at most 4 Hz. */
 export const SNAPSHOT_MIN_INTERVAL_MS: number = 250;
-/** §9 row 8: an origin this far outside the pack bbox is "far from Kraków". */
+/** §9 row 8: an origin this far outside the pack (city) bbox is "far from {city}". */
 export const OUT_OF_AREA_KM: number = 5;
 /** A fix older than this is not used as the planning origin. */
 export const ORIGIN_MAX_AGE_MS: number = 120000;
@@ -117,6 +119,8 @@ export interface TourControllerDeps {
   clips?: () => ClipIndex | undefined;
   /** A13: the label of the sentence playing right now (studio clip / native / fallback TTS), undefined when idle. */
   liveVoiceLabel?: () => VoiceLabel | undefined;
+  /** The active course's city name in the UI language ('' = unknown): the media session album "{city} · {tour}". */
+  cityName?: () => string;
 }
 
 /** Tour settings the controller applies at plan() time (B9: SettingsViewModel.applyToTour from UserSettings). */
@@ -317,6 +321,8 @@ export class TourController implements TourControl {
   private lastPlan: TourPlan | undefined = undefined;
   private voicePlan: VoicePlan | undefined = undefined;
   private packBbox: number[] = [];
+  /** The pack's projection (its manifest origin: every record's x/y is in this frame); undefined before load. */
+  private packProjection: Projection | undefined = undefined;
   private packLoaded: boolean = false;
   private sourceKind: FixSource = FixSource.REAL;
   private activeSource: LocationSource | undefined = undefined;
@@ -451,7 +457,7 @@ export class TourController implements TourControl {
       s.source = this.sourceKind;
     }
     if (this.ctrlIssues.length > 0) {
-      // "You're far from Kraków … try a demo walk" is moot while the Demo walk is the active source (issue #20).
+      // "You're far from {city} … try a demo walk" is moot while the Demo walk is the active source (issue #20).
       const demo: boolean = this.sourceKind === FixSource.DEMO;
       s.issues = s.issues.concat(demo ?
         this.ctrlIssues.filter((i: AppIssue) => i.code !== IssueCode.LOC_OUT_OF_AREA) : this.ctrlIssues);
@@ -682,6 +688,7 @@ export class TourController implements TourControl {
   onPackSwitched(): void {
     this.packLoaded = false;
     this.packBbox = [];
+    this.packProjection = undefined;
   }
 
   private async ensurePack(): Promise<boolean> {
@@ -710,6 +717,7 @@ export class TourController implements TourControl {
     this.packLoaded = true;
     const m: PackManifest | undefined = r.manifest;
     this.packBbox = m !== undefined ? m.bbox : [];
+    this.packProjection = m !== undefined ? Projection.fromOrigin(m.origin) : undefined;
     const narr: number = m !== undefined ? m.counts.narrations_en + m.counts.narrations_pl + m.counts.narrations_zh : 0;
     this.deps.log.info(LogEvents.PACK_LOAD, `ms=${this.deps.clock.nowMs() - t0} pack=${m !== undefined ? m.packId : ''} ` +
       `pois=${this.deps.pack.pois().length} narr=${narr} legs=${this.deps.pack.routes().legs.length} ` +
@@ -925,7 +933,7 @@ export class TourController implements TourControl {
       tour: tour, pois: this.tourPois(tour), lang: lang, personaId: personaId,
       narration: (poiId: string, len: NarrationLength) => this.narrationFor(poiId, personaId, lang, len),
       voice: vp, adaptiveLength: this.opts.adaptiveLength, spokenDirections: this.opts.spokenDirections,
-      briefOnly: this.opts.briefOnly, source: this.sourceKind, legs: this.packLegs()
+      briefOnly: this.opts.briefOnly, source: this.sourceKind, legs: this.packLegs(), projection: this.packProjection
     };
     this.heardLabel = undefined;           // a new tour starts from its plan label
     this.state = TourEngine.init(input, this.opts.config !== undefined ? this.opts.config : new TourConfig());
@@ -1533,7 +1541,15 @@ export class TourController implements TourControl {
     const st: TourState | undefined = this.state;
     const textNow: boolean = st !== undefined && st.speechText;
     const label: VoiceLabel = !textNow && this.heardLabel !== undefined ? this.heardLabel : meta.voiceLabel;
-    const m: MediaMeta = { title: meta.title, artist: this.artist, voiceLabel: label, demo: meta.demo };
+    let city: string = '';
+    try {
+      city = this.deps.cityName !== undefined ? this.deps.cityName() : '';
+    } catch (e) {
+      city = '';
+    }
+    const m: MediaMeta = {
+      title: meta.title, artist: this.artist, voiceLabel: label, demo: meta.demo, album: albumLine(city, meta.artist)
+    };
     try {
       media.setMeta(m);                  // a session that is not active yet buffers it (A6)
     } catch (e) {

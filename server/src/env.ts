@@ -35,6 +35,7 @@ export const EnvSchema = z.object({
   // Optional seed baked into the image (signed metadata + the repo's pack/audio files), copied to DATA_DIR on boot.
   SEED_DIR: z.string().optional(),
   SEED_FILES_DIR: z.string().optional(),
+  SEED_CITY_FILES_DIR: z.string().optional(),   // the repo's data/city: one folder per city id
   TOKEN_SECRET: z.string().min(32, 'TOKEN_SECRET must be at least 32 characters (32+ random bytes, e.g. base64)'),
   ELEVENLABS_API_KEY: z.string().min(1, 'ELEVENLABS_API_KEY is required (an exhausted key is fine: TTS falls back)'),
   ELEVENLABS_VOICE_ID: z.string().regex(/^[A-Za-z0-9]{8,64}$/).default('JBFqnCBsd6RMkjVDRZzb'),

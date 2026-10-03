@@ -33,6 +33,7 @@
  */
 import { common } from '@kit.AbilityKit';
 import { window } from '@kit.ArkUI';
+import { i18n } from '@kit.LocalizationKit';
 import {
   BackgroundPort, Clock, FixSource, HapticsPort, LocationSource, LoggerPort, MediaSessionPort, NotifierPort,
   PackRepository, PermissionPort, PermissionState, SpeechPort, TourControl, VoicePlan, VoicePort
@@ -43,7 +44,8 @@ import { PcmPlayer } from '../services/audio/PcmPlayer';
 import { ClipPlayer } from '../services/audio/ClipPlayer';
 import { BackgroundRunner } from '../services/background/BackgroundRunner';
 import { MediaSessionService } from '../services/media/MediaSessionService';
-import { DemoWalkSource } from '../services/location/DemoWalkSource';
+import { DemoTrackText, DemoWalkSource } from '../services/location/DemoWalkSource';
+import { CityInfo, cityDisplayName } from '../core/content/CityPack';
 import { PermissionService } from '../services/location/PermissionService';
 import { RealLocationSource } from '../services/location/RealLocationSource';
 import { CorruptPackRepository } from '../services/debug/CorruptPackRepository';
@@ -58,7 +60,7 @@ import { Lang } from '../contracts/Model';
 import { ClipEntry } from '../core/speech/ClipSelection';
 import { ActivePackRepository } from '../services/pack/ActivePackRepository';
 import { ActiveCourse, CourseRepository } from '../services/remote/CourseRepository';
-import { demoWalkOffered } from '../core/remote/CourseRules';
+import { demoWalkOffered, InstalledCourse } from '../core/remote/CourseRules';
 import { CourseStore } from '../services/remote/CourseStore';
 import { CoverStore } from '../services/remote/CoverStore';
 import { courseClipsOffThread } from '../services/remote/ClipManifestTask';
@@ -142,6 +144,7 @@ export class AppContainer {
   private static avsImpl: MediaSessionService | undefined = undefined;
   private static realLocImpl: RealLocationSource | undefined = undefined;
   private static demoImpl: DemoWalkSource | undefined = undefined;
+  private static activePackImpl: ActivePackRepository | undefined = undefined;
   private static demoCtlImpl: DemoWalkControls | undefined = undefined;
   private static notifierImpl: TourNotifier | undefined = undefined;
   private static hapticsImpl: Haptics | undefined = undefined;
@@ -162,7 +165,7 @@ export class AppContainer {
       AppContainer.remoteVoice().probe();            // one GET /healthz (skipped when BASE_URL is '')
       AppContainer.permImpl = new PermissionService(ctx);
       AppContainer.realLocImpl = new RealLocationSource(AppContainer.permImpl);
-      AppContainer.demoImpl = new DemoWalkSource(ctx);
+      AppContainer.demoImpl = new DemoWalkSource(() => AppContainer.demoTrackText());
       AppContainer.tourImpl = AppContainer.buildTour();
     } catch (e) {
       Log.e(LogEvents.UNCAUGHT, `where=AppContainer.init ${Log.errKv(e as Object)}`);
@@ -312,7 +315,8 @@ export class AppContainer {
       liveVoiceLabel: (): VoiceLabel | undefined => {
         const p: VoicePlan | undefined = AppContainer.narration().currentPlan();
         return p !== undefined ? p.label : undefined;
-      }
+      },
+      cityName: (): string => AppContainer.cityName()
     };
     const ctrl: TourController = new TourController(deps);
     AppContainer.tourNotifier().attach(ctrl, (): Lang => ctrl.options().lang);
@@ -426,9 +430,11 @@ export class AppContainer {
       // DEBUG_CORRUPT_PACK replaces the pack with a fake: courses then manage a private wrapper the app never shows.
       const active: ActivePackRepository = pack instanceof ActivePackRepository ? pack as ActivePackRepository :
         new ActivePackRepository();
+      AppContainer.activePackImpl = active;
       AppContainer.coursesImpl = new CourseRepository(AppContainer.remoteClient(),
         new CourseStore(() => AppContainer.filesDir()), active,
-        new CoverStore(AppContainer.remoteClient(), () => AppContainer.filesDir()));
+        new CoverStore(AppContainer.remoteClient(), () => AppContainer.filesDir()),
+        new CourseStore(() => AppContainer.filesDir(), 'cities'));
     }
     return AppContainer.coursesImpl;
   }
@@ -442,10 +448,11 @@ export class AppContainer {
     }
   }
 
-  /** The SIMULATED Demo walk (Royal Route track in the HAP) is offered only while the Kraków course is active. */
+  /** The SIMULATED Demo walk is offered while the active course's pack ships a demo track (any course, any city). */
   static demoWalkOffered(): boolean {
     try {
-      return demoWalkOffered(AppContainer.courses().activeId());
+      const a = AppContainer.activePack();
+      return demoWalkOffered(AppContainer.courses().activeId(), a !== undefined && a.hasDemoTrack());
     } catch (e) {
       return false;
     }
@@ -559,11 +566,71 @@ export class AppContainer {
     return AppContainer.realLocImpl;
   }
 
-  /** SIMULATED Demo walk source. Undefined before init() (it needs the context to read the rawfile track). */
+  /** SIMULATED Demo walk source (replays the active course's demo-walk.json). Undefined before init(). */
   static demoWalk(): DemoWalkSource | undefined {
     if (AppContainer.demoImpl === undefined && AppContainer.ctx !== undefined) {
-      AppContainer.demoImpl = new DemoWalkSource(AppContainer.ctx);
+      AppContainer.demoImpl = new DemoWalkSource(() => AppContainer.demoTrackText());
     }
     return AppContainer.demoImpl;
+  }
+
+  /** The active course's SIMULATED Demo walk track (its pack's demo-walk.json), undefined when it has none. */
+  private static async demoTrackText(): Promise<DemoTrackText | undefined> {
+    const active = AppContainer.activePack();
+    if (active === undefined || !active.hasDemoTrack()) {
+      return undefined;
+    }
+    const text = await active.demoTrack();
+    if (text === undefined) {
+      return undefined;
+    }
+    const t = new DemoTrackText();
+    t.key = `${active.activeId()}#${text.length}`;   // another course (or another track) restarts the walk
+    t.text = text;
+    return t;
+  }
+
+  /** 'en' | 'pl' | 'zh': the language the app's strings resolve to (app preferred language, else the system's). */
+  static uiLangCode(): string {
+    try {
+      const l = i18n.System.getAppPreferredLanguage().toLowerCase();
+      return l.startsWith('pl') ? 'pl' : l.startsWith('zh') ? 'zh' : 'en';
+    } catch (e) {
+      return 'en';
+    }
+  }
+
+  /**
+   * The active course's city in the UI language: its city pack's city.json names, else the catalog display name
+   * (CourseSummary.city) of an older self-contained course, else '' (no course). Strings put it in a nominative slot.
+   */
+  static cityName(): string {
+    try {
+      const repo = AppContainer.courses();
+      const id = repo.activeId();
+      if (id === '') {
+        return '';
+      }
+      const inst = repo.installed().find((c: InstalledCourse) => c.id === id);
+      return cityDisplayName(AppContainer.activeCity(), AppContainer.uiLangCode(),
+        inst !== undefined ? inst.summary.city : '');
+    } catch (e) {
+      return '';
+    }
+  }
+
+  /** The ActivePackRepository the courses drive (undefined before courses() was first built). */
+  static activePack(): ActivePackRepository | undefined {
+    return AppContainer.activePackImpl;
+  }
+
+  /** city.json of the active course's city (names, projection origin, bbox, default map bounds); undefined: none. */
+  static activeCity(): CityInfo | undefined {
+    try {
+      const a = AppContainer.activePack();
+      return a !== undefined ? a.cityInfo() : undefined;
+    } catch (e) {
+      return undefined;
+    }
   }
 }

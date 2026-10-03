@@ -586,7 +586,7 @@ export interface LocationSource {
   - It holds the **same callback reference** for `off()` (VERIFIED requirement).
   - It is constructed only after the permission check.
 - **`DemoWalkSource`** (`services/location/DemoWalkSource.ets`) wraps the pure `core/sim/DemoWalkPlayer.ets`.
-  - The track file is `rawfile/demo/royal-route-walk.json`: `DemoTrack { id, name, simulated: true, generatedBy: 'scripts/demo/make-demo-walk.mjs', fixes: DemoFix[] }`, where `DemoFix = Fix fields + tRelMs + hold?: boolean`.
+  - The track file is the active course pack's `demo-walk.json` (downloaded and signed with the course, generated into `data/course/<id>/demo-walk.json` and copied into the course's `tour/` pack; a course without one offers no Demo walk): `DemoTrack { id, name, simulated: true, generatedBy: 'scripts/demo/make-demo-walk.mjs', fixes: DemoFix[] }`, where `DemoFix = Fix fields + tRelMs + hold?: boolean`.
   - It emits through `setInterval(…, 1000)` with `speedMultiplier ∈ {1, 2, 4, 8}`.
   - **Hold segments.** At stops, `hold: true` fixes are re-emitted (standing still, with jitter) **while `holdPredicate()` returns true**. The controller wires that predicate to `queue.isStoryActive()`, so at ×8 the demo doesn't race past a story.
   - The hold is announced in the UI as **"Demo assist: waiting at stop while the story plays"**.
@@ -676,7 +676,7 @@ export function plan(inputs: PlanInputs, budgetS: number): TourPlan;   // picks 
 | 8 | `80-validate.mjs` | everything | the validator (same rules as the app, §7.4) → `validation-report.json`; failing drafts are replaced by the fallback tier |
 | 9 | `90-emit.mjs` | validated data | `data/course/krakow/packs/krakow/*.json` + `manifest.json` (byte sizes + sha256); published by the course server, not bundled in the HAP |
 | – | `build-pack.sh` | – | runs 10→90; **the committed pack is the source of truth**, so the app build never needs network |
-| – | `scripts/demo/make-demo-walk.mjs` | the pack's planned order + legs | `rawfile/demo/royal-route-walk.json` |
+| – | `scripts/demo/make-demo-walk.mjs` | the pack's planned order + legs | `data/course/<id>/demo-walk.json` (copied into the course's `tour/` pack by `split-city.mjs`) |
 
 **Review loop for tour stops.**
 1. `70-narrate.mjs --stops` writes `scripts/pack/review/<courseId>/<poiId>.<lang>.md`. Each file holds the draft, its `claims` with source quotes, and a checkbox.
@@ -705,6 +705,26 @@ export function plan(inputs: PlanInputs, budgetS: number): TourPlan;   // picks 
 Loading:
 - Read with `context.resourceManager.getRawFileContent('packs/krakow/pois.json')` (VERIFIED) and decode with `util.TextDecoder` (ASSUMPTION: exact method `decodeToString`).
 - Parse in `RawfilePackRepository` → `PackParser`. The load happens once at splash, asynchronously, and is logged as `PACK_LOAD ms=…`.
+
+### 7.2a City packs and course overlays (data split, server side)
+
+The full course pack above carries the whole city; courses of one city differ only in their own stops. So the
+published data is split (`scripts/pack/split-city.mjs`, deterministic, re-run by `build-pack.sh`; `--check` and
+`split-city.test.mjs` assert the committed outputs equal a fresh split):
+
+- **City pack** `data/city/<cityId>/` (meta: hand-written `data/city/<cityId>.json`): `pois.json`,
+  `narrations/{en,pl,zh}.json`, `sources.json`, `map-detail.json` byte-identical to the full pack of the city's
+  `sourceCourse` (krakow), plus `city.json` (`{schemaVersion, cityId, names, origin, bbox, defaultBounds,
+  properNouns?}`) and a `manifest.json` in the pack format with `cityId`. Published with `npm run publish-city`.
+- **Course overlay** `data/course/<courseId>/tour/`: `tours.json`, `routes.json`, `personas.json`; the full pack's
+  POI records, narrations (all lengths, en/pl/zh) and referenced sources of the tour's stops only;
+  `map-detail.json` only when it differs from the city's (krakow-kazimierz); `demo-walk.json`; the cover; a
+  `manifest.json` (packId = courseId, version `<full pack version>-t<8 hex>`, `cityId`). Published with
+  `publish-course --pack data/course/<id>/tour --city-id <cityId>`.
+- Which city a course belongs to: `COURSE_CITY` in `scripts/pack/lib/course.mjs`. The full packs
+  (`packs/<id>/`) stay the pipeline's output and test reference; they are no longer what new publishes ship.
+- Server: `GET /v1/cities/:cityId/manifest` (signed), `cities` in the catalog, `cityId` in the course manifest and
+  summary; the course's TTS allowed set also covers the city's narrations (docs/SERVER.md §3.1 "City packs").
 
 ### 7.3 Schemas (ArkTS, in `contracts/Model.ets`; the pipeline mirrors them in `scripts/pack/schema.mjs`)
 
@@ -888,7 +908,7 @@ Every row has a UI state, a log line, and **no crash**. All platform calls are w
 | 5 | Fix lost mid-tour | `FIX_TIMEOUT` (> 25 s without a fix) | `signal=Lost`; P0 spoken once "I've lost the GPS signal, I'll continue when it's back."; triggers frozen | `W LOC_LOST secs=25` / `I LOC_BACK` |
 | 6 | Poor accuracy | `accuracy > 40` (or a NETWORK provider > 25) | Dot plus a big accuracy ring; chip "Low accuracy, stories paused". Never a false arrival. | `W LOC_POOR acc=63 prov=2` (rate-limited 1/30 s) |
 | 7 | Location service unavailable | `3301000`, `801` | Card offering the Demo walk | `E LOC_UNAVAILABLE code=…` |
-| 8 | User far from Kraków | origin farther than 5 km outside the pack bbox | "You're 1,240 km from Kraków. Explore with the Demo walk." Map centres on the tour. **This is the likely jury case.** | `I LOC_OUT_OF_AREA km=1240` |
+| 8 | User far from the city | origin farther than 5 km outside the pack (city) bbox | "You're far from {city}." (name from the city pack's city.json); e.g. "You're 1,240 km from Kraków. Explore with the Demo walk." Map centres on the tour. **This is the likely jury case.** | `I LOC_OUT_OF_AREA km=1240` |
 | 9 | TTS engine creation fails | `createEngine` rejects `1002300005`/`1002300002`/`1002300003` | `speechMode=TextOnly`; badge "Voice unavailable, showing text"; haptic + AVSession title on arrival | `E TTS_INIT_FAIL lang=en code=…` |
 | 10 | Voice not installed / download fails | `listVoices` status `GA`/`EOM`; download error `1002300008`; user cancels | Onboarding prompt; on failure offer the zh-voice-reads-English fallback (spike S1) or text-only | `W VOICE_STATUS lang=en person=8 status=GA` / `E VOICE_DL_FAIL code=…` |
 | 11 | TTS error during speech | `onError(requestId, code)` | Skip that sentence (caption stays visible), continue; 3 consecutive errors ⇒ TextOnly | `E TTS_ERR req=… code=…` |
@@ -1038,7 +1058,7 @@ entry/src/main/ets/
 entry/src/main/resources/
 ├── base|en_US|pl_PL|zh_CN/element/string.json   [B owns; A adds keys only via engine_strings.json*]
 ├── base/profile/main_pages.json, form_config.json (P2)
-└── rawfile/demo/royal-route-walk.json [B generates, A consumes]   (the course itself: data/course/krakow/, downloaded)
+└── (no rawfile: courses, their Demo walk tracks and the city places packs are downloaded; data/course/, data/city/)
 entry/src/test/  List.test.ets, *.test.ets, fixtures/*.ets       [each owner tests own modules]
 scripts/pack/*  [B]   scripts/demo/*  [B]   scripts/test.sh, scripts/smoke.sh  [A]
 docs/ARCHITECTURE.md (this file)

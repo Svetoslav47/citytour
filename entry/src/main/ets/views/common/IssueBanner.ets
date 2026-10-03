@@ -4,9 +4,10 @@
  */
 import { AppIssue, IssueCode } from '../../contracts/EngineTypes';
 import { Radius, Space, Type } from './Tokens';
+import { AppViewModel } from '../../viewmodel/AppViewModel';
 
 /** User-facing message for each §9 error-matrix code. */
-export function issueMessage(code: IssueCode): Resource {
+export function issueMessage(code: IssueCode, city: string = ''): Resource {
   switch (code) {
     case IssueCode.PERM_DENIED:
       return $r('app.string.err_perm_denied');
@@ -23,7 +24,7 @@ export function issueMessage(code: IssueCode): Resource {
     case IssueCode.LOC_UNAVAILABLE:
       return $r('app.string.err_loc_unavailable');
     case IssueCode.LOC_OUT_OF_AREA:
-      return $r('app.string.err_loc_out_of_area');
+      return city !== '' ? $r('app.string.err_loc_out_of_area', city) : $r('app.string.err_loc_out_of_area_any');
     case IssueCode.TTS_INIT_FAIL:
       return $r('app.string.err_tts_init');
     case IssueCode.VOICE_UNAVAILABLE:
@@ -90,7 +91,7 @@ export struct IssueBanner {
         SymbolGlyph($r('sys.symbol.exclamationmark_triangle_fill'))
           .fontSize(20)
           .fontColor([$r('app.color.signal_simulated_fg')])
-        Text(this.message !== '' ? this.message : issueMessage(this.code))
+        Text(this.message !== '' ? this.message : issueMessage(this.code, AppViewModel.get().cityName))
           .fontSize(Type.CALLOUT)
           .lineHeight(Type.CALLOUT_LH)
           .fontColor($r('app.color.text_primary'))

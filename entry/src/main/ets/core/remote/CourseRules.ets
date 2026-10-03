@@ -2,13 +2,16 @@
  * Course list rules (docs/SERVER.md §6 "CourseRepository" and "Courses screen"). Pure: no @kit imports, unit-tested
  * in entry/src/test/CourseRules.test.ets.
  *
- * The app ships NO built-in course: every course (Kraków included) is downloaded from the course server.
+ * The app ships NO built-in course and knows no city: every course is downloaded from the course server, and a course
+ * of a city brings that city's places pack with it (SERVER.md §3 R7).
  * - A downloaded course is listed even when the catalog is unavailable (offline) or no longer lists it.
  * - A catalog version different from the installed one is an update.
  * - The active course is '' (none: Home shows "Download your first walk") until a course is installed. The first
  *   successful download becomes the active course. Deleting the active course makes another installed course
  *   active, or none when it was the last one.
- * - The Demo walk (a SIMULATED Royal Route track shipped in the HAP) is only offered for the Kraków course.
+ * - The Demo walk (a SIMULATED track) is offered for any active course whose pack ships a demo-walk.json track.
+ * - A city places pack is downloaded when missing or when the catalog lists another version, and removed when no
+ *   installed course uses it any more.
  */
 import { CourseSummary } from './ServerApi';
 
@@ -44,9 +47,6 @@ function findInstalled(list: InstalledCourse[], id: string): InstalledCourse | u
   return list.find((c: InstalledCourse) => c.id === id);
 }
 
-/** The course whose SIMULATED Demo walk track ships in the HAP (rawfile/demo/royal-route-walk.json). */
-export const DEMO_COURSE_ID: string = 'krakow';
-
 /** The id the app should use as its active course: the saved one when installed, else the first installed, else ''. */
 export function resolveActive(activeId: string, installed: InstalledCourse[]): string {
   if (activeId !== '' && findInstalled(installed, activeId) !== undefined) {
@@ -60,9 +60,33 @@ export function activeAfterInstall(activeId: string, installedId: string): strin
   return activeId === '' ? installedId : activeId;
 }
 
-/** The Demo walk (SIMULATED Royal Route track) is offered only while the Kraków course is active. */
-export function demoWalkOffered(activeId: string): boolean {
-  return activeId === DEMO_COURSE_ID;
+/** The Demo walk (SIMULATED track) is offered while a course is active and its pack ships a demo track. */
+export function demoWalkOffered(activeId: string, hasDemoTrack: boolean): boolean {
+  return activeId !== '' && hasDemoTrack;
+}
+
+/**
+ * Whether a course download must also fetch its city's places pack: none installed (''), or the catalog lists
+ * another version. An unknown catalog version ('': offline, older catalog) keeps the installed city.
+ */
+export function cityNeedsDownload(installedVersion: string, catalogVersion: string): boolean {
+  if (installedVersion === '') {
+    return true;
+  }
+  return catalogVersion !== '' && catalogVersion !== installedVersion;
+}
+
+/**
+ * Bytes a Download fetches: the course, plus its city's places pack when that city is not installed yet (the first
+ * course of a city brings it; the next ones share it). `cityBytes` 0 = unknown (older catalog).
+ */
+export function downloadBytes(courseBytes: number, cityId: string, cityBytes: number, cityInstalled: boolean): number {
+  return courseBytes + (cityId !== '' && !cityInstalled && cityBytes > 0 ? cityBytes : 0);
+}
+
+/** Installed city packs that no installed course uses any more (removed with the last course of the city). */
+export function orphanCities(installedCities: string[], usedCityIds: string[]): string[] {
+  return installedCities.filter((c: string) => usedCityIds.indexOf(c) < 0);
 }
 
 /** What Home shows. */
