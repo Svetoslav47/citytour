@@ -1,6 +1,6 @@
 # Render Blueprint for the CityTour course server (server/README.md "Deploy on Render").
 # Build context is the repo root: the image bundles the committed signed seed (server/seed) and the pack + clip
-# files it references (data/course/krakow; the app ships no course and downloads it from here). On boot they are copied to the disk if missing.
+# files it references (data/course/<courseId>/ for every course; the app ships no course and downloads it from here). On boot they are copied to the disk if missing.
 services:
   - type: web
     name: citytour-server

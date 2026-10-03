@@ -1,13 +1,15 @@
 // Boot-time seeding of DATA_DIR from the image (server/README.md "How the course data reaches the disk").
 // SEED_DIR holds the signed metadata written by `npm run publish-course -- --seed seed` (committed: public, signed,
 // no secrets): catalog.json, courses/<id>/{manifest,allowed}.json, tts-index.json (shipped clips only).
-// SEED_FILES_DIR is the course data root (repo data/course/krakow) copied into the image; manifest file paths are relative to it
-// (packs/<packId>/..., audio/...). On boot:
+// SEED_FILES_DIR holds the course files copied into the image: the repo's data/course, one folder per course id, so the
+// files of course <id> are read from SEED_FILES_DIR/<id>/ (manifest file paths are relative to it: packs/<packId>/...,
+// audio/...). When SEED_FILES_DIR/<id>/ does not exist, SEED_FILES_DIR itself is that course's root (the older
+// single-course image, which copied data/course/krakow). On boot:
 //   - catalog and course files are copied when missing or different (the image = the latest publish);
 //   - every manifest file missing from blobs/ is copied from SEED_FILES_DIR after its sha256 is verified;
 //   - seed tts-index entries are merged into the disk's index (runtime-rendered entries are kept).
 // The private key is never in the image: the envelopes were signed on the maintainer's machine.
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { mkdir, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Logger } from 'pino';
@@ -27,6 +29,15 @@ async function copyIfChanged(src: string, dst: string): Promise<boolean> {
   }
   await writeFileAtomic(dst, data);
   return true;
+}
+
+/** The folder that holds course `id`'s files: <filesDir>/<id> (one folder per course), else <filesDir> (one course). */
+export function courseFilesRoot(filesDir: string | undefined, id: string): string | undefined {
+  if (!filesDir) {
+    return undefined;
+  }
+  const perCourse = join(filesDir, id);
+  return existsSync(perCourse) && statSync(perCourse).isDirectory() ? perCourse : filesDir;
 }
 
 export async function seedDataDir(store: DataStore, seedDir: string, filesDir: string | undefined, log: Logger):
@@ -53,14 +64,15 @@ export async function seedDataDir(store: DataStore, seedDir: string, filesDir: s
     const env = JSON.parse(await readFile(join(coursesDir, id, 'manifest.json'), 'utf8')) as {
       payload?: { files?: ManifestFile[] };
     };
+    const root = courseFilesRoot(filesDir, id);
     for (const f of env.payload?.files ?? []) {
       if (!SHA256_RE.test(f.sha256) || (await store.hasBlob(f.sha256))) {
         continue;
       }
-      if (!filesDir || f.path.includes('..') || f.path.startsWith('/')) {
+      if (!root || f.path.includes('..') || f.path.startsWith('/')) {
         throw new Error(`seed: blob ${f.sha256} (${f.path}) missing and no SEED_FILES_DIR to copy it from`);
       }
-      const data = await readFile(join(filesDir, f.path));
+      const data = await readFile(join(root, f.path));
       if (sha256Hex(data) !== f.sha256) {
         throw new Error(`seed: ${f.path} does not match its manifest sha256 (the image and the seed are out of sync)`);
       }
