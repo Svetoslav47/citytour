@@ -17,7 +17,7 @@
 // sentence, every item completes, a stop's story is never interleaved with another); finished state; no off-route
 // false positive (no REPLAN / REQUEST_REPLAN, snapshot.offRoute stays false); no arrival during the detour or the
 // 60 m accuracy window.
-// Each run prints one `REPLAY_SUMMARY ...` line (copied into docs/evidence/replay-test.txt and the README).
+// Each run prints one `REPLAY_SUMMARY ...` line (pasted into the README "Testing" section and the A11 PR).
 import { describe, it, expect } from '@ohos/hypium';
 import { StepResult, TourEngine, TourInput, TourState } from '../main/ets/core/tour/TourEngine';
 import { TourConfig } from '../main/ets/core/tour/TourConfig';
