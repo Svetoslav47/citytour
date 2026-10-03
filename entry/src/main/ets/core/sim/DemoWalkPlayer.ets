@@ -8,8 +8,9 @@
  *   - hold segments (`hold: true`, the dwell at a stop): when the cursor reaches the end of a hold segment while
  *     `holdActive` is true, it loops back to the segment start instead of leaving, so the walker keeps standing
  *     (with the recorded jitter) while the story plays ("Demo assist");
- *   - emitted timestamps are startMs + simulated elapsed time (strictly increasing, also while holding), so
- *     dwell and off-route timers measured on fix timestamps behave as at walking pace at any speed;
+ *   - emitted timestamps are startMs + simulated elapsed time (strictly increasing, also while holding); a consumer
+ *     that times dwell/off-route on fix timestamps then sees walking pace at any speed. DemoWalkSource restamps
+ *     with the wall clock by default (setSimulatedTimestamps(true) keeps these);
  *   - the walk ends at the last fix (which may itself be a hold that loops while holdActive).
  * Pure: no platform imports, no randomness, no logging.
  */
