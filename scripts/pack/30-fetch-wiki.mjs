@@ -11,8 +11,12 @@
 // `Accept-Language: zh-hans` for REST and `variant=zh-hans` for the action API.
 // Texts are CC BY-SA 4.0 ("Wikipedia contributors"); revision ids are kept for attribution.
 //
-// Usage: node scripts/pack/30-fetch-wiki.mjs [--offline | --refresh]
+// Courses (scripts/pack/lib/course.mjs): the summaries are shared by every course; the stop texts are per tour
+// (default course: data/raw/wiki/stops-text-*.json; others: data/raw/tours/<tourId>/wiki/stops-text-*.json).
+//
+// Usage: node scripts/pack/30-fetch-wiki.mjs [--offline | --refresh] [--course <courseId> | --tour <tourId>]
 
+import { resolveCourse } from './lib/course.mjs';
 import { createHttp, ensureSnapshot, HttpError, isMain, nowIso, readSnapshot, readTour, runMain } from './lib/http.mjs';
 
 export const LANGS = ['en', 'pl', 'zh'];
@@ -177,7 +181,8 @@ async function fetchStopTexts(http, lang, stopQids, byQ) {
 }
 
 async function main(args) {
-  const stopQids = readTour().stops.map((s) => s.wikidataId);
+  const course = resolveCourse(args);
+  const stopQids = readTour(course.tourFile).stops.map((s) => s.wikidataId);
   const wd = readSnapshot('wikidata/krakow-items.json');
   const byQ = new Map(wd.items.map((i) => [i.qid, i]));
   const qids = selectQids(wd.items, stopQids);
@@ -187,7 +192,7 @@ async function main(args) {
     console.log(`wiki ${lang} summaries ${s.meta.count} (missing ${s.meta.missing.length}), retrieved ${s.meta.retrievedAt}`);
   }
   for (const lang of LANGS) {
-    const s = await ensureSnapshot(`wiki/stops-text-${lang}.json`, args, () => fetchStopTexts(http, lang, stopQids, byQ));
+    const s = await ensureSnapshot(course.rawRel(`wiki/stops-text-${lang}.json`), args, () => fetchStopTexts(http, lang, stopQids, byQ));
     const chars = Object.values(s.pages).map((p) => p.chars);
     console.log(`wiki ${lang} stop texts ${s.meta.count}/${stopQids.length} (${chars.length ? Math.min(...chars) : 0}-${chars.length ? Math.max(...chars) : 0} chars), missing: ${s.meta.missing.map((m) => m.qid).join(' ') || 'none'}`);
   }

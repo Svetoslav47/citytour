@@ -21,13 +21,14 @@
 // enumerates them anyway (every stop x direction x distance bucket) for the course server's allowed-lines set
 // (docs/SERVER.md §4), and the golden holds samples of them so their exactness is tested the same way.
 //
-// Usage: node scripts/voice/system-lines.mjs [--lang en] [--group nav] [--nav-legs all|tour]   (prints the lines)
+// Usage: node scripts/voice/system-lines.mjs [--course <courseId>] [--lang en] [--group nav] [--nav-legs all|tour]   (prints the lines)
 //        node scripts/voice/system-lines.mjs --write-golden                                     (ArkTS fixture)
 // Node 22+, stdlib only.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { DEFAULT_COURSE_ID, resolveCourse } from '../pack/lib/course.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(HERE, '..', '..');
@@ -739,11 +740,19 @@ export function main(argv) {
       o.pack = resolve(val());
     } else if (a === '--tour-id') {
       o.tour = val();
+    } else if (a === '--course') {
+      const c = resolveCourse({ course: val() });
+      o.pack = c.packDir;
+      o.tour = c.tourId;
+      o.course = c.courseId;
     } else if (a === '--write-golden') {
       o.writeGolden = true;
     } else {
       throw new Error(`unknown option ${a}`);
     }
+  }
+  if (o.writeGolden && o.course && o.course !== DEFAULT_COURSE_ID) {
+    throw new Error('--write-golden is for the default course (the ArkTS golden fixture is the Royal Route)');
   }
   const pack = loadPack(o.pack, o.tour);
   if (o.writeGolden) {

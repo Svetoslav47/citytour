@@ -163,6 +163,8 @@ node scripts/voice/render-elevenlabs.mjs                 # the rest; reruns skip
 node scripts/voice/render-elevenlabs.mjs --dry-run --system-only   # only the system/arrival/nav lines
 ```
 
+Another course: add `--course <courseId>` (e.g. `--course krakow-scholars`); it reads that course's pack and tour and writes `data/course/<courseId>/audio/` with its own `manifest.json`.
+
 System lines are included by default (`--no-system` skips them, `--system-only` renders only them, `--system-groups system,arrival,nav`, `--nav-legs all|tour`). A run re-plans and prunes only the clips in its scope (languages x stories/system groups). After a template change in `core/content/Phrases.ets`, run `node scripts/voice/system-lines.mjs --write-golden` and re-render; `scripts/test.sh` fails while the golden is stale or the Node port differs from the ArkTS output.
 
 Model `eleven_multilingual_v2`, mono `mp3_44100_64` by default (`--output-format mp3_22050_32` halves the size). Input is the pack's `narrations/<lang>.json`; `--narrations-dir`, `--langs`, `--lengths`, `--fixture` and `--help` change that. The pre-commit hook rejects ElevenLabs key values.
@@ -322,6 +324,8 @@ The Kraków course pack is built into `data/course/krakow/packs/krakow/` (genera
 scripts/pack/build-pack.sh           # ~1 s; prints file sizes, counts per language and tier, validation summary
 node --test scripts/pack/*.test.mjs  # pipeline tests, incl. "the committed pack equals a fresh build"
 ```
+
+One course per tour. Without a flag every pipeline and voice script works on the course `krakow` (The Royal Route) exactly as before; `--course <courseId>` (or `--tour <tourId>`) selects another one. `data/tours/<tourId>.json` names its `courseId`; the course is built into `data/course/<courseId>/packs/<courseId>/`, its clips go to `data/course/<courseId>/audio/`, its Historian review files live in `scripts/pack/review/<courseId>/`, and its own OSRM and wiki stop-text snapshots in `data/raw/tours/<tourId>/` (shared snapshots stay in `data/raw/`). See `scripts/pack/lib/course.mjs`.
 
 Content: 4,290 Wikidata places, the Royal Route, 110 OSRM walking legs, the Old Town map (OSM), and narrations in en/pl/zh: verbatim Wikipedia extracts where an article exists, otherwise a labelled name-only template. Every narration passes the validator in `scripts/pack/80-validate.mjs` (spec v1, shared with the app via `scripts/pack/fixtures/validator-cases.json`); its report is `validation-report.json`. Sources and licences are in `sources.json` and `data/raw/SOURCES.md`.
 

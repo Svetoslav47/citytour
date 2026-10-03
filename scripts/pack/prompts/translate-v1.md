@@ -8,8 +8,8 @@ The exact, public instruction set used to translate the English Historian script
 
 ## Inputs (nothing else)
 
-1. `scripts/pack/review/<poiId>.en.md`: the teaser, full and deep sections, the claims and the view hint.
-2. The stop names in `data/tours/royal-route.json` (pl, zh).
+1. `scripts/pack/review/<courseId>/<poiId>.en.md`: the teaser, full and deep sections, the claims and the view hint.
+2. The stop names in the course's tour file (`data/tours/royal-route.json`, or `data/tours/<tourId>.json` for another course) (pl, zh).
 3. For established local name forms only: the Polish and Chinese source texts in `data/raw/wiki/stops-text-{pl,zh}.json` and `summaries-{pl,zh}.json`.
 
 Translate what the English says, sentence by sentence. Add no fact, number, name or nuance that is not in the English script. Drop nothing.
@@ -27,7 +27,7 @@ Translate what the English says, sentence by sentence. Add no fact, number, name
 - **Length bands** (validator spec v1): pl teaser 15–60 words, full 120–420, deep ≤ 900, every sentence ≤ 45 words; zh teaser 40–150 CJK characters, full 300–1000, deep ≤ 2200, every sentence ≤ 110 characters.
 - **Grounding.** The English claims carry over automatically. When a Polish proper noun is an inflected or local form that is not in those quotes (for example "Wita Stwosza" for Veit Stoss), add a claim in the translation file whose `quote` is an exact substring of the Polish source text that contains that form. Never add a claim for a fact the English does not state.
 
-## Output format (`scripts/pack/review/<poiId>.<pl|zh>.md`)
+## Output format (`scripts/pack/review/<courseId>/<poiId>.<pl|zh>.md`)
 
 ```text
 ---

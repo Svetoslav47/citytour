@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # CityTour course server (docs/SERVER.md §7). Build context = the REPOSITORY ROOT, because the image also carries
-# the course's pack + clip files (data/course/krakow, laid out like the manifest paths: packs/krakow/..., audio/...)
-# that the committed signed seed (server/seed) points at:   docker build -f server/Dockerfile -t citytour-server .
+# the courses' pack + clip files (data/course/<courseId>/, each laid out like its manifest paths: packs/<id>/...,
+# audio/...) that the committed signed seed (server/seed) points at:   docker build -f server/Dockerfile -t citytour-server .
 # Signing happens on the maintainer's machine (npm run publish-course); the private key is never in the image.
 
 FROM node:22-alpine AS build
@@ -27,7 +27,7 @@ COPY --from=build /app/dist ./dist
 COPY server/package.json ./package.json
 COPY server/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY server/seed ./seed
-COPY data/course/krakow ./seed-files
+COPY data/course ./seed-files
 RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh \
  && mkdir -p /var/data && chown node:node /var/data \
  && chown -R root:root /app && chmod -R a+rX,go-w /app

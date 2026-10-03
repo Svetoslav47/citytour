@@ -82,9 +82,15 @@ seed whose files no longer match (and a vitest case checks the committed seed ag
 Signing happens only on the maintainer's machine; the private key never leaves `server/.keys/` (or your password
 manager). The **image** carries the result:
 
-- `server/seed/` (committed): `catalog.json`, `courses/krakow/{manifest,allowed}.json`, `tts-index.json`;
-- the course files in `data/course/krakow/` (`packs/krakow/...`, `audio/...`, exactly the manifest's paths; the
-  app bundles none of them and downloads them from here). The Docker build context is the repo root for this reason.
+- `server/seed/` (committed): `catalog.json`, `courses/<id>/{manifest,allowed}.json` per course, `tts-index.json`;
+- the course files in `data/course/<id>/` (`packs/<id>/...`, `audio/...`, exactly the manifest's paths; the
+  app bundles none of them and downloads them from here). The image copies the whole `data/course/` to
+  `SEED_FILES_DIR`, one folder per course id (a `SEED_FILES_DIR` without a `<id>/` folder is read as that one course's
+  root, as older images did). The Docker build context is the repo root for this reason.
+
+Publishing a second course (for example `krakow-scholars`, built with `scripts/pack/build-pack.sh --course
+krakow-scholars` and rendered with `render-elevenlabs.mjs --course krakow-scholars`) adds its entry to the same
+signed `catalog.json` and keeps the others; `test/multi-course.test.ts` checks two courses end to end.
 
 On every boot (`SEED_DIR` set) the server copies changed metadata to `DATA_DIR`, copies every manifest file that is
 missing from `blobs/` (verifying its sha256), and merges the shipped clips into `tts-index.json` while keeping lines

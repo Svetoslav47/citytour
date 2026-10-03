@@ -12,6 +12,11 @@ import { publishCourse } from '../publish.js';
 
 const CITY: Record<string, string> = { krakow: 'Kraków' };
 
+/** Default --city: by course id, else by its first segment (krakow-scholars -> Kraków), else the id itself. */
+function defaultCity(courseId: string): string {
+  return CITY[courseId] ?? CITY[courseId.split('-')[0] ?? ''] ?? courseId;
+}
+
 async function main(argv: string[]): Promise<number> {
   const o: Record<string, string> = {};
   for (let i = 0; i < argv.length; i++) {
@@ -43,7 +48,7 @@ async function main(argv: string[]): Promise<number> {
     seedDir: o.seed ? resolve(o.seed) : undefined,
     privateKey,
     systemLinesPath,
-    city: o.city ?? CITY[courseId] ?? courseId,
+    city: o.city ?? defaultCity(courseId),
     log: (s) => console.log(`publish-course: ${s}`)
   });
   console.log(`publish-course: blobs written ${r.blobsWritten}, shipped clips pre-seeded in tts-index ${r.shippedIndexed}`);

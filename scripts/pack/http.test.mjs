@@ -37,9 +37,13 @@ function res(status, body = '{}', headers = {}) {
 }
 
 test('parseArgs accepts --offline / --refresh and rejects typos', () => {
-  assert.deepEqual(parseArgs([]), { offline: false, refresh: false });
-  assert.deepEqual(parseArgs(['--offline']), { offline: true, refresh: false });
-  assert.deepEqual(parseArgs(['--refresh']), { offline: false, refresh: true });
+  const none = { course: null, tour: null };
+  assert.deepEqual(parseArgs([]), { offline: false, refresh: false, ...none });
+  assert.deepEqual(parseArgs(['--offline']), { offline: true, refresh: false, ...none });
+  assert.deepEqual(parseArgs(['--refresh']), { offline: false, refresh: true, ...none });
+  assert.deepEqual(parseArgs(['--offline', '--course', 'krakow-scholars']), { offline: true, refresh: false, course: 'krakow-scholars', tour: null });
+  assert.deepEqual(parseArgs(['--tour', 'scholars-saints']), { offline: false, refresh: false, course: null, tour: 'scholars-saints' });
+  assert.throws(() => parseArgs(['--course']), /needs a value/);
   assert.throws(() => parseArgs(['--ofline']), /unknown argument/);
   assert.throws(() => parseArgs(['--offline', '--refresh']), /mutually exclusive/);
 });
