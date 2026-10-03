@@ -355,6 +355,14 @@ export struct NowWalkingPage {
         this.controls()
         if (!this.finished() && this.vm.totalStops > 0) {
           Row() {
+            if (this.vm.stopName !== '' && this.vm.snap !== undefined && this.vm.snap.next !== undefined) {
+              Button($r('app.string.walk_transcript'), { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
+                .id('btnTranscript')
+                .height(Size.TOUCH)
+                .fontSize(Type.CALLOUT)
+                .fontColor($r('app.color.accent'))
+                .onClick(() => this.app.openPlace(this.vm.snap?.next?.poiId ?? ''))
+            }
             Blank()
             Button($r('app.string.walk_stops', this.vm.totalStops),
               { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })

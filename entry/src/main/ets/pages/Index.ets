@@ -6,7 +6,9 @@
 import { UserSettings } from '../contracts/Settings';
 import { AppViewModel, Routes } from '../viewmodel/AppViewModel';
 import { OnboardingViewModel } from '../viewmodel/OnboardingViewModel';
+import { AboutSourcesPage } from './AboutSourcesPage';
 import { HomePage } from './HomePage';
+import { PlaceDetailPage } from './PlaceDetailPage';
 import { NowWalkingPage } from './NowWalkingPage';
 import { OnboardingPage } from './OnboardingPage';
 import { RouteReadyPage } from './RouteReadyPage';
@@ -33,6 +35,10 @@ struct Index {
       RouteReadyPage()
     } else if (name === Routes.NOW_WALKING) {
       NowWalkingPage()
+    } else if (name === Routes.PLACE_DETAIL) {
+      PlaceDetailPage({ poiId: param as string })
+    } else if (name === Routes.ABOUT_SOURCES) {
+      AboutSourcesPage()
     } else if (name === Routes.ONBOARDING) {
       NavDestination() {
         OnboardingPage({ asRoute: true })
