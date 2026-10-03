@@ -318,6 +318,8 @@ export struct RouteReadyPage {
           .margin({ top: Space.S3 })
       }
 
+      // Short plans: push Begin to the bottom of the stretched panel instead of leaving a gap under it.
+      Blank()
       Button({ type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.EMPHASIZED }) {
         if (this.vm.starting) {
           LoadingProgress()
@@ -357,6 +359,7 @@ export struct RouteReadyPage {
       top: Space.S5,
       bottom: Space.S5 + this.sa.bottom
     })
+    .flexGrow(1)   // the panel reaches the bottom edge even when the plan is short (no blank strip below it)
     .borderRadius({ topLeft: Radius.XL, topRight: Radius.XL })
     .backgroundColor($r('app.color.bg_surface'))
     .shadow(ShadowStyle.OUTER_FLOATING_SM)
@@ -378,6 +381,7 @@ export struct RouteReadyPage {
             this.panel()
           }
           .width('100%')
+          .constraintSize({ minHeight: '100%' })
         }
         .scrollBar(BarState.Off)
         .align(Alignment.Top)
