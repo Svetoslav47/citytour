@@ -1,5 +1,5 @@
 {
-  "$comment": "Human-curated source for the Kazimierz tour (course krakow-kazimierz, docs/research/new-tours.md §2). Same format as royal-route.json: tour-level id, personaId, titles, summaries, fixedStartPoiId, fixedEndPoiId, estMinutes and per-stop poiId, dwellS, prize, triggerRadiusM, approachRadiusM mirror contracts/Model.ets Tour/TourStop; per-stop wikidataId, kind, names, lat, lng and view {look, feature} feed the Poi records. Review-only keys (not emitted): $comment, courseId, mapArea, sourceQids, summariesReview, namesSource, estMinutesBasis, coordinatesConfirmedBy, coordinateMethod, radiiNote, toneNote, n, sensitive, coordinateSource, coordinateCheck, view.basis, view.review. Coordinates, radii, dwell times, prizes and view hints are agent drafts until a human confirms them.",
+  "$comment": "Human-curated source for the Kazimierz tour (course krakow-kazimierz, docs/research/new-tours.md §2). Same format as royal-route.json: tour-level id, personaId, titles, summaries, fixedStartPoiId, fixedEndPoiId, estMinutes and per-stop poiId, dwellS, prize, triggerRadiusM, approachRadiusM mirror contracts/Model.ets Tour/TourStop; per-stop wikidataId, kind, names, lat, lng and view {look, feature} feed the Poi records. Review-only keys (not emitted): $comment, courseId, mapArea, sourceQids, summariesReview, namesSource, estMinutesBasis, coordinatesConfirmedBy, coordinateMethod, radiiNote, toneNote, n, sensitive, coordinateSource, coordinateCheck, view.basis, view.review. view.feature pl/zh are the translated view hints of the review files (translate-v1). Coordinates, radii, dwell times, prizes and view hints are agent drafts until a human confirms them.",
   "id": "kazimierz",
   "courseId": "krakow-kazimierz",
   "mapArea": "kazimierz",
@@ -61,7 +61,9 @@
       "view": {
         "look": "level",
         "feature": {
-          "en": "the Well of Saint Stanislaus outside the church"
+          "en": "the Well of Saint Stanislaus outside the church",
+          "pl": "studnia świętego Stanisława przed kościołem",
+          "zh": "教堂外面的圣斯坦尼斯瓦夫之井"
         },
         "basis": {
           "lang": "en",
@@ -104,7 +106,9 @@
       "view": {
         "look": "level",
         "feature": {
-          "en": "the late Gothic porch with its two richly carved stone portals"
+          "en": "the late Gothic porch with its two richly carved stone portals",
+          "pl": "późnogotycka kruchta z dwoma bogato rzeźbionymi kamiennymi portalami",
+          "zh": "晚期哥特式门廊和两扇雕刻精美的石门"
         },
         "basis": {
           "lang": "pl",
@@ -147,7 +151,9 @@
       "view": {
         "look": "up",
         "feature": {
-          "en": "the clock on the town hall tower"
+          "en": "the clock on the town hall tower",
+          "pl": "zegar na wieży ratusza",
+          "zh": "市政厅塔楼上的时钟"
         },
         "basis": {
           "lang": "pl",
@@ -190,7 +196,9 @@
       "view": {
         "look": "up",
         "feature": {
-          "en": "the tall Gothic walls of the basilica"
+          "en": "the tall Gothic walls of the basilica",
+          "pl": "wysokie gotyckie mury bazyliki",
+          "zh": "圣殿高耸的哥特式墙体"
         },
         "basis": {
           "lang": "en",
@@ -233,7 +241,9 @@
       "view": {
         "look": "level",
         "feature": {
-          "en": "the round market hall in the middle of the square"
+          "en": "the round market hall in the middle of the square",
+          "pl": "okrągła hala targowa pośrodku placu",
+          "zh": "广场中央的圆形市场大厅"
         },
         "basis": {
           "lang": "pl",
@@ -277,7 +287,9 @@
       "view": {
         "look": "up",
         "feature": {
-          "en": "the tall central section between its lower wings"
+          "en": "the tall central section between its lower wings",
+          "pl": "wysoka część środkowa między niższymi skrzydłami",
+          "zh": "建筑中央高耸的部分和两侧较低的侧翼"
         },
         "basis": {
           "lang": "en",
@@ -321,7 +333,9 @@
       "view": {
         "look": "level",
         "feature": {
-          "en": "the wall where the synagogue meets the remnants of the medieval town wall"
+          "en": "the wall where the synagogue meets the remnants of the medieval town wall",
+          "pl": "miejsce, w którym synagoga styka się z resztkami średniowiecznego muru miejskiego",
+          "zh": "会堂与中世纪城墙残垣相接的地方"
         },
         "basis": {
           "lang": "en",
@@ -365,7 +379,9 @@
       "view": {
         "look": "level",
         "feature": {
-          "en": "the women's gallery and the outside stairs that lead up to it"
+          "en": "the women's gallery and the outside stairs that lead up to it",
+          "pl": "galeria dla kobiet i prowadzące do niej zewnętrzne schody",
+          "zh": "女性区和通往那里的室外楼梯"
         },
         "basis": {
           "lang": "en",
@@ -409,7 +425,9 @@
       "view": {
         "look": "level",
         "feature": {
-          "en": "the old gravestones of the cemetery beside the synagogue"
+          "en": "the old gravestones of the cemetery beside the synagogue",
+          "pl": "stare macewy cmentarza obok synagogi",
+          "zh": "会堂旁边墓地里的古老墓碑"
         },
         "basis": {
           "lang": "en",
@@ -453,7 +471,9 @@
       "view": {
         "look": "level",
         "feature": {
-          "en": "the entrance, where carved doors with four animals once stood"
+          "en": "the entrance, where carved doors with four animals once stood",
+          "pl": "wejście, w którym stały kiedyś rzeźbione drzwi z czterema zwierzętami",
+          "zh": "曾经装着刻有四种动物大门的入口"
         },
         "basis": {
           "lang": "en",
@@ -497,7 +517,9 @@
       "view": {
         "look": "up",
         "feature": {
-          "en": "the attic wall with its loopholes"
+          "en": "the attic wall with its loopholes",
+          "pl": "attyka ze strzelnicami",
+          "zh": "带射击孔的女儿墙"
         },
         "basis": {
           "lang": "en",
