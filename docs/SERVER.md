@@ -34,12 +34,20 @@ secrets.
 |---|---|---|
 | `GET /healthz` | none | `{ok:true, version}` |
 | `POST /v1/installs` | none, rate-limited per IP | `{token, expiresAt}`. The token is an HMAC-signed `{iid, iat, exp}` for 30 days. It is not identity, only a throttle key. |
-| `GET /v1/catalog` | none | signed envelope `{payload:{courses:[CourseSummary]}, sig}` |
+| `GET /v1/catalog` | none | signed envelope `{payload:{courses:[CourseSummary], cities:[CitySummary]}, sig}` (`cities` is absent in catalogs written before city packs) |
 | `GET /v1/courses/:courseId/manifest` | none | signed envelope `{payload:CourseManifest, sig}` |
+| `GET /v1/cities/:cityId/manifest` | none | signed envelope `{payload:CityManifest, sig}`; same caching as the course manifest; 404 `not_found` for an unknown or malformed id |
 | `GET /v1/blobs/:sha256` | none | the file bytes. Content-addressed, `Cache-Control: public, max-age=31536000, immutable`, `ETag`. |
 | `POST /v1/tts` | `Authorization: Bearer <token>` | `audio/mpeg`, with headers `X-Text-Sha256` and `X-Cache: hit\|miss` |
 
-`CourseSummary` = `{id, version, title:{en,pl,zh}, city, stops, km, minutes, langs:[...], bytes, coverBlob?, coverCredit?}`
+`CourseSummary` = `{id, version, title:{en,pl,zh}, city, cityId?, stops, km, minutes, langs:[...], bytes, coverBlob?, coverCredit?}`
+
+`cityId` names the city pack the course's places come from (present for courses published with `--city-id`; `city`
+is then that city's `names.en` unless overridden). `bytes` counts the course's own files only; the city is a
+separate download.
+
+`CitySummary` = `{id, version, names:{en,pl,zh}, places, bytes}` (`places` = the city pack's POI count, `bytes` =
+the sum of its files).
 
 `coverBlob` is the sha256 of the pack's cover photo (`packs/<packId>/cover.jpg`, 1280×800 JPEG, ≤ 250 KB), served by
 `GET /v1/blobs/:sha256` like any blob; `coverCredit` is `"<author>, <licence>"` from the pack's `cover.json` (full
@@ -48,7 +56,9 @@ cover. The app fetches the cover for a catalog row before download (verifies the
 `filesDir/covers/<sha>.jpg`), and reads `cover.jpg`/`cover.json` from the installed pack afterwards.
 
 `CourseManifest` = `{schemaVersion:1, courseId, version, publishedAt, packId, files:[{path, sha256, bytes}],
-audio:{manifestPath, clips:N}, allowedTtsSha:<sha256 of the allowed-lines file>}`
+audio:{manifestPath, clips:N}, allowedTtsSha:<sha256 of the allowed-lines file>, cityId?}`
+
+`CityManifest` = `{schemaVersion:1, cityId, version, publishedAt, packId, files:[{path, sha256, bytes}]}`
 
 **Signatures.** The envelope is `{payload, sig}`, where `sig` is an Ed25519 signature over the
 canonical JSON of `payload` (sorted keys, UTF-8). It is base64.
@@ -79,14 +89,37 @@ what it serves (the files are signed once at publish time). Reference implementa
 (base64, `MCowBQYDK2VwAyEA` + raw) and PEM. HarmonyOS `cryptoFramework` `Ed25519` `convertKey` takes the SPKI DER.
 
 **Manifest `files[].path`.** Paths are relative to the course root (repo `data/course/<id>/`, the server's
-`SEED_FILES_DIR`; on the device `filesDir/courses/<id>/<version>/`): `packs/<packId>/<file>` (every file of the pack, including `manifest.json` and
-`narrations/<lang>.json`), `audio/manifest.json`, and every clip under the path the clip manifest already uses
+`SEED_FILES_DIR/<id>/`; on the device `filesDir/courses/<id>/<version>/`): the pack folder's path relative to the
+course root + `/<file>` for every file of the pack (including `manifest.json` and `narrations/<lang>.json`), i.e.
+`tour/<file>` for a course overlay (city packs, below) and `packs/<packId>/<file>` for an older self-contained full
+pack; `audio/manifest.json`, and every clip under the path the clip manifest already uses
 (`audio/<lang>/<group-or-poi>/<hash>.mp3`). Download each `files[i]` from `/v1/blobs/<sha256>`, check
 `sha256(bytes) == files[i].sha256` and `bytes.length == files[i].bytes`, then write it to `<courseDir>/<path>`.
 `version` = `<pack version>-a<first 8 hex of sha256(audio/manifest.json)>`, plus `-c<first 8 hex of sha256(<cover.jpg sha>:<cover.json sha>)>` when the pack has a cover photo, so it changes when any of them changes. The cover files sit in the pack folder but are not listed in the pack's own `manifest.json` (the rest of the pack stays byte-identical); publish-course signs every file of the pack folder.
 `allowedTtsSha` = sha256 of the exact `allowed.json` bytes (a JSON array of sorted lowercase hex strings).
 
-**Allowed set content.** Narration sentences of every narration file of the pack; every system/arrival/nav line
+**City packs.** A city's places (all POIs, their narrations in en/pl/zh, sources and the city map) are one signed
+download shared by every course of that city; a course carries only its tour (`scripts/pack/split-city.mjs`,
+docs/ARCHITECTURE.md §7.2a).
+- City pack folder (repo `data/city/<cityId>/`, the server's `SEED_CITY_FILES_DIR/<cityId>/`; on the device a city
+  folder of its own): `city.json`, `manifest.json`, `pois.json`, `narrations/{en,pl,zh}.json`, `sources.json`,
+  `map-detail.json`. `CityManifest.files[].path` is relative to that city root (exactly those names). `city.json` =
+  `{schemaVersion:1, cityId, names:{en,pl,zh}, origin:{lat,lng}, bbox, defaultBounds:[minLat,minLng,maxLat,maxLng], properNouns?}`.
+  The city's `version` is the city pack manifest's version (`<YYYY.MM.DD>-<8 hex>`); download and verify it like a course.
+- Course overlay `data/course/<id>/tour/`: `tours.json`, `routes.json`, `personas.json`, the stops' `pois.json`,
+  `narrations/<lang>.json` and `sources.json` (same record formats as the full pack), `map-detail.json` only when the
+  course's map differs from the city's, `demo-walk.json` (SIMULATED Demo walk track), `cover.jpg`/`cover.json`,
+  `manifest.json` (pack format + `cityId`). The app overlays the course's records on the city's (same ids win from
+  the course) and uses the city map when the overlay has none.
+- City ids use the course id regex `^[a-z0-9][a-z0-9-]{0,63}$` in their own namespace (`cities/<id>/`), so city
+  `krakow` and course `krakow` coexist.
+- Deploy order: `publish-city` first, then `publish-course --city-id` for each of its courses (it fails with
+  "publish the city first" otherwise; it reads the published city from `DATA_DIR`). Re-publishing an unchanged city
+  keeps its `publishedAt`, so its signed manifest stays byte-identical.
+
+**Allowed set content.** Narration sentences of every narration file of the pack and, for a course with a
+`cityId`, of every narration file of the published city pack (the app plays the city's places with the course's
+`courseId`); every system/arrival/nav line
 of `scripts/voice/system-lines.mjs` for every tour (all 110 legs); and the numeric lines (approach with/without
 direction, next stop with distance, off-route bearing with/without direction) for every tour stop x every RelDir x
 every wording `distancePhrase` can produce up to 60 minutes (10..100 m step 10, 150..500 m step 50, 6..60 min), in
@@ -100,9 +133,10 @@ is up to 3 bytes per char, so the limit is 2 KB, not 1 KB), 429 `rate_limited` o
 502 `tts_upstream`, 503 `tts_unavailable` (breaker open, `Retry-After`). Every non-200 means: use the fallback.
 Shipped clips are pre-seeded in `tts-index.json` at publish time, so they are always cache hits (no credits).
 
-**Deploy data.** `publish-course --seed server/seed` also writes the signed metadata to `server/seed/`
-(committed). The Docker image bundles it plus the pack/clip files from `data/course/krakow/`, and on boot copies anything missing to
-`DATA_DIR` (verifying every sha256). See `server/README.md`.
+**Deploy data.** `publish-city --seed server/seed` and `publish-course --seed server/seed` also write the signed
+metadata to `server/seed/` (committed). The Docker image bundles it plus the course files from `data/course/` and the
+city packs from `data/city/`, and on boot copies anything missing to `DATA_DIR` (verifying every sha256). See
+`server/README.md`.
 
 ## 4. Security
 
@@ -110,7 +144,7 @@ Shipped clips are pre-seeded in `tts-index.json` at publish time, so they are al
 
 **No free-text TTS.** The server synthesises a `text` only if `sha256(text)` is in the course's **allowed-lines
 set**. That set is built at publish time from:
-- every narration sentence of the course (all lengths and languages);
+- every narration sentence of the course (all lengths and languages), and of its city pack when it has one;
 - every system and nav line (`scripts/voice/system-lines.mjs`, golden-tested against the app's `Phrases.ets`);
 - the **numeric** variants (distance buckets, minutes, all directions, all stop names), with the same rounding as the app.
 
@@ -129,7 +163,7 @@ So the endpoint cannot be used as a general TTS service. The worst case is gener
 - Process: the container runs as non-root, secrets are validated at boot (fail fast), `npm audit` runs in CI, and dependencies are pinned.
 
 **Admin.** There are no admin HTTP endpoints. Courses are published with a CLI on the maintainer's machine
-(`npm run publish-course`), which signs with the private key and uploads the data dir.
+(`npm run publish-city`, `npm run publish-course`), which sign with the private key and upload the data dir.
 
 **Secrets (environment only):**
 
@@ -145,9 +179,10 @@ So the endpoint cannot be used as a general TTS service. The worst case is gener
 ## 5. Storage layout (`DATA_DIR`)
 ```
 catalog.json                     signed envelope
+cities/<cityId>/manifest.json    signed envelope (city pack)
 courses/<courseId>/manifest.json signed envelope
 courses/<courseId>/allowed.json  sorted sha256 list for /v1/tts
-blobs/<sha256>                   pack files, clips, cached runtime TTS mp3s (content-addressed)
+blobs/<sha256>                   city and course pack files, clips, cached runtime TTS mp3s (content-addressed)
 tts-index.json                   sha -> blob for runtime-rendered lines (+ chars, renderedAt)
 usage/<yyyy-mm-dd>.json          characters spent per day
 ```
@@ -165,6 +200,6 @@ The server ships as a Docker image (`server/Dockerfile`, node:22-alpine, non-roo
 persistent volume and HTTPS works (Fly.io, Render or Railway). Steps:
 1. Create the app and volume, and set the secrets.
 2. Generate the Ed25519 keypair and put the public key in `RemoteConfig.ets`.
-3. Run `npm run publish-course` for krakow.
+3. Run `npm run publish-city` for krakow, then `npm run publish-course --city-id krakow` for each Kraków course.
 4. Deploy.
 5. Run the smoke test: `curl /healthz`, then fetch the catalog, verify it and request one TTS line.
