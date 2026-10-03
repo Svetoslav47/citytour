@@ -83,6 +83,33 @@ Debug builds run unsigned on the emulator, and the `.hap` we submit is the **uns
 - The full working agreement, including what every change must satisfy at runtime, is in [`AGENTS.md`](AGENTS.md).
 - AI usage is documented in [`AI_WORKFLOW.md`](AI_WORKFLOW.md).
 
+## Testing
+
+All commands run from the repository root on macOS with DevEco Studio installed in `/Applications`. `scripts/env.sh` exports the toolchain paths (`DEVECO_SDK_HOME`, DevEco's bundled Node on `PATH`, `HVIGORW`, `OHPM`, `HDC`); set `DEVECO_HOME` first if DevEco Studio lives elsewhere.
+
+```bash
+source scripts/env.sh           # optional (the scripts source it themselves); gives you $HDC and $HVIGORW
+scripts/test.sh                 # unit tests + source guards; ends with "TESTS: PASS n=<N>", exit 0
+scripts/smoke.sh                # build, install, launch on "Pura 90"; ends with "SMOKE: PASS"
+DEVICE=sdk24 scripts/smoke.sh   # the same on another emulator or device
+```
+
+**`scripts/test.sh`** runs the ArkTS local unit tests (`@ohos/hypium`, no device needed, about 10 s) with `hvigorw test -p module=entry -p coverage=false --no-daemon`. `hvigorw test` exits 0 even when a test fails, so the script deletes the old result file, then reads `entry/.test/default/intermediates/test/coverage_data/test_result.txt` and exits 1 unless at least one test ran with `Failure: 0, Error: 0`. On failure it prints the failing test lines. It also fails when:
+
+- anything in `entry/src/main/ets/core/` imports `@kit.*` (`core/` holds the pure, unit-tested logic; the local test runner cannot load system APIs);
+- any `.ets` file under `entry/src/main/ets/` uses a State Management V1 decorator (`@Component`, `@State`, `@Prop`, `@Link`, `@Observed`, `@Provide`, ...). The project uses V2 only. The unmodified DevEco scaffold page `pages/Index.ets` is exempt until it is replaced;
+- `node --test scripts/pack/` fails (only once the data pipeline has `*.test.mjs` files).
+
+**Where tests live.** `entry/src/test/List.test.ets` registers one suite file per module under test (`GeoMath`, `CourseEstimator`, `FixFilter`, `HeldKarp`, `TriggerPolicy`, `AnnouncementQueue`, `TourEngine`, `Phrases`, `DemoWalkPlayer`, `VoicePolicy`, `LegTracker`, `Replay`, `PackParser`, `NarrationValidator`, `MapCamera`) plus `Harness`. Each file starts as a passing stub and names the task that owns it; add cases to the existing file instead of editing `List.test.ets`.
+
+**`scripts/smoke.sh`** runs `devecocli run --device "$DEVICE"` (default `Pura 90`), requires its `Smoke: PASS` (launched, no crash, not blank), then reads the app log (`devecocli log --keyword CityTour`) and requires the `APP_START` event once the app emits it. The Demo walk checks are added later.
+
+**Pre-commit hook.** `scripts/git-hooks/pre-commit` blocks a commit that stages signing material (`*.p12`, `*.p7b`, `*.cer`, `*.csr`, `*.keystore`), a `build-profile.json5` whose `signingConfigs` is not `[]` (DevEco signing writes real configs there; keep them local), or a private key or Anthropic API key in the added lines. It reports file names only, never the matched text. Enable it once per clone (the setting is shared by all worktrees):
+
+```bash
+git config core.hooksPath scripts/git-hooks
+```
+
 ## Architecture
 
 _To be written as the implementation lands._
