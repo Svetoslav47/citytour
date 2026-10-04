@@ -154,6 +154,7 @@ export class DemoWalkSource implements LocationSource {
       }
       if (this.player === undefined || this.ended) {
         this.player = new DemoWalkPlayer(this.track);
+        this.player.setHoldAnywhere(true);   // every story is heard where it belongs
         this.player.reset(Date.now());
         this.ended = false;
         this.lastTs = 0;
