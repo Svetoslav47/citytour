@@ -574,6 +574,7 @@ export struct HomePage {
 
       Column() {
         Text(this.app.cityName !== '' ? $r('app.string.home_all_places', this.app.cityName) :
+          this.vm.cityLabel !== '' ? $r('app.string.home_all_places', this.vm.cityLabel) :
           $r('app.string.home_all_places_any'))
           .fontSize(Type.BODY)
           .lineHeight(Type.BODY_LH)
