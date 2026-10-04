@@ -13,9 +13,9 @@
  */
 import { geoLocationManager } from '@kit.LocationKit';
 import { Fix, FixListener, FixSource, LocationErrorListener, LocationSource, PermissionPort, PermissionState }
-  from '../../contracts/Ports';
+  from 'common';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 
 /** Course from the platform is unreliable below this speed (ARCHITECTURE §5). */
 export const REAL_MIN_COURSE_SPEED_MPS: number = 0.3;

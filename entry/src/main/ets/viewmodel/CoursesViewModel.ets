@@ -14,15 +14,15 @@
  * RemoteSettings persists with PersistenceV2 under 'remoteSettings' (no change to the UserSettings contract).
  */
 import { PersistenceV2 } from '@kit.ArkUI';
-import { Lang } from '../contracts/Model';
+import { Lang } from 'common';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import {
   CourseRow, CourseState, courseTitle, downloadBytes, InstalledCourse, mergeCourses, progressPct, sizeLabel
-} from '../core/remote/CourseRules';
-import { CoverChoice, rowHasCover } from '../core/remote/CoverRules';
-import { CourseSource, courseSource, streamRowActions, StreamRowActions } from '../core/remote/StreamRules';
+} from 'common';
+import { CoverChoice, rowHasCover } from 'common';
+import { StreamCourseSource as CourseSource, courseSource, streamRowActions, StreamRowActions } from 'common';
 import { CatalogSource, CatalogState, OpResult } from '../services/remote/CourseRepository';
 import { CancelToken, InstallProgress } from '../services/remote/CourseStore';
 import { AppViewModel, PackState } from './AppViewModel';

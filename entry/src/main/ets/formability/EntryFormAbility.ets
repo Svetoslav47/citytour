@@ -7,7 +7,7 @@
 import { formBindingData, FormExtensionAbility } from '@kit.FormKit';
 import { Want } from '@kit.AbilityKit';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 
 export default class EntryFormAbility extends FormExtensionAbility {
   onAddForm(want: Want): formBindingData.FormBindingData {

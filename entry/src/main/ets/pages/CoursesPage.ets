@@ -13,8 +13,8 @@
  * btnCourseDelete_<id>, courseCover_<id>, noteCourses.
  */
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
-import { CourseState } from '../core/remote/CourseRules';
+import { LogEvents } from 'common';
+import { CourseState } from 'common';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { CatalogNote, CourseItem, CoursesViewModel } from '../viewmodel/CoursesViewModel';
 import { SafeArea } from '../viewmodel/SafeArea';

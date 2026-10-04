@@ -18,19 +18,19 @@
  * The merge/state rules are the pure core/remote/CourseRules. Nothing here blocks the UI thread: all IO is async.
  * With BASE_URL '' (RemoteConfig) the network is never used; downloaded courses (if any) still work.
  */
-import { PackLoadResult } from '../../contracts/Ports';
+import { PackLoadResult } from 'common';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
-import { activeAfterInstall, InstalledCourse, resolveActive } from '../../core/remote/CourseRules';
-import { chooseCover, CoverChoice, CoverCredit } from '../../core/remote/CoverRules';
+import { LogEvents } from 'common';
+import { activeAfterInstall, InstalledCourse, resolveActive } from 'common';
+import { chooseCover, CoverChoice, CoverCredit } from 'common';
 import {
   cityName, CitySummary, CourseFile, CourseManifest, CourseSummary, manifestBytes
-} from '../../core/remote/ServerApi';
-import { cityNeedsDownload, orphanCities } from '../../core/remote/CourseRules';
+} from 'common';
+import { cityNeedsDownload, orphanCities } from 'common';
 import {
   activeCandidates, allPlacesAvailable, streamCityFiles, streamClipFiles, streamCourseFiles, streamNeedsPrepare
-} from '../../core/remote/StreamRules';
-import { PackRepository } from '../../contracts/Ports';
+} from 'common';
+import { PackRepository } from 'common';
 import { ActivePackRepository, PackChoice } from '../pack/ActivePackRepository';
 import { CityCoursePackRepository } from '../pack/CityCoursePackRepository';
 import { FilePackRepository } from '../pack/FilePackRepository';

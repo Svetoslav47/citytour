@@ -4,7 +4,7 @@
  * the script says to look up, and the caption in the same words as the voice. No angle -> landmark mode
  * ("Face St Mary's Basilica"). Geometry: core/map/WalkDisplay.dialDot (unit-tested).
  */
-import { DialDot, dialDot } from '../../core/map/WalkDisplay';
+import { DialDot, dialDot } from 'common';
 import { Type } from '../common/Tokens';
 
 const SIZE: number = 72;

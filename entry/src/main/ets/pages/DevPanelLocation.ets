@@ -8,8 +8,8 @@
  *   btnRealStart    Real GPS (Location Kit): permission dialog, location switch sheet, then 1 Hz fixes
  *   btnRealStop / btnPermSettings (requestPermissionOnSetting after a denial) / btnLocSwitch (requestGlobalSwitch)
  */
-import { Fix, FixSource, PermissionState } from '../contracts/Ports';
-import { nextDemoSpeed } from '../core/sim/DemoWalkPlayer';
+import { Fix, FixSource, PermissionState } from 'common';
+import { nextDemoSpeed } from 'common';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 

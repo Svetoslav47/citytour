@@ -17,12 +17,12 @@
  * again, so Retry after a network drop resumes instead of starting over (a course of ~1200 files, ~10 MB, plus its city places pack of ~8 MB once).
  */
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
-import { InstalledCourse } from '../../core/remote/CourseRules';
+import { LogEvents } from 'common';
+import { InstalledCourse } from 'common';
 import {
   CourseFile, CourseManifest, CourseSummary, DEFAULT_AUDIO_MANIFEST, manifestBytes, packDir, safeRelPath, SHA256_RE,
   validId, validVersion
-} from '../../core/remote/ServerApi';
+} from 'common';
 import { FileStore } from './FileStore';
 import { RemoteClient } from './RemoteClient';
 

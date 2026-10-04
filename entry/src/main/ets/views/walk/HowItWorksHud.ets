@@ -9,13 +9,13 @@
  * API 12); backgroundBlurStyle COMPONENT_THICK as on the header capsule (API 10+).
  */
 import { AppStorageV2 } from '@kit.ArkUI';
-import { EngineSnapshot } from '../../contracts/EngineTypes';
-import { Poi, Tour, TourStop } from '../../contracts/Model';
+import { EngineSnapshot } from 'common';
+import { Poi, Tour, TourStop } from 'common';
 import { AppContainer } from '../../app/AppContainer';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
-import { HudInput, HudRow, HudTone, hudRows, TriggerRadii, triggerRadii } from '../../core/hud/HudRows';
-import { TourConfig } from '../../core/tour/TourConfig';
+import { LogEvents } from 'common';
+import { HudInput, HudRow, HudTone, hudRows, TriggerRadii, triggerRadii } from 'common';
+import { TourConfig } from 'common';
 import { findTour, safePoi } from '../../viewmodel/PackView';
 import { Radius, Space, TABULAR, Type } from '../common/Tokens';
 

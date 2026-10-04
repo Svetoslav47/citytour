@@ -2,7 +2,7 @@
  * Display formatting shared by the view models: distances and durations as string resources (so they follow
  * the app language) and localised names from the pack (fallback order textLang -> en -> pl, ARCHITECTURE §8).
  */
-import { Lang, LocalizedText } from '../contracts/Model';
+import { Lang, LocalizedText } from 'common';
 
 /** Route-level distance: "180 m" (rounded to 10 m / 20 m) or "2.5 km". */
 export function distanceRes(m: number): Resource {

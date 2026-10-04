@@ -4,12 +4,12 @@
  * is first about to be spoken or shown (memoised), with the tier and persona fallback chains of ARCHITECTURE
  * §7.4-7.5. Logs NARR_FALLBACK / NARR_PERSONA_FALLBACK once per slot.
  */
-import { ContentTier, Lang, Narration, NarrationLength, Persona, Poi, ProvenanceKind } from '../../contracts/Model';
+import { ContentTier, Lang, Narration, NarrationLength, Persona, Poi, ProvenanceKind } from 'common';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
-import { NarrationValidator, ValidationCtx } from '../../core/content/NarrationValidator';
-import { nameOnlyNarration, personaChain, selectNarration } from '../../core/content/NarrationSelector';
-import { parseNarrations } from '../../core/content/PackParser';
+import { LogEvents } from 'common';
+import { NarrationValidator, ValidationCtx } from 'common';
+import { nameOnlyNarration, personaChain, selectNarration } from 'common';
+import { parseNarrations } from 'common';
 
 /** Reads `narrations/<lang>.json` as text; undefined when missing or unreadable. */
 export type NarrationTextReader = (lang: Lang) => string | undefined;

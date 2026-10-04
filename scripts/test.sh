@@ -14,16 +14,17 @@ RESULT="entry/.test/default/intermediates/test/coverage_data/test_result.txt"
 fail() { echo "TESTS: FAIL ($*)"; exit 1; }
 
 # 1. Guards (cheap, run first).
-# core/ must stay pure: the local test runner cannot load system APIs.
-if grep -rn "@kit\." entry/src/main/ets/core 2>/dev/null; then
-  fail "@kit import in entry/src/main/ets/core (core/ must stay pure)"
+# The common HAR (contracts/, core/, control/TourController, app/LogEvents + Clock) must stay pure: the local test
+# runner cannot load system APIs, and the tests import everything through the common/Index.ets barrel.
+if grep -rnE "@kit\.|@ohos\." common/src/main/ets common/Index.ets 2>/dev/null; then
+  fail "@kit/@ohos import in the common HAR (it must stay pure)"
 fi
 # State Management V2 only: reject V1 decorators (@ComponentV2, @ObservedV2, @Provider, @Consumer pass).
 # One temporary exemption: pages/Index.ets while it is still byte-identical to the DevEco
 # "Empty Ability" scaffold (git blob below). Task B4 replaces that page; any edit to it ends the exemption.
 SCAFFOLD_INDEX="entry/src/main/ets/pages/Index.ets"
 SCAFFOLD_INDEX_BLOB="55f76030d37ad705b262acdb3cbc8dc49a5d0af4"
-V1_HITS="$(grep -rnE '@(Component|State|Prop|Link|ObjectLink|Observed|Track|Watch|Provide|Consume|StorageLink|StorageProp)([^A-Za-z0-9_]|$)' entry/src/main/ets)"
+V1_HITS="$(grep -rnE '@(Component|State|Prop|Link|ObjectLink|Observed|Track|Watch|Provide|Consume|StorageLink|StorageProp)([^A-Za-z0-9_]|$)' entry/src/main/ets common/src/main/ets)"
 if [ -f "$SCAFFOLD_INDEX" ] && [ "$(git hash-object "$SCAFFOLD_INDEX")" = "$SCAFFOLD_INDEX_BLOB" ]; then
   echo "test.sh: V1 guard skips $SCAFFOLD_INDEX (unmodified DevEco scaffold, replaced by task B4)"
   V1_HITS="$(printf '%s\n' "$V1_HITS" | grep -v "^$SCAFFOLD_INDEX:")"

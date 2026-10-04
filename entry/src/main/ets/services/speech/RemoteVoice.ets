@@ -20,18 +20,18 @@
  * Logs: REMOTE_TTS result=... reason=... sha=<12> ms=... cache=hit|miss; NarrationPlayer's NARR_AUDIO line says
  * src=remote|remote_cache|tts|text with the reason.
  */
-import { SpeechCapabilities, SpeechListener, SpeechPort, Utterance } from '../../contracts/Ports';
-import { Lang } from '../../contracts/Model';
+import { SpeechCapabilities, SpeechListener, SpeechPort, Utterance } from 'common';
+import { Lang } from 'common';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 import { RemoteConfig } from '../../app/RemoteConfig';
-import { shortSha } from '../../core/speech/ClipSelection';
+import { shortSha } from 'common';
 import {
   ChainInput, ChainStep, decideVoice, judgeRemote, RemoteVerdict, ServerState, serverStateText, VoiceSrc
-} from '../../core/remote/VoiceChain';
-import { TTS_MAX_TEXT_CHARS } from '../../core/remote/ServerApi';
-import { prefetchAfter, StreamClip } from '../../core/remote/StreamRules';
-import { ClipEntry } from '../../core/speech/ClipSelection';
+} from 'common';
+import { TTS_MAX_TEXT_CHARS } from 'common';
+import { prefetchAfter, StreamClip } from 'common';
+import { ClipEntry } from 'common';
 import { FileStore } from '../remote/FileStore';
 import { StreamClips } from '../remote/StreamClips';
 import { RemoteClient } from '../remote/RemoteClient';

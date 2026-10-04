@@ -9,8 +9,8 @@
  * Swiper: doc API参考/ArkUI_方舟UI框架/ArkTS组件/容器组件/Swiper/ts-container-swiper (index, disableSwipe, indicator).
  * Radio: ts-basic-components-radio. SymbolGlyph names verified in the SDK sysResource.js.
  */
-import { Lang } from '../contracts/Model';
-import { EnVoiceRow, LocRow, NotifRow, ONB_STEP_PERMS, ONB_STEPS } from '../core/onboarding/OnboardingRules';
+import { Lang } from 'common';
+import { EnVoiceRow, LocRow, NotifRow, ONB_STEP_PERMS, ONB_STEPS } from 'common';
 import { AppViewModel, PackState } from '../viewmodel/AppViewModel';
 import { OnboardingViewModel } from '../viewmodel/OnboardingViewModel';
 import { SafeArea } from '../viewmodel/SafeArea';

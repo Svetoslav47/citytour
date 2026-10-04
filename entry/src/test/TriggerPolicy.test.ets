@@ -10,9 +10,9 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   LingerInput, StopTrigger, StoryDecision, TriggerSample, TriggerVerdict, StoryLength, evaluateTrigger,
   decideAfterTeaser, decideStoryLength, entryDistanceM, exitDistanceM
-} from '../main/ets/core/tour/TriggerPolicy';
-import { TourConfig, defaultTourConfig, MAX_TRIGGER_ACCURACY_M } from '../main/ets/core/tour/TourConfig';
-import { median } from '../main/ets/core/geo/FixFilter';
+} from 'common';
+import { TourConfig, defaultTourConfig, MAX_TRIGGER_ACCURACY_M } from 'common';
+import { median } from 'common';
 
 const T0: number = 1000000;
 

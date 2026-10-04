@@ -5,14 +5,14 @@
  * Navigation: Navigation + NavPathStack + navDestination builder (doc: ts-basic-components-navigation).
  */
 import { i18n } from '@kit.LocalizationKit';
-import { AppIssue, IssueCode, IssueSeverity } from '../contracts/EngineTypes';
-import { Lang } from '../contracts/Model';
-import { PackLoadResult } from '../contracts/Ports';
+import { AppIssue, IssueCode, IssueSeverity } from 'common';
+import { Lang } from 'common';
+import { PackLoadResult } from 'common';
 import { AppConfig } from '../app/AppConfig';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
-import { HomeMode, homeMode } from '../core/remote/CourseRules';
+import { LogEvents } from 'common';
+import { HomeMode, homeMode } from 'common';
 import { withTimeout } from './Async';
 import { TourPlanViewModel } from './TourPlanViewModel';
 

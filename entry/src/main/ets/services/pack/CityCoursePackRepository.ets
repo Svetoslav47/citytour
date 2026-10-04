@@ -6,12 +6,12 @@
  * the tour keeps its curated stops while "All places" and the place cards read the whole city. Both packs are
  * verified file by file against their own manifests (SourcePackRepository) after the signed download (CourseStore).
  */
-import { Lang, MapData, Narration, NarrationLength, Persona, Poi, RouteData, SourceRef, Tour } from '../../contracts/Model';
-import { PackLoadResult, PackRepository } from '../../contracts/Ports';
-import { AppIssue, IssueCode, IssueSeverity } from '../../contracts/EngineTypes';
+import { Lang, MapData, Narration, NarrationLength, Persona, Poi, RouteData, SourceRef, Tour } from 'common';
+import { PackLoadResult, PackRepository } from 'common';
+import { AppIssue, IssueCode, IssueSeverity } from 'common';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
-import { CityInfo, layerManifests, layerPois, parseCityJson } from '../../core/content/CityPack';
+import { LogEvents } from 'common';
+import { CityInfo, layerManifests, layerPois, parseCityJson } from 'common';
 import { FilePackSource } from './FilePackRepository';
 import { SourcePackRepository } from './SourcePackRepository';
 

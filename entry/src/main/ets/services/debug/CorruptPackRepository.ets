@@ -6,11 +6,11 @@
  * and logs the row's line with src=debug; every accessor returns empty data, so no caller can crash on it.
  * Pure (no @kit import): unit-tested in TourController.test.
  */
-import { AppIssue, IssueCode, IssueSeverity } from '../../contracts/EngineTypes';
+import { AppIssue, IssueCode, IssueSeverity } from 'common';
 import { Lang, MapData, Narration, NarrationLength, Persona, Poi, RouteData, SourceRef, Tour }
-  from '../../contracts/Model';
-import { LoggerPort, PackLoadResult, PackRepository } from '../../contracts/Ports';
-import { LogEvents } from '../../app/LogEvents';
+  from 'common';
+import { LoggerPort, PackLoadResult, PackRepository } from 'common';
+import { LogEvents } from 'common';
 
 export const CORRUPT_PACK_DETAIL: string = 'PACK_PARSE pois.json (simulated)';
 

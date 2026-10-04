@@ -3,13 +3,13 @@
  * pack (stop positions, OSRM leg geometry; straight lines only when a leg is missing). Pack geometry is already
  * in the shared Projection frame (metres east/north of Rynek), so no projection happens here.
  */
-import { EngineSnapshot, StopProgress, StopStatus, TourPhase } from '../contracts/EngineTypes';
-import { Lang, MapData, RouteData, RouteLeg } from '../contracts/Model';
-import { FixSource, PackRepository } from '../contracts/Ports';
+import { EngineSnapshot, StopProgress, StopStatus, TourPhase } from 'common';
+import { Lang, MapData, RouteData, RouteLeg } from 'common';
+import { FixSource, PackRepository } from 'common';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
-import { boundsOf } from '../core/map/Camera';
+import { LogEvents } from 'common';
+import { boundsOf } from 'common';
 import { PlaqueState } from '../views/common/Plaque';
 import { MapOverlay, StopMark, UserMark } from '../views/map/MapRenderer';
 import { poiName, safePoi, safeRoutes } from './PackView';

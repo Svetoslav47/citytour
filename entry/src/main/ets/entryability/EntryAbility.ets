@@ -14,7 +14,7 @@ import { window } from '@kit.ArkUI';
 import { AppConfig } from '../app/AppConfig';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import { SafeAreaWatcher } from '../viewmodel/SafeArea';
 
 const PAGE_INDEX: string = 'pages/Index';

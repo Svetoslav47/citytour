@@ -28,16 +28,16 @@
  * voice label and platform flags; the caption line shows the sentence being said.
  * Developer page: literal strings on purpose (resource strings are B-owned and this page is not user-facing).
  */
-import { Lang, Tour } from '../contracts/Model';
-import { EnVoiceStrategy, VoiceLabel } from '../contracts/Settings';
+import { Lang, Tour } from 'common';
+import { EnVoiceStrategy, VoiceLabel } from 'common';
 import {
   BackgroundListener, FixSource, MediaCommand, SpeechCapabilities, SpeechListener, TourControl, Utterance, VoicePlan
-} from '../contracts/Ports';
-import { EngineSnapshot, MediaMeta, MediaPlayState, NextInfo, TourPlan } from '../contracts/EngineTypes';
-import { stripPauseMarkup } from '../core/speech/VoicePolicy';
+} from 'common';
+import { EngineSnapshot, MediaMeta, MediaPlayState, NextInfo, TourPlan } from 'common';
+import { stripPauseMarkup } from 'common';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import { LocationDevSection } from './DevPanelLocation';
 import { SafeArea } from '../viewmodel/SafeArea';
 

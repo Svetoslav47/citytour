@@ -11,12 +11,12 @@
  * sentence). Never rejects.
  */
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
-import { CourseFile, safeRelPath, SHA256_RE } from '../../core/remote/ServerApi';
+import { LogEvents } from 'common';
+import { CourseFile, safeRelPath, SHA256_RE } from 'common';
 import {
   clipStep, ClipStep, STREAM_CLIP_BUDGET_MS, STREAM_OFFLINE_BACKOFF_MS
-} from '../../core/remote/StreamRules';
-import { shortSha } from '../../core/speech/ClipSelection';
+} from 'common';
+import { shortSha } from 'common';
 import { FileStore } from './FileStore';
 import { RemoteClient } from './RemoteClient';
 

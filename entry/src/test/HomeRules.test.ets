@@ -4,7 +4,7 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   CardActions, CardDownload, CardInput, cardActions, CardPrimary, homeCity, HomeHeader, homeHeader
-} from '../main/ets/core/remote/HomeRules';
+} from 'common';
 
 const KRAKOW: number[] = [49.97, 19.79, 50.13, 20.22];
 

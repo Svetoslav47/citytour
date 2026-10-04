@@ -13,13 +13,13 @@
  * pack manifest); a different course (key) reloads the track and restarts the walk.
  * Never throws: load and tick failures are logged and reported through onError.
  */
-import { Fix, FixListener, FixSource, LocationErrorListener, LocationSource } from '../../contracts/Ports';
+import { Fix, FixListener, FixSource, LocationErrorListener, LocationSource } from 'common';
 import {
   DEMO_TICK_MS, DemoTick, DemoTrack, DemoWalkPlayer, normalizeDemoSpeed, parseDemoTrack
-} from '../../core/sim/DemoWalkPlayer';
+} from 'common';
 import { AppConfig } from '../../app/AppConfig';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 
 /** The active course's demo track: `key` identifies the course version, `text` is demo-walk.json. */
 export class DemoTrackText {

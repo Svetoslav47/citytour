@@ -2,8 +2,8 @@
 // Cases from docs/ARCHITECTURE.md §11.1: rejects acc > 40 for triggers; NETWORK provider rule; speed median;
 // out-of-order timestamps dropped. Plus: malformed fixes dropped, 20 s network gaps tolerated.
 import { describe, it, expect } from '@ohos/hypium';
-import { classifyFix, FilteredFix, FixFilter, FixVerdict, median } from '../main/ets/core/geo/FixFilter';
-import { Fix, FixSource } from '../main/ets/contracts/Ports';
+import { classifyFix, FilteredFix, FixFilter, FixVerdict, median } from 'common';
+import { Fix, FixSource } from 'common';
 
 function mkFix(tS: number, accuracyM: number, provider: number, speedMps: number): Fix {
   const f: Fix = {

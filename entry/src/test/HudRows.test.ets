@@ -5,15 +5,15 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   HudInput, HudRow, HudTone, hudDegrees, hudDistance, hudRows, hudSignedDegrees, hudSpeed, NA, serverRow, TriggerRadii,
   triggerRadii
-} from '../main/ets/core/hud/HudRows';
-import { TourConfig } from '../main/ets/core/tour/TourConfig';
-import { TourEngine, TourInput, TourState } from '../main/ets/core/tour/TourEngine';
+} from 'common';
+import { TourConfig } from 'common';
+import { TourEngine, TourInput, TourState } from 'common';
 import {
   EngineEvent, EngineEventType, EngineSnapshot, PlatformStatus, RelDir, SignalQuality, TourPhase, TourPlan
-} from '../main/ets/contracts/EngineTypes';
-import { ContentTier, Lang, Narration, NarrationLength, Poi, Tour } from '../main/ets/contracts/Model';
-import { FixSource, VoicePlan } from '../main/ets/contracts/Ports';
-import { VoiceLabel } from '../main/ets/contracts/Settings';
+} from 'common';
+import { ContentTier, Lang, Narration, NarrationLength, Poi, Tour } from 'common';
+import { FixSource, VoicePlan } from 'common';
+import { VoiceLabel } from 'common';
 import {
   MINI_BARBICAN, MINI_CLOTH_HALL, MINI_PERSONA_ID, MINI_ST_MARYS, MINI_TOUR_ID, miniPois, miniTour
 } from './fixtures/MiniPack';

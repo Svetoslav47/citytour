@@ -7,13 +7,13 @@
 // the same text and the same SHA-256 (prefix of Node's crypto hash). A template change in Phrases.ets without
 // regenerating the golden (and fixing the port) fails here.
 import { describe, it, expect } from '@ohos/hypium';
-import { Lang, LocalizedText, LookDir, ViewHint } from '../main/ets/contracts/Model';
-import { RelDir } from '../main/ets/contracts/EngineTypes';
+import { Lang, LocalizedText, LookDir, ViewHint } from 'common';
+import { RelDir } from 'common';
 import {
   approachSentence, arrivalSentences, finishSentences, gpsLostSentence, nextStopSentence, welcomeSentences
-} from '../main/ets/core/content/Phrases';
-import { continueText, nowText, offRouteSentences, prepareText, replanSentence } from '../main/ets/core/route/Guidance';
-import { sha256Hex } from '../main/ets/core/speech/Sha256';
+} from 'common';
+import { continueText, nowText, offRouteSentences, prepareText, replanSentence } from 'common';
+import { sha256Hex } from 'common';
 import { GOLDEN_CASE_COUNT, GOLDEN_CASES, GoldenCase } from './fixtures/SystemLinesGolden';
 
 const WALK_SPEED_MPS: number = 1.3;   // TourConfig default (the port uses the same)

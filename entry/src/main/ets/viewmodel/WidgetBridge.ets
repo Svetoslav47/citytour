@@ -9,12 +9,12 @@
  */
 import { formBindingData, formInfo, formProvider } from '@kit.FormKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { EngineSnapshot } from '../contracts/EngineTypes';
-import { Lang } from '../contracts/Model';
+import { EngineSnapshot } from 'common';
+import { Lang } from 'common';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
-import { CardMode, CardState, cardStateFor, shouldPushCard } from '../core/widget/CardModel';
+import { LogEvents } from 'common';
+import { CardMode, CardState, cardStateFor, shouldPushCard } from 'common';
 import { localName } from './Format';
 import { findTour, poiName } from './PackView';
 

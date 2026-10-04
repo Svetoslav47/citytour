@@ -4,7 +4,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   boundsOf, Camera, clampScale, fitBounds, hitTest, intersects, mapOpenBounds, pan, S_MAX, S_MIN, screenToWorld, viewport,
   worldToScreen, zoomAt
-} from '../main/ets/core/map/Camera';
+} from 'common';
 
 function near(a: number, b: number, eps: number = 1e-6): boolean {
   return Math.abs(a - b) < eps;

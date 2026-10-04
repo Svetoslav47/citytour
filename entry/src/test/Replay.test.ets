@@ -23,26 +23,26 @@
 // back; nowhere else on the normal track is the walker off the route (no false positive).
 // Each run prints one `REPLAY_SUMMARY ...` line (pasted into the README "Testing" section and the A11 PR).
 import { describe, it, expect } from '@ohos/hypium';
-import { StepResult, TourEngine, TourInput, TourState } from '../main/ets/core/tour/TourEngine';
-import { TourConfig } from '../main/ets/core/tour/TourConfig';
-import { FilteredFix, FixFilter } from '../main/ets/core/geo/FixFilter';
-import { CityPack, PlanInputs, buildCostInputs, plan as planRoute } from '../main/ets/core/route/Planner';
-import { DemoFix, DemoTick, DemoTrack, DemoWalkPlayer } from '../main/ets/core/sim/DemoWalkPlayer';
+import { StepResult, TourEngine, TourInput, TourState } from 'common';
+import { TourConfig } from 'common';
+import { FilteredFix, FixFilter } from 'common';
+import { CityPack, PlanInputs, buildCostInputs, plan as planRoute } from 'common';
+import { DemoFix, DemoTick, DemoTrack, DemoWalkPlayer } from 'common';
 import {
   Effect, EffectType, EngineEvent, EngineEventType, EngineSnapshot, StopProgress, StopStatus, TourPhase, TourPlan
-} from '../main/ets/contracts/EngineTypes';
+} from 'common';
 import {
   BackgroundPort, Clock, Fix, FixListener, FixSource, HapticsPort, LocationErrorListener, LocationSource, LoggerPort,
   MediaSessionPort, NotifierPort, PackLoadResult, PackRepository, PermissionPort, SpeechCapabilities, SpeechListener,
   SpeechPort, Utterance, VoicePlan, VoicePort, VoiceState
-} from '../main/ets/contracts/Ports';
+} from 'common';
 import {
   ContentTier, Lang, LatLng, MapData, Narration, NarrationLength, PackManifest, Persona, Poi, PoiKind,
   ProvenanceKind, RouteData, SourceRef, Tour, TourStop
-} from '../main/ets/contracts/Model';
-import { EnVoiceStrategy, VoiceLabel } from '../main/ets/contracts/Settings';
-import { DemoControls, TourController, TourControllerDeps } from '../main/ets/services/tour/TourController';
-import { Scheduler } from '../main/ets/app/Clock';
+} from 'common';
+import { EnVoiceStrategy, VoiceLabel } from 'common';
+import { DemoControls, TourController, TourControllerDeps } from 'common';
+import { Scheduler } from 'common';
 import {
   DEMO_MINI_DIST_M, DEMO_MINI_DUR_S, DEMO_MINI_EVENTS, DEMO_MINI_STOPS, MiniEvent, MiniStop, demoMiniLegs,
   demoTrackMini

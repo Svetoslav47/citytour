@@ -22,10 +22,10 @@
  */
 import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
 import { common, wantAgent, WantAgent } from '@kit.AbilityKit';
-import { BackgroundListener, BackgroundPort } from '../../contracts/Ports';
+import { BackgroundListener, BackgroundPort } from 'common';
 import { AppConfig } from '../../app/AppConfig';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 
 export const BG_MODES: string[] = ['location', 'audioPlayback'];
 

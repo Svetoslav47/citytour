@@ -14,17 +14,17 @@
  * Docs: API参考/Core_Speech_Kit_基础语音服务/ArkTS_API/textToSpeech_文本转语音/hms-ai-texttospeech
  */
 import { textToSpeech } from '@kit.CoreSpeechKit';
-import { Lang } from '../../contracts/Model';
-import { EnVoiceStrategy, VoiceLabel, VoiceLang } from '../../contracts/Settings';
-import { SpeechCapabilities, VoicePlan, VoicePort, VoiceState } from '../../contracts/Ports';
+import { Lang } from 'common';
+import { EnVoiceStrategy, VoiceLabel, VoiceLang } from 'common';
+import { SpeechCapabilities, VoicePlan, VoicePort, VoiceState } from 'common';
 import {
   capsFromVoices, DEFAULT_FALLBACK_EN_CONTEXT, EN_LOCALE, EN_PERSON, planLogKv, resolveVoicePlan, stateTag,
   VoiceEntry, VoicePolicyOptions, ZH_LOCALE
-} from '../../core/speech/VoicePolicy';
-import { storyVoicePlan } from '../../core/speech/ClipSelection';
+} from 'common';
+import { storyVoicePlan } from 'common';
 import { AppConfig } from '../../app/AppConfig';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 import { DownloadCallbacks, errCode, errMsg, TtsEngines, TtsErr } from './TtsEngines';
 
 export class VoiceManager implements VoicePort {

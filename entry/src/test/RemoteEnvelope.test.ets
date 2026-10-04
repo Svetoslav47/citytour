@@ -4,12 +4,12 @@
 // signature encoding); catalog rows (validation, dropped rows, unsafe ids); course manifest (path safety, id match,
 // pack layout R3); install token expiry (R2); the /v1/tts body limits.
 import { describe, it, expect } from '@ohos/hypium';
-import { base64Decode, canonicalJson } from '../main/ets/core/remote/CanonicalJson';
+import { base64Decode, canonicalJson } from 'common';
 import {
   cityName, CourseManifest, packDir, packManifestPath, parseCatalog, parseCityManifest, parseCourseManifest, parseEnvelope, parseExpiresAt,
   parseInstall, safeRelPath, tokenUsable, ttsBodyJson, validVersion, courseVersion
-} from '../main/ets/core/remote/ServerApi';
-import { sha256Hex, utf8Bytes } from '../main/ets/core/speech/Sha256';
+} from 'common';
+import { sha256Hex, utf8Bytes } from 'common';
 
 // Computed with Node 22 (scratch script vec.mjs): the same text, the canonical form, its sha256 and an Ed25519 sig.
 const SIG: string = 'rYe6vCKK9uvXkP4geDHKtZkC25Tpvn/oUXbQA5RHnNC6VxXUL/PFjS4jDzQnI5Gg98RT4cQthyzxQvYcD9QGAg==';

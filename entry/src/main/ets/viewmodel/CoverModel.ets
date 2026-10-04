@@ -4,11 +4,11 @@
  * a timeout, off the UI thread. `loading` keeps a placeholder in the slot until the answer is known, so Home and
  * Tour detail never flash the map before the photo; `path` '' after loading = show the fallback (the map preview).
  */
-import { Lang } from '../contracts/Model';
+import { Lang } from 'common';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
-import { CoverChoice, CoverView, coverView } from '../core/remote/CoverRules';
+import { LogEvents } from 'common';
+import { CoverChoice, CoverView, coverView } from 'common';
 import { withTimeout } from './Async';
 
 /** Lookup budget: the cached/installed answer is instant; a catalog fetch may take this long before we give up. */

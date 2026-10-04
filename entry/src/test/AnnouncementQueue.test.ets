@@ -6,11 +6,11 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   AnnouncementQueue, QueueAdvance, expiryFor, readingTimeMs, readingWords, stripMarkup
-} from '../main/ets/core/tour/AnnouncementQueue';
-import { TourConfig, defaultTourConfig } from '../main/ets/core/tour/TourConfig';
-import { Announcement, AnnouncementKind, Priority } from '../main/ets/contracts/EngineTypes';
-import { Utterance } from '../main/ets/contracts/Ports';
-import { Lang } from '../main/ets/contracts/Model';
+} from 'common';
+import { TourConfig, defaultTourConfig } from 'common';
+import { Announcement, AnnouncementKind, Priority } from 'common';
+import { Utterance } from 'common';
+import { Lang } from 'common';
 
 function item(id: string, priority: Priority, n: number, nowMs: number, cfg: TourConfig): Announcement {
   const us: Utterance[] = [];

@@ -3,7 +3,7 @@
  * name, distance from you (only when the tour knows where you are), a 2-line teaser and
  * Details -> Place detail. Text comes from PlaceViewModel (validated pack narration, fallback chain of B3).
  */
-import { Lang } from '../../contracts/Model';
+import { Lang } from 'common';
 import { AppContainer } from '../../app/AppContainer';
 import { Log } from '../../app/Log';
 import { distanceRes } from '../../viewmodel/Format';

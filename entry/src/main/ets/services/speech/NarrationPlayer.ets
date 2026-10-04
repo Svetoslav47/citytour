@@ -40,21 +40,21 @@
  * through the same ClipPlayer and is logged NARR_AUDIO src=remote|remote_cache. The user's text-only and
  * cross-language choices never get one (same rule as clips).
  */
-import { Lang } from '../../contracts/Model';
-import { SpeechCapabilities, SpeechListener, SpeechPort, Utterance, VoicePlan } from '../../contracts/Ports';
-import { estimateReadingMs, pcmDurationMs, SPEECH_MODE_TEXT } from '../../core/speech/VoicePolicy';
+import { Lang } from 'common';
+import { SpeechCapabilities, SpeechListener, SpeechPort, Utterance, VoicePlan } from 'common';
+import { estimateReadingMs, pcmDurationMs, SPEECH_MODE_TEXT } from 'common';
 import {
   AUDIO_SRC_PRERENDERED, AUDIO_SRC_TEXT, AUDIO_SRC_TTS, AudioDecision, ClipEntry, ClipIndex,
   ClipQuery, ClipReason, selectAudio, shortSha
-} from '../../core/speech/ClipSelection';
-import { VoiceLabel } from '../../contracts/Settings';
+} from 'common';
+import { VoiceLabel } from 'common';
 import { AppConfig } from '../../app/AppConfig';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 import { PcmPlayer, PcmPlayerListener } from '../audio/PcmPlayer';
 import { ClipPlayer, ClipPlayerListener } from '../audio/ClipPlayer';
 import { TtsEngines, TtsErr, TtsRequestHandler } from './TtsEngines';
-import { sha256Hex } from '../../core/speech/Sha256';
+import { sha256Hex } from 'common';
 import { VoiceManager } from './VoiceManager';
 
 /** A server-rendered studio line for one sentence (RemoteVoice). */

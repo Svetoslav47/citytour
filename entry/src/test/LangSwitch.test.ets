@@ -10,16 +10,16 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   LIVE_LANGS, RemapResult, firstUnplayedIndex, isStoryTail, liveLangName, matchStory, otherLiveLangs,
   remapItemTexts, storyLangForLive
-} from '../main/ets/core/tour/LangSwitch';
-import { EngineLog, NarrationFn, StepResult, TourEngine, TourInput, TourState } from '../main/ets/core/tour/TourEngine';
-import { TourConfig } from '../main/ets/core/tour/TourConfig';
+} from 'common';
+import { EngineLog, NarrationFn, StepResult, TourEngine, TourInput, TourState } from 'common';
+import { TourConfig } from 'common';
 import {
   Effect, EffectType, EngineEvent, EngineEventType, NowPlaying, TourPhase, TourPlan
-} from '../main/ets/contracts/EngineTypes';
-import { Fix, FixSource, Utterance, VoicePlan } from '../main/ets/contracts/Ports';
-import { Lang, Narration, NarrationLength, Poi } from '../main/ets/contracts/Model';
-import { VoiceLabel } from '../main/ets/contracts/Settings';
-import { StoryLang } from '../main/ets/core/settings/SettingsRules';
+} from 'common';
+import { Fix, FixSource, Utterance, VoicePlan } from 'common';
+import { Lang, Narration, NarrationLength, Poi } from 'common';
+import { VoiceLabel } from 'common';
+import { StoryLang } from 'common';
 import {
   MINI_BARBICAN, MINI_CLOTH_HALL, MINI_PERSONA_ID, MINI_ST_MARYS, MINI_TOUR_ID, miniNarrations, miniPois, miniTour
 } from './fixtures/MiniPack';

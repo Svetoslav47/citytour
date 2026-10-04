@@ -7,8 +7,8 @@
 import {
   ContentTier, Lang, MapData, Narration, NarrationLength, PackManifest, Persona, Poi, PoiKind, ProvenanceKind,
   RouteData, SourceRef, Tour
-} from '../../contracts/Model';
-import { PackLoadResult, PackRepository } from '../../contracts/Ports';
+} from 'common';
+import { PackLoadResult, PackRepository } from 'common';
 
 export const STUB_PACK_ID: string = 'krakow-stub';
 export const STUB_TOUR_ID: string = 'royal-route-stub';

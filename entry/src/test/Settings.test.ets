@@ -1,18 +1,18 @@
 // Suite: Settings.test - module under test: core/settings/SettingsRules (task B9), plus the two engine knobs the
 // Settings rows drive: TourConfig.triggerRadiusScale (trigger distance) and LingerInput.briefOnly (detail level).
 import { describe, it, expect } from '@ohos/hypium';
-import { Lang } from '../main/ets/contracts/Model';
-import { EngineEvent, EngineEventType, TourPlan } from '../main/ets/contracts/EngineTypes';
-import { FixSource, VoicePlan } from '../main/ets/contracts/Ports';
-import { EnVoiceStrategy, UiLang, VoiceLabel, VoiceLang } from '../main/ets/contracts/Settings';
+import { Lang } from 'common';
+import { EngineEvent, EngineEventType, TourPlan } from 'common';
+import { FixSource, VoicePlan } from 'common';
+import { EnVoiceStrategy, UiLang, VoiceLabel, VoiceLang } from 'common';
 import {
   DetailLevel, detailKnobs, detailLevelOf, megabytes, normalizeSpeed, normalizeTriggerM, packLine, STORY_LANGS,
   StoryLang, storyLangOf, storyLangPair, StrategyChoice, strategyChoiceOf, strategyFor, triggerScale, uiLangOf,
   uiLangTag, validStrategy, VoiceRow, voiceRowFor
-} from '../main/ets/core/settings/SettingsRules';
-import { TourConfig } from '../main/ets/core/tour/TourConfig';
-import { TourEngine, TourInput, TourState } from '../main/ets/core/tour/TourEngine';
-import { decideAfterTeaser, LingerInput, StopTrigger, StoryLength } from '../main/ets/core/tour/TriggerPolicy';
+} from 'common';
+import { TourConfig } from 'common';
+import { TourEngine, TourInput, TourState } from 'common';
+import { decideAfterTeaser, LingerInput, StopTrigger, StoryLength } from 'common';
 import { MINI_BARBICAN, MINI_CLOTH_HALL, MINI_PERSONA_ID, MINI_ST_MARYS, MINI_TOUR_ID, miniPois, miniTour } from './fixtures/MiniPack';
 
 function voicePlan(): VoicePlan {

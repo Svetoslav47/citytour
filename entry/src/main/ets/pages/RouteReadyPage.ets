@@ -6,9 +6,9 @@
  * X1: "Time available" (All stops | 30 min | 45 min, ids segBudget0/30/45) re-plans with TourControl.plan(tourId,
  * budgetMin): exact orienteering picks the best subset; the result line says "Best k of n stops".
  */
-import { IssueCode } from '../contracts/EngineTypes';
+import { IssueCode } from 'common';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { distanceRes, durationRes } from '../viewmodel/Format';
 import { BUDGET_OPTIONS_MIN, OrderRow, TourPlanViewModel } from '../viewmodel/TourPlanViewModel';

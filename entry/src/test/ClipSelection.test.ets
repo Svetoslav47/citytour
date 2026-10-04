@@ -7,14 +7,14 @@
 // choice), hasLang per persona, storyClipCoverage all/partial/none, exclusion of partly covered stories, and the
 // cross-language listen choice getting no clip.
 import { describe, it, expect } from '@ohos/hypium';
-import { Lang } from '../main/ets/contracts/Model';
-import { VoicePlan } from '../main/ets/contracts/Ports';
-import { VoiceLabel } from '../main/ets/contracts/Settings';
-import { sha256Hex, utf8Bytes } from '../main/ets/core/speech/Sha256';
+import { Lang } from 'common';
+import { VoicePlan } from 'common';
+import { VoiceLabel } from 'common';
+import { sha256Hex, utf8Bytes } from 'common';
 import {
   AUDIO_SRC_PRERENDERED, AUDIO_SRC_TEXT, AUDIO_SRC_TTS, ClipEntry, ClipIndex, ClipQuery, ClipReason,
   parseClipManifest, selectAudio, shortSha, storiesAllOrNothing, StoryClips, storyClipCoverage, storyVoicePlan
-} from '../main/ets/core/speech/ClipSelection';
+} from 'common';
 
 function vplan(lang: Lang, mode: string, label: VoiceLabel, reason: string, engine: string = ''): VoicePlan {
   const p: VoicePlan = {

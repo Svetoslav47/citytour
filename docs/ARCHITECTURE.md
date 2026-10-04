@@ -967,7 +967,7 @@ Every row has a UI state, a log line, and **no crash**. All platform calls are w
 - **Gotcha (VERIFIED-RUN).** `hvigorw test` **exits 0 even when tests fail**. `scripts/test.sh` must:
   1. run the command above;
   2. `grep -q "Failure: 0, Error: 0"` the result file and exit 1 otherwise, printing the failures;
-  3. guard `core/`: `grep -rn "@kit\." entry/src/main/ets/core && exit 1`;
+  3. guard `core/`: `grep -rn "@kit\." common/src/main/ets/core && exit 1`;
   4. guard against V1 decorators: `grep -rnE '@(Component|State|Prop|Link|ObjectLink|Observed|Track|Watch|Provide|Consume|StorageLink|StorageProp)([^A-Za-z0-9_]|$)' entry/src/main/ets && exit 1`. The `([^A-Za-z0-9_]|$)` tail lets `@ComponentV2`, `@ObservedV2`, `@Provider` and `@Consumer` through and catches only the V1 forms.
 - `.test/` is already gitignored (`**/.test`).
 - **Fixtures.** Local tests can't read rawfile, so `scripts/demo/make-fixtures.mjs` emits `entry/src/test/fixtures/*.ets` exporting typed constants: short tracks, a mini pack with 4 POIs and a 3×3 matrix, and sample narrations.
@@ -1010,6 +1010,8 @@ devecocli ui screenshot --device "Pura 90"             # artifact for the README
 ## 12. Directory layout, contracts and the parallel work split
 
 ### 12.1 Layout
+
+Since the watch work (docs/research/WATCH.md, task W1) `contracts/` and `core/` live in the **`common` HAR** at `common/src/main/ets/`, shared by the phone HAP (`entry`) and the watch HAP (`wearable`), following Huawei's multi-device layout (one HAP per device class, shared code in a HAR). The files themselves are unchanged. Every module imports them by package name, `import { ... } from 'common'`, through the barrel `common/Index.ets` (one `export *` line per file; duplicate names are re-exported explicitly: `Planner.haversineM` as `plannerHaversineM`, `DEMO_SPEEDS` from `SettingsRules` only, `TourController.normalizeDemoSpeed` as `controllerNormalizeDemoSpeed`, `StreamRules.CourseSource` as `StreamCourseSource`). The pure `TourController` (with `app/LogEvents` and `app/Clock`) moved into the same HAR (`common/src/main/ets/control/`, `common/src/main/ets/app/`) so the watch runs the identical tour pipeline. Nothing in the HAR may import `@kit`/`@ohos` (`scripts/test.sh` guard): the local tests load it through the barrel. The tree below shows the files where they sit logically.
 
 ```
 entry/src/main/ets/

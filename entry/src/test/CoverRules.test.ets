@@ -8,8 +8,8 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   catalogCredit, chooseCover, coverCacheName, CoverCredit, CoverSource, coverSubject, creditText, CoverView,
   coverView, parseCoverJson, rowHasCover
-} from '../main/ets/core/remote/CoverRules';
-import { courseVersion, parseCatalog } from '../main/ets/core/remote/ServerApi';
+} from 'common';
+import { courseVersion, parseCatalog } from 'common';
 
 const SHA: string = 'ab'.repeat(32);
 

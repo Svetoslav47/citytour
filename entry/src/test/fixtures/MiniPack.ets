@@ -6,7 +6,7 @@
  */
 import {
   ContentTier, Lang, Narration, NarrationLength, Persona, Poi, PoiKind, ProvenanceKind, RouteData, Tour, LatLng
-} from '../../main/ets/contracts/Model';
+} from 'common';
 
 export const MINI_ORIGIN: LatLng = { lat: 50.0617, lng: 19.9373 };
 export const MINI_PERSONA_ID: string = 'historian';

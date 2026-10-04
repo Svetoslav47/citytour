@@ -17,11 +17,11 @@
  * Either way the HAPTIC log line records what was attempted (ok=1|0), and a failure never reaches the tour.
  */
 import { vibrator } from '@kit.SensorServiceKit';
-import { HapticKind } from '../../contracts/EngineTypes';
-import { HapticsPort } from '../../contracts/Ports';
-import { HapticPlan, hapticPlan } from '../../core/notify/NotifyText';
+import { HapticKind } from 'common';
+import { HapticsPort } from 'common';
+import { HapticPlan, hapticPlan } from 'common';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 
 /** One buzz per kind within this window: a re-entered state must not rattle the phone. */
 const MIN_GAP_MS: number = 800;

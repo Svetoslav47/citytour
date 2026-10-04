@@ -6,9 +6,9 @@
  * base map is drawn (ODbL). Logs MAP_FRAME ms= (sampled) so the perf gate G8 can be read from the log.
  */
 import { common, ConfigurationConstant } from '@kit.AbilityKit';
-import { MapData } from '../../contracts/Model';
+import { MapData } from 'common';
 import { Log } from '../../app/Log';
-import { Camera, fitBounds, pan, zoomAt } from '../../core/map/Camera';
+import { Camera, fitBounds, pan, zoomAt } from 'common';
 import { DARK, LIGHT, MapPalette } from './MapStyle';
 import { MapOverlay, MapRenderer } from './MapRenderer';
 import { PoiLayer } from './PoiLayer';

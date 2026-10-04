@@ -5,13 +5,13 @@
 // chain (on device -> play, unknown or offline back-off -> fallback, else fetch); prefetch of the next sentences.
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  activeCandidates, allPlacesAvailable, clipStep, ClipStep, CourseSource, courseSource, isClipFile, prefetchAfter,
+  activeCandidates, allPlacesAvailable, clipStep, ClipStep, StreamCourseSource as CourseSource, courseSource, isClipFile, prefetchAfter,
   reusableForDownload, StreamClip, streamCityFiles, streamClipFiles, streamCourseFiles, streamNeedsPrepare,
   streamRowActions
-} from '../main/ets/core/remote/StreamRules';
-import { InstalledCourse } from '../main/ets/core/remote/CourseRules';
-import { CourseFile } from '../main/ets/core/remote/ServerApi';
-import { ClipEntry, ClipIndex, ClipReason } from '../main/ets/core/speech/ClipSelection';
+} from 'common';
+import { InstalledCourse } from 'common';
+import { CourseFile } from 'common';
+import { ClipEntry, ClipIndex, ClipReason } from 'common';
 
 function file(path: string): CourseFile {
   const f = new CourseFile();

@@ -28,6 +28,10 @@
   },
   "modules": [
     {
+      "name": "common",
+      "srcPath": "./common"
+    },
+    {
       "name": "entry",
       "srcPath": "./entry",
       "targets": [

@@ -4,11 +4,11 @@
  * PackRepository.narration() (validator + fallback chain of B3); this class never shows unvalidated text.
  */
 import { ContentTier, Lang, LookDir, MapData, Narration, NarrationLength, Poi, PoiKind, Tour, TourStop
-} from '../contracts/Model';
-import { TourPhase } from '../contracts/EngineTypes';
+} from 'common';
+import { TourPhase } from 'common';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import { MapOverlay } from '../views/map/MapRenderer';
 import { localName } from './Format';
 import { MapCache, placeBounds, placeOverlay } from './MapViewModel';

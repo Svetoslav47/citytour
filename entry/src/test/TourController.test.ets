@@ -18,25 +18,25 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   DemoControls, TourController, TourControllerDeps, enStatusOf, kmOutsideBbox, locationErrorIssue,
-  normalizeDemoSpeed, predictNextUtteranceId, voiceIssueFor
-} from '../main/ets/services/tour/TourController';
-import { Scheduler } from '../main/ets/app/Clock';
+  controllerNormalizeDemoSpeed as normalizeDemoSpeed, predictNextUtteranceId, voiceIssueFor
+} from 'common';
+import { Scheduler } from 'common';
 import { CORRUPT_PACK_DETAIL, CorruptPackRepository } from '../main/ets/services/debug/CorruptPackRepository';
 import {
   AppIssue, EngineSnapshot, IssueCode, IssueSeverity, MediaMeta, MediaPlayState, NextNotice, TourPhase, TourPlan
-} from '../main/ets/contracts/EngineTypes';
+} from 'common';
 import {
   BackgroundListener, BackgroundPort, Clock, Fix, FixListener, FixSource, HapticsPort, LocationErrorListener,
   LocationSource, LoggerPort, MediaCommand, MediaCommandListener, MediaSessionPort, NotifierPort, PackLoadResult,
   PackRepository, PermissionPort, PermissionState, SpeechCapabilities, SpeechListener, SpeechPort, Utterance,
   VoicePlan, VoicePort, VoiceState
-} from '../main/ets/contracts/Ports';
+} from 'common';
 import {
   Lang, MapData, Narration, NarrationLength, PackManifest, Persona, Poi, RouteData, SourceRef, Tour
-} from '../main/ets/contracts/Model';
-import { EnVoiceStrategy, VoiceLabel } from '../main/ets/contracts/Settings';
-import { ClipEntry, ClipIndex } from '../main/ets/core/speech/ClipSelection';
-import { sha256Hex } from '../main/ets/core/speech/Sha256';
+} from 'common';
+import { EnVoiceStrategy, VoiceLabel } from 'common';
+import { ClipEntry, ClipIndex } from 'common';
+import { sha256Hex } from 'common';
 import {
   MINI_BARBICAN, MINI_CLOTH_HALL, MINI_ST_MARYS, MINI_TOUR_ID, miniNarrations, miniPersona, miniPois, miniRoutes,
   miniTour

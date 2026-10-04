@@ -232,15 +232,15 @@ From 15:45 on, **features add files rather than editing shared ones**. That is t
 **Goal.** Land every type, port and hotspot change both halves need, so A and B can work in parallel without touching shared files again.
 
 **Files (exclusive to this task).**
-- `entry/src/main/ets/contracts/Model.ets`
-- `entry/src/main/ets/contracts/Ports.ets`
-- `entry/src/main/ets/contracts/EngineTypes.ets`
-- `entry/src/main/ets/contracts/Settings.ets`
+- `common/src/main/ets/contracts/Model.ets`
+- `common/src/main/ets/contracts/Ports.ets`
+- `common/src/main/ets/contracts/EngineTypes.ets`
+- `common/src/main/ets/contracts/Settings.ets`
 - `entry/src/main/ets/app/Log.ets`
-- `entry/src/main/ets/app/LogEvents.ets`
+- `common/src/main/ets/app/LogEvents.ets`
 - `entry/src/main/ets/app/AppConfig.ets`
 - `entry/src/main/ets/app/AppContainer.ets`
-- `entry/src/main/ets/app/Clock.ets`
+- `common/src/main/ets/app/Clock.ets`
 - `entry/src/main/ets/entryability/EntryAbility.ets`
 - `entry/src/main/ets/services/tour/ScriptedTourControl.ets`
 - `entry/src/main/ets/services/pack/PackFactory.ets + services/pack/StubPackRepository.ets (inline 3 real stops: Barbican, St Mary's, Cloth Hall; both owned by B after merge)`
@@ -282,7 +282,7 @@ devecocli ui screenshot --device "Pura 90" --path /tmp/ct-devpanel.png
 
 **Starter prompt** (after `scripts/wt.sh new feat/contracts` and `cd ../citytour-wt/contracts && claude`):
 ```text
-You are a Claude Code agent in the git worktree ../citytour-wt/contracts (branch feat/contracts) of CityTour, a native ArkTS/ArkUI HarmonyOS app (API 20 minimum, compiled against API 24, emulator "Pura 90"). First read AGENTS.md (including Team Flow), HACKATHON_BRIEF.md, AI_WORKFLOW.md, and in docs/PLAN.md: §0 and task card T0. Do task T0: shared contracts and the platform skeleton. Copy the type definitions from docs/ARCHITECTURE.md §5, §7.3, §9 and §12.2 into entry/src/main/ets/contracts/ (Model.ets, Ports.ets, EngineTypes.ets, Settings.ets) and add the voice-strategy types, the extra TourControl methods and the EngineSnapshot fields listed in the card. ArkTS has no structural typing, no `any` and no index signatures: use interfaces + classes, enums with string values. Create app/Log.ets, app/LogEvents.ets, app/AppConfig.ets, app/AppContainer.ets, app/Clock.ets, services/tour/ScriptedTourControl.ets (a fake TourControl that replays a canned snapshot sequence for the UI), services/pack/PackFactory.ets + StubPackRepository.ets (an inline 3-stop pack with the real coordinates of Barbican, St Mary's Basilica and Cloth Hall, so A can integrate before B's loader lands), an empty pages/DevPanel.ets, and test fixture entry/src/test/fixtures/MiniPack.ets. Wire EntryAbility (init/shutdown, `page=dev` launch parameter). Apply the module.json5 permissions and backgroundModes from ARCHITECTURE §2.2 (you can copy the verified diff from branch exp/risk-spikes, but drop INTERNET) and add the perm_* reason strings to base, en_US, pl_PL and zh_CN string.json. Keep every file minimal and compiling; no UI beyond the DevPanel title.
+You are a Claude Code agent in the git worktree ../citytour-wt/contracts (branch feat/contracts) of CityTour, a native ArkTS/ArkUI HarmonyOS app (API 20 minimum, compiled against API 24, emulator "Pura 90"). First read AGENTS.md (including Team Flow), HACKATHON_BRIEF.md, AI_WORKFLOW.md, and in docs/PLAN.md: §0 and task card T0. Do task T0: shared contracts and the platform skeleton. Copy the type definitions from docs/ARCHITECTURE.md §5, §7.3, §9 and §12.2 into common/src/main/ets/contracts/ (Model.ets, Ports.ets, EngineTypes.ets, Settings.ets) and add the voice-strategy types, the extra TourControl methods and the EngineSnapshot fields listed in the card. ArkTS has no structural typing, no `any` and no index signatures: use interfaces + classes, enums with string values. Create app/Log.ets, app/LogEvents.ets, app/AppConfig.ets, app/AppContainer.ets, app/Clock.ets, services/tour/ScriptedTourControl.ets (a fake TourControl that replays a canned snapshot sequence for the UI), services/pack/PackFactory.ets + StubPackRepository.ets (an inline 3-stop pack with the real coordinates of Barbican, St Mary's Basilica and Cloth Hall, so A can integrate before B's loader lands), an empty pages/DevPanel.ets, and test fixture entry/src/test/fixtures/MiniPack.ets. Wire EntryAbility (init/shutdown, `page=dev` launch parameter). Apply the module.json5 permissions and backgroundModes from ARCHITECTURE §2.2 (you can copy the verified diff from branch exp/risk-spikes, but drop INTERNET) and add the perm_* reason strings to base, en_US, pl_PL and zh_CN string.json. Keep every file minimal and compiling; no UI beyond the DevPanel title.
 
 Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in your task card; contracts/ is read-only (if a contract must change, stop and tell the human). Verify every Kit/API with `devecocli docs search <keywords>` / `devecocli docs read <id>` before using it and cite the doc id in the commit message; guard anything whose 起始版本 is above API 20 (compatibleSdkVersion is 6.0.0(20)). core/ stays pure (no @kit imports); State Management V2 only (no V1 decorators). Log only through app/Log.ets (domain 0xC17A, tag CityTour, `EVENT k=v`). Anything simulated shows SIMULATED on screen and src=demo in logs. Never crash: try/catch + Promise.catch at every platform call, explicit timeouts, a visible state for each failure. Run `devecocli check arkts` before each build. Commit after every small working step with a descriptive message, push every 2-3 commits. Add or extend unit tests and keep `scripts/test.sh` green. Append one row to AI_WORKFLOW.md (task, what you generated, how it was verified). Only one agent per Mac drives the emulator at a time: tell the human before `devecocli run`. When done: `git fetch && git rebase origin/main`, run every command in the card's Verify block, open a PR with `gh pr create --base main` (title = task id + title, body = 'Closes #<issue>' + verified vs unverified list) and stop. Never merge to main.
 ```
@@ -311,7 +311,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 
 **Scope.**
 - `scripts/env.sh`: exports DEVECO_SDK_HOME, PATH (DevEco node), HVIGORW and HDC (`/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc`).
-- `scripts/test.sh`: delete the old result file first (a stale file would fake a pass), run `hvigorw test -p module=entry -p coverage=false --no-daemon` (ARCHITECTURE §11.1), fail if `entry/.test/default/intermediates/test/coverage_data/test_result.txt` is missing, parse `Tests run: N, Failure: F, Error: E`, exit 1 unless N>0 and F=E=0, print the `test=`/`Error in` lines of failures; guard `grep -rn "@kit\." entry/src/main/ets/core` and the V1-decorator regex of ARCHITECTURE §11.1; run `node --test scripts/pack/` when any `*.test.mjs` exists; end with `TESTS: PASS n=<N>`.
+- `scripts/test.sh`: delete the old result file first (a stale file would fake a pass), run `hvigorw test -p module=entry -p coverage=false --no-daemon` (ARCHITECTURE §11.1), fail if `entry/.test/default/intermediates/test/coverage_data/test_result.txt` is missing, parse `Tests run: N, Failure: F, Error: E`, exit 1 unless N>0 and F=E=0, print the `test=`/`Error in` lines of failures; guard `grep -rn "@kit\." common/src/main/ets/core` and the V1-decorator regex of ARCHITECTURE §11.1; run `node --test scripts/pack/` when any `*.test.mjs` exists; end with `TESTS: PASS n=<N>`.
 - List.test.ets registers every planned suite; each stub has one passing `it` and a header comment naming its owner task, so later tasks only edit their own suite file (no conflicts in List.test.ets).
 - pre-commit hook: reject staged *.p12/*.p7b/*.cer/*.csr/*.keystore, a build-profile.json5 whose signingConfigs is not `[]`, and strings matching `sk-ant-|ANTHROPIC_API_KEY=|BEGIN (RSA|EC) PRIVATE KEY`. Install with `git config core.hooksPath scripts/git-hooks` (shared by all worktrees). Document in README.
 - `scripts/smoke.sh` skeleton: `devecocli run --device "${DEVICE:-Pura 90}"`, then grep the log for APP_START; A11 adds the demo-walk greps.
@@ -385,11 +385,11 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Goal.** Pure, tested geometry that the engine, the planner and the map all share.
 
 **Files (exclusive to this task).**
-- `entry/src/main/ets/core/geo/GeoMath.ets`
-- `entry/src/main/ets/core/geo/Projection.ets`
-- `entry/src/main/ets/core/geo/CourseEstimator.ets`
-- `entry/src/main/ets/core/geo/FixFilter.ets`
-- `entry/src/main/ets/core/geo/GridIndex.ets`
+- `common/src/main/ets/core/geo/GeoMath.ets`
+- `common/src/main/ets/core/geo/Projection.ets`
+- `common/src/main/ets/core/geo/CourseEstimator.ets`
+- `common/src/main/ets/core/geo/FixFilter.ets`
+- `common/src/main/ets/core/geo/GridIndex.ets`
 - `entry/src/test/GeoMath.test.ets`
 - `entry/src/test/CourseEstimator.test.ets`
 - `entry/src/test/FixFilter.test.ets`
@@ -412,7 +412,7 @@ source scripts/env.sh && devecocli check arkts && scripts/test.sh
 
 **Starter prompt** (after `scripts/wt.sh new feat/core-geo` and `cd ../citytour-wt/core-geo && claude`):
 ```text
-You are a Claude Code agent in the git worktree ../citytour-wt/core-geo (branch feat/core-geo) of CityTour, a native ArkTS/ArkUI HarmonyOS app (API 20 minimum, compiled against API 24, emulator "Pura 90"). First read AGENTS.md (including Team Flow), HACKATHON_BRIEF.md, AI_WORKFLOW.md, and in docs/PLAN.md: §0 and task card A1. Do task A1: pure geometry in entry/src/main/ets/core/geo/ (GeoMath, Projection, CourseEstimator, FixFilter, GridIndex) with Hypium tests in the existing stub files GeoMath.test.ets, CourseEstimator.test.ets and FixFilter.test.ets. Follow docs/ARCHITECTURE.md §3.2 (projection), §4.5 (course over ground and RelDir table) and §2.3 (fix quality rules), and the test table in §11.1. Use the types in contracts/ (Fix, RelDir, LatLng). No platform imports at all. This task needs no emulator.
+You are a Claude Code agent in the git worktree ../citytour-wt/core-geo (branch feat/core-geo) of CityTour, a native ArkTS/ArkUI HarmonyOS app (API 20 minimum, compiled against API 24, emulator "Pura 90"). First read AGENTS.md (including Team Flow), HACKATHON_BRIEF.md, AI_WORKFLOW.md, and in docs/PLAN.md: §0 and task card A1. Do task A1: pure geometry in common/src/main/ets/core/geo/ (GeoMath, Projection, CourseEstimator, FixFilter, GridIndex) with Hypium tests in the existing stub files GeoMath.test.ets, CourseEstimator.test.ets and FixFilter.test.ets. Follow docs/ARCHITECTURE.md §3.2 (projection), §4.5 (course over ground and RelDir table) and §2.3 (fix quality rules), and the test table in §11.1. Use the types in contracts/ (Fix, RelDir, LatLng). No platform imports at all. This task needs no emulator.
 
 Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in your task card; contracts/ is read-only (if a contract must change, stop and tell the human). Verify every Kit/API with `devecocli docs search <keywords>` / `devecocli docs read <id>` before using it and cite the doc id in the commit message; guard anything whose 起始版本 is above API 20 (compatibleSdkVersion is 6.0.0(20)). core/ stays pure (no @kit imports); State Management V2 only (no V1 decorators). Log only through app/Log.ets (domain 0xC17A, tag CityTour, `EVENT k=v`). Anything simulated shows SIMULATED on screen and src=demo in logs. Never crash: try/catch + Promise.catch at every platform call, explicit timeouts, a visible state for each failure. Run `devecocli check arkts` before each build. Commit after every small working step with a descriptive message, push every 2-3 commits. Add or extend unit tests and keep `scripts/test.sh` green. Append one row to AI_WORKFLOW.md (task, what you generated, how it was verified). Only one agent per Mac drives the emulator at a time: tell the human before `devecocli run`. When done: `git fetch && git rebase origin/main`, run every command in the card's Verify block, open a PR with `gh pr create --base main` (title = task id + title, body = 'Closes #<issue>' + verified vs unverified list) and stop. Never merge to main.
 ```
@@ -428,9 +428,9 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Goal.** Exact optimal walking order from the user position over the shipped OSRM matrix (the "optimised route" acceptance check).
 
 **Files (exclusive to this task).**
-- `entry/src/main/ets/core/route/HeldKarp.ets`
-- `entry/src/main/ets/core/route/Fallback.ets`
-- `entry/src/main/ets/core/route/Planner.ets`
+- `common/src/main/ets/core/route/HeldKarp.ets`
+- `common/src/main/ets/core/route/Fallback.ets`
+- `common/src/main/ets/core/route/Planner.ets`
 - `entry/src/test/HeldKarp.test.ets`
 
 **Scope.**
@@ -451,7 +451,7 @@ source scripts/env.sh && devecocli check arkts && scripts/test.sh
 
 **Starter prompt** (after `scripts/wt.sh new feat/route-planner` and `cd ../citytour-wt/route-planner && claude`):
 ```text
-You are a Claude Code agent in the git worktree ../citytour-wt/route-planner (branch feat/route-planner) of CityTour, a native ArkTS/ArkUI HarmonyOS app (API 20 minimum, compiled against API 24, emulator "Pura 90"). First read AGENTS.md (including Team Flow), HACKATHON_BRIEF.md, AI_WORKFLOW.md, and in docs/PLAN.md: §0 and task card A2. Do task A2: Held-Karp open-path TSP, the orienteering variant and the NN+2-opt fallback in entry/src/main/ets/core/route/ (HeldKarp.ets, Fallback.ets, Planner.ets) with the tests listed in docs/ARCHITECTURE.md §11.1 (HeldKarp.test row) in entry/src/test/HeldKarp.test.ets. Follow §6.1-6.4 exactly (Float64Array dp, Int8Array parents, hard cap n <= 16). Planner.buildCostInputs uses contracts RouteData (durationsS, detourFactor) and TourStop.dwellS; also compute how many metres the optimal order saves versus the listed order. Use seeded pseudo-random matrices in tests so failures reproduce. No emulator needed.
+You are a Claude Code agent in the git worktree ../citytour-wt/route-planner (branch feat/route-planner) of CityTour, a native ArkTS/ArkUI HarmonyOS app (API 20 minimum, compiled against API 24, emulator "Pura 90"). First read AGENTS.md (including Team Flow), HACKATHON_BRIEF.md, AI_WORKFLOW.md, and in docs/PLAN.md: §0 and task card A2. Do task A2: Held-Karp open-path TSP, the orienteering variant and the NN+2-opt fallback in common/src/main/ets/core/route/ (HeldKarp.ets, Fallback.ets, Planner.ets) with the tests listed in docs/ARCHITECTURE.md §11.1 (HeldKarp.test row) in entry/src/test/HeldKarp.test.ets. Follow §6.1-6.4 exactly (Float64Array dp, Int8Array parents, hard cap n <= 16). Planner.buildCostInputs uses contracts RouteData (durationsS, detourFactor) and TourStop.dwellS; also compute how many metres the optimal order saves versus the listed order. Use seeded pseudo-random matrices in tests so failures reproduce. No emulator needed.
 
 Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in your task card; contracts/ is read-only (if a contract must change, stop and tell the human). Verify every Kit/API with `devecocli docs search <keywords>` / `devecocli docs read <id>` before using it and cite the doc id in the commit message; guard anything whose 起始版本 is above API 20 (compatibleSdkVersion is 6.0.0(20)). core/ stays pure (no @kit imports); State Management V2 only (no V1 decorators). Log only through app/Log.ets (domain 0xC17A, tag CityTour, `EVENT k=v`). Anything simulated shows SIMULATED on screen and src=demo in logs. Never crash: try/catch + Promise.catch at every platform call, explicit timeouts, a visible state for each failure. Run `devecocli check arkts` before each build. Commit after every small working step with a descriptive message, push every 2-3 commits. Add or extend unit tests and keep `scripts/test.sh` green. Append one row to AI_WORKFLOW.md (task, what you generated, how it was verified). Only one agent per Mac drives the emulator at a time: tell the human before `devecocli run`. When done: `git fetch && git rebase origin/main`, run every command in the card's Verify block, open a PR with `gh pr create --base main` (title = task id + title, body = 'Closes #<issue>' + verified vs unverified list) and stop. Never merge to main.
 ```
@@ -467,11 +467,11 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Goal.** The heart of the product as a pure reducer: arrive -> say where to look -> tell the story, never cut a sentence, never double-trigger.
 
 **Files (exclusive to this task).**
-- `entry/src/main/ets/core/tour/TourEngine.ets`
-- `entry/src/main/ets/core/tour/TriggerPolicy.ets`
-- `entry/src/main/ets/core/tour/AnnouncementQueue.ets`
-- `entry/src/main/ets/core/tour/TourConfig.ets`
-- `entry/src/main/ets/core/content/Phrases.ets (arrival/approach/next/gps-lost/finish lines in en, zh, pl; nav templates come in A9)`
+- `common/src/main/ets/core/tour/TourEngine.ets`
+- `common/src/main/ets/core/tour/TriggerPolicy.ets`
+- `common/src/main/ets/core/tour/AnnouncementQueue.ets`
+- `common/src/main/ets/core/tour/TourConfig.ets`
+- `common/src/main/ets/core/content/Phrases.ets (arrival/approach/next/gps-lost/finish lines in en, zh, pl; nav templates come in A9)`
 - `entry/src/test/TriggerPolicy.test.ets`
 - `entry/src/test/AnnouncementQueue.test.ets`
 - `entry/src/test/TourEngine.test.ets`
@@ -497,7 +497,7 @@ source scripts/env.sh && devecocli check arkts && scripts/test.sh
 
 **Starter prompt** (after `scripts/wt.sh new feat/tour-engine` and `cd ../citytour-wt/tour-engine && claude`):
 ```text
-You are a Claude Code agent in the git worktree ../citytour-wt/tour-engine (branch feat/tour-engine) of CityTour, a native ArkTS/ArkUI HarmonyOS app (API 20 minimum, compiled against API 24, emulator "Pura 90"). First read AGENTS.md (including Team Flow), HACKATHON_BRIEF.md, AI_WORKFLOW.md, and in docs/PLAN.md: §0 and task card A3. Do task A3: the pure tour engine in entry/src/main/ets/core/tour/ (TourEngine reducer `(state, event) => {state, effects}`, TriggerPolicy, AnnouncementQueue, TourConfig) and core/content/Phrases.ets, following docs/ARCHITECTURE.md §4.1-4.5 and the effect/event names in contracts/EngineTypes.ets. The reducer never calls services; it only returns effects. Sentence = utterance: the queue hands out the next sentence only after UTTERANCE_DONE. Use entry/src/test/fixtures/MiniPack.ets and synthetic fix tracks in the tests (rows TriggerPolicy, AnnouncementQueue, TourEngine, Phrases of §11.1). Keep phrase text short and spoken-style (docs/DESIGN.md §5.3-5.5). No emulator needed.
+You are a Claude Code agent in the git worktree ../citytour-wt/tour-engine (branch feat/tour-engine) of CityTour, a native ArkTS/ArkUI HarmonyOS app (API 20 minimum, compiled against API 24, emulator "Pura 90"). First read AGENTS.md (including Team Flow), HACKATHON_BRIEF.md, AI_WORKFLOW.md, and in docs/PLAN.md: §0 and task card A3. Do task A3: the pure tour engine in common/src/main/ets/core/tour/ (TourEngine reducer `(state, event) => {state, effects}`, TriggerPolicy, AnnouncementQueue, TourConfig) and core/content/Phrases.ets, following docs/ARCHITECTURE.md §4.1-4.5 and the effect/event names in contracts/EngineTypes.ets. The reducer never calls services; it only returns effects. Sentence = utterance: the queue hands out the next sentence only after UTTERANCE_DONE. Use entry/src/test/fixtures/MiniPack.ets and synthetic fix tracks in the tests (rows TriggerPolicy, AnnouncementQueue, TourEngine, Phrases of §11.1). Keep phrase text short and spoken-style (docs/DESIGN.md §5.3-5.5). No emulator needed.
 
 Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in your task card; contracts/ is read-only (if a contract must change, stop and tell the human). Verify every Kit/API with `devecocli docs search <keywords>` / `devecocli docs read <id>` before using it and cite the doc id in the commit message; guard anything whose 起始版本 is above API 20 (compatibleSdkVersion is 6.0.0(20)). core/ stays pure (no @kit imports); State Management V2 only (no V1 decorators). Log only through app/Log.ets (domain 0xC17A, tag CityTour, `EVENT k=v`). Anything simulated shows SIMULATED on screen and src=demo in logs. Never crash: try/catch + Promise.catch at every platform call, explicit timeouts, a visible state for each failure. Run `devecocli check arkts` before each build. Commit after every small working step with a descriptive message, push every 2-3 commits. Add or extend unit tests and keep `scripts/test.sh` green. Append one row to AI_WORKFLOW.md (task, what you generated, how it was verified). Only one agent per Mac drives the emulator at a time: tell the human before `devecocli run`. When done: `git fetch && git rebase origin/main`, run every command in the card's Verify block, open a PR with `gh pr create --base main` (title = task id + title, body = 'Closes #<issue>' + verified vs unverified list) and stop. Never merge to main.
 ```
@@ -513,7 +513,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Goal.** Core Speech Kit TTS with playType 0 streaming PCM into our own AudioRenderer, one sentence at a time, with the voice chosen by a config switch: real en-US Laura when installed, else the zh-CN voice reading English labelled "Fallback voice", else text-only.
 
 **Files (exclusive to this task).**
-- `entry/src/main/ets/core/speech/VoicePolicy.ets`
+- `common/src/main/ets/core/speech/VoicePolicy.ets`
 - `entry/src/main/ets/services/speech/TtsEngines.ets`
 - `entry/src/main/ets/services/speech/VoiceManager.ets`
 - `entry/src/main/ets/services/speech/NarrationPlayer.ets`
@@ -566,7 +566,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 - `entry/src/main/ets/services/location/RealLocationSource.ets`
 - `entry/src/main/ets/services/location/DemoWalkSource.ets`
 - `entry/src/main/ets/services/location/PermissionService.ets`
-- `entry/src/main/ets/core/sim/DemoWalkPlayer.ets`
+- `common/src/main/ets/core/sim/DemoWalkPlayer.ets`
 - `scripts/demo/make-demo-walk.mjs`
 - `entry/src/main/resources/rawfile/demo/royal-route-walk.json`
 - `entry/src/main/ets/pages/DevPanel.ets (location buttons)`
@@ -656,9 +656,9 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Goal.** Vertical slice on main: Demo walk -> arrival -> narration spoken (Fallback voice) -> text shown, driven by the planned order.
 
 **Files (exclusive to this task).**
-- `entry/src/main/ets/services/tour/TourController.ets`
+- `common/src/main/ets/control/TourController.ets`
 - `entry/src/main/ets/app/AppContainer.ets (swap ScriptedTourControl -> TourController)`
-- `entry/src/main/ets/app/Clock.ets`
+- `common/src/main/ets/app/Clock.ets`
 
 **Scope.**
 - Implements TourControl: plan() via Planner (origin = current fix; if > 5 km outside the pack bbox -> issue LOC_OUT_OF_AREA and use the tour start: the jury is in Beijing per emulator), start() = BackgroundRunner + AVSession + source + TICK 1 Hz, FIX -> FixFilter -> engine, FIX_TIMEOUT after 25 s.
@@ -699,7 +699,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Files (exclusive to this task).**
 - `entry/src/main/ets/services/notify/TourNotifier.ets`
 - `entry/src/main/ets/services/haptics/Haptics.ets`
-- `entry/src/main/ets/services/tour/TourController.ets (NOTIFY_NEXT/HAPTIC executor lines only)`
+- `common/src/main/ets/control/TourController.ets (NOTIFY_NEXT/HAPTIC executor lines only)`
 
 **Scope.**
 - ARCHITECTURE §2.7 (id 1001 updated in place, isAlertOnce, consent at tour start, 1600004 -> NOTIF_DENIED) and §2.8 (vibrator; isSupportEffect check; emulator likely no-op -> log only).
@@ -732,10 +732,10 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Goal.** Spoken directions between stops and recovery when the walker leaves the route.
 
 **Files (exclusive to this task).**
-- `entry/src/main/ets/core/route/LegTracker.ets`
-- `entry/src/main/ets/core/route/Guidance.ets`
-- `entry/src/main/ets/core/content/Phrases.ets (nav templates)`
-- `entry/src/main/ets/core/tour/TourEngine.ets (P1 nav items, off-route)`
+- `common/src/main/ets/core/route/LegTracker.ets`
+- `common/src/main/ets/core/route/Guidance.ets`
+- `common/src/main/ets/core/content/Phrases.ets (nav templates)`
+- `common/src/main/ets/core/tour/TourEngine.ets (P1 nav items, off-route)`
 - `entry/src/test/LegTracker.test.ets`
 - `entry/src/test/Phrases.test.ets`
 
@@ -755,7 +755,7 @@ devecocli run --device "Pura 90"; devecocli log --device "Pura 90" --bundle-name
 
 **Starter prompt** (after `scripts/wt.sh new feat/turn-by-turn` and `cd ../citytour-wt/turn-by-turn && claude`):
 ```text
-You are a Claude Code agent in the git worktree ../citytour-wt/turn-by-turn (branch feat/turn-by-turn) of CityTour, a native ArkTS/ArkUI HarmonyOS app (API 20 minimum, compiled against API 24, emulator "Pura 90"). First read AGENTS.md (including Team Flow), HACKATHON_BRIEF.md, AI_WORKFLOW.md, and in docs/PLAN.md: §0 and task card A9. Do task A9: LegTracker and Guidance in entry/src/main/ets/core/route/, the navigation templates in core/content/Phrases.ets, and the off-route/replan handling in core/tour/TourEngine.ets, per docs/ARCHITECTURE.md §4.6-4.7 and the LegTracker/Phrases test rows of §11.1. Legs and OSRM steps come from the pack (contracts RouteData.legs). Keep it pure and tested first; the emulator run only confirms the demo detour produces OFF_ROUTE and REPLAN.
+You are a Claude Code agent in the git worktree ../citytour-wt/turn-by-turn (branch feat/turn-by-turn) of CityTour, a native ArkTS/ArkUI HarmonyOS app (API 20 minimum, compiled against API 24, emulator "Pura 90"). First read AGENTS.md (including Team Flow), HACKATHON_BRIEF.md, AI_WORKFLOW.md, and in docs/PLAN.md: §0 and task card A9. Do task A9: LegTracker and Guidance in common/src/main/ets/core/route/, the navigation templates in core/content/Phrases.ets, and the off-route/replan handling in core/tour/TourEngine.ets, per docs/ARCHITECTURE.md §4.6-4.7 and the LegTracker/Phrases test rows of §11.1. Legs and OSRM steps come from the pack (contracts RouteData.legs). Keep it pure and tested first; the emulator run only confirms the demo detour produces OFF_ROUTE and REPLAN.
 
 Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in your task card; contracts/ is read-only (if a contract must change, stop and tell the human). Verify every Kit/API with `devecocli docs search <keywords>` / `devecocli docs read <id>` before using it and cite the doc id in the commit message; guard anything whose 起始版本 is above API 20 (compatibleSdkVersion is 6.0.0(20)). core/ stays pure (no @kit imports); State Management V2 only (no V1 decorators). Log only through app/Log.ets (domain 0xC17A, tag CityTour, `EVENT k=v`). Anything simulated shows SIMULATED on screen and src=demo in logs. Never crash: try/catch + Promise.catch at every platform call, explicit timeouts, a visible state for each failure. Run `devecocli check arkts` before each build. Commit after every small working step with a descriptive message, push every 2-3 commits. Add or extend unit tests and keep `scripts/test.sh` green. Append one row to AI_WORKFLOW.md (task, what you generated, how it was verified). Only one agent per Mac drives the emulator at a time: tell the human before `devecocli run`. When done: `git fetch && git rebase origin/main`, run every command in the card's Verify block, open a PR with `gh pr create --base main` (title = task id + title, body = 'Closes #<issue>' + verified vs unverified list) and stop. Never merge to main.
 ```
@@ -772,7 +772,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 
 **Files (exclusive to this task).**
 - `entry/src/main/ets/services/** (A-owned files only)`
-- `entry/src/main/ets/core/tour/** (issue effects)`
+- `common/src/main/ets/core/tour/** (issue effects)`
 - `entry/src/main/ets/app/AppContainer.ets`
 - `entry/src/main/ets/app/AppConfig.ets (debug flags to simulate TTS/pack failure)`
 - `README.md "Error handling" section (via S1 rules)`
@@ -1028,10 +1028,10 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Goal.** The app reads the pack offline, re-validates every record and every narration (defence against bad AI output), and falls back by tier.
 
 **Files (exclusive to this task).**
-- `entry/src/main/ets/core/content/PackParser.ets`
-- `entry/src/main/ets/core/content/NarrationValidator.ets`
-- `entry/src/main/ets/core/content/LangDetect.ets`
-- `entry/src/main/ets/core/content/NarrationSelector.ets`
+- `common/src/main/ets/core/content/PackParser.ets`
+- `common/src/main/ets/core/content/NarrationValidator.ets`
+- `common/src/main/ets/core/content/LangDetect.ets`
+- `common/src/main/ets/core/content/NarrationSelector.ets`
 - `entry/src/main/ets/services/pack/RawfilePackRepository.ets`
 - `entry/src/main/ets/services/pack/NarrationRepository.ets`
 - `entry/src/main/ets/services/pack/PackFactory.ets`
@@ -1175,7 +1175,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 - `entry/src/main/ets/views/map/MapRenderer.ets`
 - `entry/src/main/ets/views/map/MapStyle.ets`
 - `entry/src/main/ets/viewmodel/MapViewModel.ets`
-- `entry/src/main/ets/core/map/Camera.ets`
+- `common/src/main/ets/core/map/Camera.ets`
 - `entry/src/test/MapCamera.test.ets`
 - `entry/src/main/ets/pages/MapPage.ets (P1 full map)`
 - `entry/src/main/resources/rawfile/map/oldtown-light.png + oldtown-meta.json (fallback only)`
@@ -1735,7 +1735,7 @@ Rules (AGENTS.md Team Flow + docs/PLAN.md §0.3): edit only the files listed in 
 **Goal.** Wow moment: the same stop continues in the Chinese voice; captions follow.
 
 **Files (exclusive to this task).**
-- `entry/src/main/ets/services/tour/TourController.ets (A: setTextLang)`
+- `common/src/main/ets/control/TourController.ets (A: setTextLang)`
 - `entry/src/main/ets/pages/NowWalkingPage.ets (B: menu item)`
 
 **Scope.**

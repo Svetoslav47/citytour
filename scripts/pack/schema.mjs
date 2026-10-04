@@ -1,4 +1,4 @@
-// CityTour pack pipeline: the pack schema, mirrored from entry/src/main/ets/contracts/Model.ets (Node 22+ ESM).
+// CityTour pack pipeline: the pack schema, mirrored from common/src/main/ets/contracts/Model.ets (Node 22+ ESM).
 //
 // ENUMS and INTERFACES below are a literal copy of Model.ets: enum values, field names, optional markers and
 // the TypeScript type text of every field. schema.test.mjs parses Model.ets and fails on any difference, so

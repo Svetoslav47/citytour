@@ -7,13 +7,13 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   CueKind, LegTracker, LegUpdate, NavConfig, NavCue, OffRouteChange
-} from '../main/ets/core/route/LegTracker';
+} from 'common';
 import {
   StepCue, bearingText, continueText, maneuverUiText, nowText, offRouteSentences, prepareText, replanSentence,
   stepCueKind
-} from '../main/ets/core/route/Guidance';
-import { Lang, Maneuver, RouteLeg, RouteStep } from '../main/ets/contracts/Model';
-import { RelDir } from '../main/ets/contracts/EngineTypes';
+} from 'common';
+import { Lang, Maneuver, RouteLeg, RouteStep } from 'common';
+import { RelDir } from 'common';
 
 const T0: number = 5000000;
 

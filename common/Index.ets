@@ -1,0 +1,56 @@
+// Shared, platform-free code for the phone (entry) and watch (wearable) HAPs: contracts/ and core/.
+// core/ must stay pure (no @kit imports): scripts/test.sh enforces it. Generated list, one line per file.
+export * from './src/main/ets/contracts/EngineTypes';
+export * from './src/main/ets/contracts/Model';
+export * from './src/main/ets/contracts/Ports';
+export * from './src/main/ets/contracts/Settings';
+export * from './src/main/ets/core/content/CityPack';
+export * from './src/main/ets/core/content/LangDetect';
+export * from './src/main/ets/core/content/NarrationSelector';
+export * from './src/main/ets/core/content/NarrationValidator';
+export * from './src/main/ets/core/content/PackParser';
+export * from './src/main/ets/core/content/Phrases';
+export * from './src/main/ets/core/geo/CourseEstimator';
+export * from './src/main/ets/core/geo/FixFilter';
+export * from './src/main/ets/core/geo/GeoMath';
+export * from './src/main/ets/core/geo/GridIndex';
+export * from './src/main/ets/core/geo/Projection';
+export * from './src/main/ets/core/hud/HudRows';
+export * from './src/main/ets/core/map/Camera';
+export * from './src/main/ets/core/map/PoiDots';
+export * from './src/main/ets/core/map/SvgPath';
+export * from './src/main/ets/core/map/WalkDisplay';
+export * from './src/main/ets/core/notify/NotifyText';
+export * from './src/main/ets/core/onboarding/OnboardingRules';
+export * from './src/main/ets/core/remote/CanonicalJson';
+export * from './src/main/ets/core/remote/CourseRules';
+export * from './src/main/ets/core/remote/CoverRules';
+export * from './src/main/ets/core/remote/HomeRules';
+export * from './src/main/ets/core/remote/ServerApi';
+export { isStreamCityFile, isClipFile, streamCourseFiles, streamClipFiles, streamCityFiles, courseSource, activeCandidates, streamNeedsPrepare, allPlacesAvailable, reusableForDownload, StreamRowActions, streamRowActions, ClipStep, STREAM_CLIP_BUDGET_MS, STREAM_PREFETCH, STREAM_OFFLINE_BACKOFF_MS, clipStep, StreamClip, prefetchAfter } from './src/main/ets/core/remote/StreamRules';
+// StreamRules.CourseSource (streamed/downloaded) clashes with CourseEstimator.CourseSource (walking direction).
+export { CourseSource as StreamCourseSource } from './src/main/ets/core/remote/StreamRules';
+export * from './src/main/ets/core/remote/VoiceChain';
+export * from './src/main/ets/core/route/Fallback';
+export * from './src/main/ets/core/route/Guidance';
+export * from './src/main/ets/core/route/HeldKarp';
+export * from './src/main/ets/core/route/LegTracker';
+export { WALK_SPEED_MPS, SNAP_RADIUS_M, DEFAULT_DETOUR_FACTOR, CityPack, PlanInputs, buildCostInputs, plan } from './src/main/ets/core/route/Planner';
+export { haversineM as plannerHaversineM } from './src/main/ets/core/route/Planner';
+export * from './src/main/ets/core/settings/SettingsRules';
+export { DEMO_TICK_MS, DEMO_PROVIDER, DemoFix, DemoTrack, DemoTrackParse, parseDemoTrack, normalizeDemoSpeed, nextDemoSpeed, demoFixToFix, DemoTick, DemoWalkPlayer } from './src/main/ets/core/sim/DemoWalkPlayer';
+export * from './src/main/ets/core/speech/ClipSelection';
+export * from './src/main/ets/core/speech/Sha256';
+export * from './src/main/ets/core/speech/VoicePolicy';
+export * from './src/main/ets/core/tour/AnnouncementQueue';
+export * from './src/main/ets/core/tour/LangSwitch';
+export * from './src/main/ets/core/tour/TourConfig';
+export * from './src/main/ets/core/tour/TourEngine';
+export * from './src/main/ets/core/tour/TourSummary';
+export * from './src/main/ets/core/tour/TriggerPolicy';
+export * from './src/main/ets/core/widget/CardModel';
+export { FIX_TIMEOUT_MS, NO_FIRST_FIX_MS, TICK_MS, SNAPSHOT_MIN_INTERVAL_MS, OUT_OF_AREA_KM, ORIGIN_MAX_AGE_MS, ORIGIN_WAIT_MS, PLATFORM_START_TIMEOUT_MS, DemoControls, TourControllerDeps, TourOptions, kmOutsideBbox, predictNextUtteranceId, openStopIds, LOC_ERR_PERMISSION, LOC_ERR_SWITCH_OFF, locationErrorIssue, voiceIssueFor, enStatusOf, TourController } from './src/main/ets/control/TourController';
+// TourController.normalizeDemoSpeed (NaN => 4) differs from DemoWalkPlayer's (NaN => 1): re-exported renamed.
+export { normalizeDemoSpeed as controllerNormalizeDemoSpeed } from './src/main/ets/control/TourController';
+export * from './src/main/ets/app/LogEvents';
+export * from './src/main/ets/app/Clock';

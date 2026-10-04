@@ -35,15 +35,15 @@
  */
 import { notificationManager } from '@kit.NotificationKit';
 import { common, wantAgent, WantAgent } from '@kit.AbilityKit';
-import { EngineSnapshot, NextNotice } from '../../contracts/EngineTypes';
-import { NotifierPort, TourControl } from '../../contracts/Ports';
-import { Lang } from '../../contracts/Model';
+import { EngineSnapshot, NextNotice } from 'common';
+import { NotifierPort, TourControl } from 'common';
+import { Lang } from 'common';
 import {
   NOTIFY_ID, NoticeKind, NotifyContext, NotifyText, ShownNotice, contextFromSnapshot, formatNotice, isTourLive,
   noticeKind, shouldRefresh, shownDistance
-} from '../../core/notify/NotifyText';
+} from 'common';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 
 export type NotifierContextProvider = () => common.UIAbilityContext | undefined;
 

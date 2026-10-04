@@ -11,18 +11,18 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   EngineLog, NarrationFn, StepResult, StopStage, TourEngine, TourInput, TourState
-} from '../main/ets/core/tour/TourEngine';
-import { TourConfig } from '../main/ets/core/tour/TourConfig';
+} from 'common';
+import { TourConfig } from 'common';
 import {
   AppIssue, Effect, EffectType, EngineEvent, EngineEventType, EngineSnapshot, IssueCode, NextInfo, NowPlaying,
   SignalQuality, StopProgress, StopStatus, TourPhase, TourPlan
-} from '../main/ets/contracts/EngineTypes';
-import { Fix, FixSource, Utterance, VoicePlan } from '../main/ets/contracts/Ports';
+} from 'common';
+import { Fix, FixSource, Utterance, VoicePlan } from 'common';
 import {
   ContentTier, Lang, LatLng, Maneuver, Narration, NarrationLength, Poi, ProvenanceKind, RouteLeg, RouteStep
-} from '../main/ets/contracts/Model';
-import { Projection } from '../main/ets/core/geo/Projection';
-import { VoiceLabel } from '../main/ets/contracts/Settings';
+} from 'common';
+import { Projection } from 'common';
+import { VoiceLabel } from 'common';
 import {
   MINI_BARBICAN, MINI_CLOTH_HALL, MINI_PERSONA_ID, MINI_ST_MARYS, MINI_TOUR_ID, miniNarrations, miniPois, miniTour
 } from './fixtures/MiniPack';

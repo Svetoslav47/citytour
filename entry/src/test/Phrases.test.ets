@@ -9,10 +9,10 @@ import {
   ALL_LANGS, ALL_MANEUVERS, ALL_MODIFIERS, ALL_PHRASE_KEYS, ALL_REL_DIRS, PhraseKey, actionWithStreet,
   approachSentence, arrivalSentences, distancePhrase, finishSentences, gpsLostSentence, localized, maneuverAction,
   nextStopSentence, phrase, phraseTemplate, relDirPhrase, welcomeSentences
-} from '../main/ets/core/content/Phrases';
-import { RelDir } from '../main/ets/contracts/EngineTypes';
-import { Lang, LocalizedText, LookDir, Maneuver, RouteStep, ViewHint } from '../main/ets/contracts/Model';
-import { maneuverUiText, nowText, prepareText } from '../main/ets/core/route/Guidance';
+} from 'common';
+import { RelDir } from 'common';
+import { Lang, LocalizedText, LookDir, Maneuver, RouteStep, ViewHint } from 'common';
+import { maneuverUiText, nowText, prepareText } from 'common';
 
 const LONG_NAME: string = 'Saint Mary\'s Basilica';
 

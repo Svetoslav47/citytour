@@ -6,16 +6,16 @@
  */
 import {
   EngineEventType, EngineSnapshot, NowPlaying, SignalQuality, StopProgress, StopStatus, TourPhase
-} from '../contracts/EngineTypes';
-import { Lang, LookDir } from '../contracts/Model';
-import { FixSource } from '../contracts/Ports';
+} from 'common';
+import { Lang, LookDir } from 'common';
+import { FixSource } from 'common';
 import { AppConfig } from '../app/AppConfig';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
-import { dialAngle, RoundedDistance, roundWalkDistance, shouldUpdateDistance } from '../core/map/WalkDisplay';
+import { LogEvents } from 'common';
+import { dialAngle, RoundedDistance, roundWalkDistance, shouldUpdateDistance } from 'common';
 import { PlaqueState } from '../views/common/Plaque';
-import { MapData } from '../contracts/Model';
+import { MapData } from 'common';
 import { PreviewPoint } from '../views/common/RoutePreview';
 import { MapOverlay } from '../views/map/MapRenderer';
 import { MapCache, overlayBounds, walkOverlay } from './MapViewModel';
@@ -23,7 +23,7 @@ import { StopRow } from '../views/common/StopList';
 import { AppViewModel } from './AppViewModel';
 import { localName } from './Format';
 import { findTour, poiName, previewPoints, safePoi } from './PackView';
-import { otherLiveLangs, storyLangForLive } from '../core/tour/LangSwitch';
+import { otherLiveLangs, storyLangForLive } from 'common';
 import { SettingsViewModel } from './SettingsViewModel';
 import { SummaryViewModel } from './SummaryViewModel';
 

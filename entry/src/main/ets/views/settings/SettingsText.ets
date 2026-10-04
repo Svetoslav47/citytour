@@ -1,8 +1,8 @@
 /*
  * Display strings for Settings values (task B9): story language rows, app language rows, the voice row.
  */
-import { UiLang } from '../../contracts/Settings';
-import { StoryLang, VoiceRow } from '../../core/settings/SettingsRules';
+import { UiLang } from 'common';
+import { StoryLang, VoiceRow } from 'common';
 
 /** plSpoken: the A13 clips cover Polish, so the row says spoken instead of text only. */
 export function storyLangRes(l: StoryLang, plSpoken: boolean = false): Resource {

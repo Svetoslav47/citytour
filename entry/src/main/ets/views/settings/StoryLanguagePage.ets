@@ -2,7 +2,7 @@
  * Settings > Story language (task B9, DESIGN §3.11 + Flow F): a radio list of the four narration choices and the
  * footnote about Polish when it is text only. Ids: radioStory<en|zh|pl|pl-listen-en>.
  */
-import { StoryLang, STORY_LANGS } from '../../core/settings/SettingsRules';
+import { StoryLang, STORY_LANGS } from 'common';
 import { AppViewModel } from '../../viewmodel/AppViewModel';
 import { SettingsViewModel } from '../../viewmodel/SettingsViewModel';
 import { storyLangRes } from './SettingsText';

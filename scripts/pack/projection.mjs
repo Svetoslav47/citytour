@@ -1,6 +1,6 @@
 // CityTour pack pipeline: the pack projection and small planar-geometry helpers (Node 22+ ESM, stdlib only).
 //
-// The projection MUST stay identical to the app's entry/src/main/ets/core/geo/Projection.ets (task A1,
+// The projection MUST stay identical to the app's common/src/main/ets/core/geo/Projection.ets (task A1,
 // docs/ARCHITECTURE.md §3.2): a local equirectangular (ENU) projection around Rynek Główny.
 //   x = (lng - lng0) * (cos(lat0 * PI / 180) * 111320.0)   // metres east
 //   y = (lat - lat0) * 110574.0                           // metres north

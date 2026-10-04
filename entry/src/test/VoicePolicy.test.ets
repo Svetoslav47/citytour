@@ -2,13 +2,13 @@
 // Matrix from PLAN A4 DoD: 4 strategies x en status INSTALLED/DOWNLOADABLE/UNAVAILABLE/ERROR x textLang en/zh/pl,
 // plus zh-unavailable, voiceLang overrides, listVoices mapping and the caption/timing helpers.
 import { describe, it, expect } from '@ohos/hypium';
-import { Lang } from '../main/ets/contracts/Model';
-import { EnVoiceStrategy, VoiceLabel, VoiceLang } from '../main/ets/contracts/Settings';
-import { SpeechCapabilities, VoicePlan, VoiceState } from '../main/ets/contracts/Ports';
+import { Lang } from 'common';
+import { EnVoiceStrategy, VoiceLabel, VoiceLang } from 'common';
+import { SpeechCapabilities, VoicePlan, VoiceState } from 'common';
 import {
   capsFromVoices, estimateReadingMs, mapVoiceStatus, pcmDurationMs, planLogKv, resolveVoicePlan, stripPauseMarkup,
   VoiceEntry
-} from '../main/ets/core/speech/VoicePolicy';
+} from 'common';
 
 const STRATEGIES: EnVoiceStrategy[] = [
   EnVoiceStrategy.AUTO_NATIVE_THEN_ZH, EnVoiceStrategy.AUTO_NATIVE_THEN_TEXT, EnVoiceStrategy.FORCE_ZH,

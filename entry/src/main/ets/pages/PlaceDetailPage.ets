@@ -5,9 +5,9 @@
  * never gives an empty screen: a plain line shows instead. "Tell me more" only at the stop being visited
  * (TourControl.more).
  */
-import { PoiKind } from '../contracts/Model';
+import { PoiKind } from 'common';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { PlaceViewModel } from '../viewmodel/PlaceViewModel';
 import { SafeArea } from '../viewmodel/SafeArea';

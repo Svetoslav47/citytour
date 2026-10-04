@@ -9,12 +9,12 @@
  * preferred language (i18n.System.getAppPreferredLanguage, API 9, doc js-apis-i18n).
  */
 import { i18n } from '@kit.LocalizationKit';
-import { EngineSnapshot, StopStatus } from '../contracts/EngineTypes';
-import { Lang, MapData } from '../contracts/Model';
+import { EngineSnapshot, StopStatus } from 'common';
+import { Lang, MapData } from 'common';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
-import { buildSummary, SummaryStop, TourSummaryData, TourTimer } from '../core/tour/TourSummary';
+import { LogEvents } from 'common';
+import { buildSummary, SummaryStop, TourSummaryData, TourTimer } from 'common';
 import { PlaqueState } from '../views/common/Plaque';
 import { StopRow } from '../views/common/StopList';
 import { MapOverlay } from '../views/map/MapRenderer';

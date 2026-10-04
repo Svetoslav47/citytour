@@ -30,24 +30,24 @@
 import { i18n } from '@kit.LocalizationKit';
 import { PersistenceV2 } from '@kit.ArkUI';
 import { notificationManager } from '@kit.NotificationKit';
-import { Lang, Tour } from '../contracts/Model';
+import { Lang, Tour } from 'common';
 import {
   FixSource, PackLoadResult, PermissionPort, PermissionState, SpeechCapabilities, VoicePlan, VoiceState
-} from '../contracts/Ports';
-import { EnVoiceStrategy, UiLang, UserSettings, VoiceLabel } from '../contracts/Settings';
+} from 'common';
+import { EnVoiceStrategy, UiLang, UserSettings, VoiceLabel } from 'common';
 import { AppConfig } from '../app/AppConfig';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
-import { LocRow, locationRow, NotifRow, notifRow, percent, voiceLangForPlan } from '../core/onboarding/OnboardingRules';
+import { LogEvents } from 'common';
+import { LocRow, locationRow, NotifRow, notifRow, percent, voiceLangForPlan } from 'common';
 import {
   DetailLevel, detailKnobs, detailLevelOf, normalizeSpeed, normalizeTriggerM, PackLine, packLine, StoryLang,
   storyLangOf, storyLangPair, StrategyChoice, strategyChoiceOf, strategyFor, triggerScale, uiLangOf, uiLangTag,
   validStrategy, VoiceRow, voiceRowFor
-} from '../core/settings/SettingsRules';
-import { TourConfig } from '../core/tour/TourConfig';
+} from 'common';
+import { TourConfig } from 'common';
 import { Haptics } from '../services/haptics/Haptics';
-import { TourController, TourOptions } from '../services/tour/TourController';
+import { TourController, TourOptions } from 'common';
 import { AppViewModel } from './AppViewModel';
 import { withTimeout } from './Async';
 import { OnboardingViewModel } from './OnboardingViewModel';

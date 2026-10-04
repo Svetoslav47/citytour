@@ -8,7 +8,7 @@
  * Never log free-text user data; round real coordinates to 4 decimals.
  */
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { LoggerPort } from '../contracts/Ports';
+import { LoggerPort } from 'common';
 
 export const LOG_DOMAIN: number = 0xC17A;
 export const LOG_TAG: string = 'CityTour';
