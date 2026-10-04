@@ -673,8 +673,10 @@ export class TourController implements TourControl {
     }
     await this.primeOrigin();
     const base: VoicePlan = this.resolveVoice();
-    this.reportVoice(base);
     const vp: VoicePlan = this.applyClips(tour, base);
+    if (vp.label !== VoiceLabel.PRERENDERED) {
+      this.reportVoice(base);   // the studio voice covers this language: the built-in voice's state is moot
+    }
     const origin: LatLng = this.planningOrigin();
     const p: TourPlan = this.solve(tour, tour.stops.map((s: TourStop) => s.poiId), origin, budgetMin > 0 ? budgetMin * 60 : 0);
     this.tour = tour;
@@ -1012,8 +1014,10 @@ export class TourController implements TourControl {
       this.ctrlIssues = this.ctrlIssues.filter((i: AppIssue) =>
         i.code !== IssueCode.TTS_INIT_FAIL && i.code !== IssueCode.VOICE_UNAVAILABLE);
       const base: VoicePlan = this.resolveVoice();
-      this.reportVoice(base);
       const vp: VoicePlan = this.applyClips(tour, base);
+      if (vp.label !== VoiceLabel.PRERENDERED) {
+        this.reportVoice(base);
+      }
       if (lang === st.input.lang && prev !== undefined && prev.label === vp.label &&
         prev.speechMode === vp.speechMode && prev.engineLocale === vp.engineLocale) {
         this.deps.log.info(LogEvents.LANG_SWITCH, `to=${lang} action=none reason=same_lang_and_voice`);
