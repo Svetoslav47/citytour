@@ -164,6 +164,12 @@ export class CourseRepository {
     return rec === undefined || allPlacesAvailable(rec.cityId, this.cityStore === undefined || this.hasCity(rec.cityId));
   }
 
+  /** The active course's city ('' = none, or a self-contained course). */
+  activeCityId(): string {
+    const rec = this.record(this.pack.activeId());
+    return rec !== undefined ? rec.cityId : '';
+  }
+
   private cityRecord(id: string): CourseRecord | undefined {
     return this.cityRecords.find((r: CourseRecord) => r.id === id);
   }
@@ -377,35 +383,12 @@ export class CourseRepository {
       const cityFiles = cityManifest !== undefined ? cityManifest.files.length : 0;
       const allBytes = cityBytes + manifestBytes(cm);
       const allFiles = cityFiles + cm.files.length;
-      if (cityManifest !== undefined && this.cityStore !== undefined) {
-        const cityStore: CourseStore = this.cityStore;
-        const citySummary = new CourseSummary();
-        citySummary.id = cityManifest.courseId;
-        citySummary.version = cityManifest.version;
-        citySummary.cityId = cityManifest.courseId;
-        if (catCity !== undefined) {
-          citySummary.title = catCity.names;
-          citySummary.city = catCity.names.en;
-          citySummary.bytes = catCity.bytes;
-        }
-        const cityOpts = new InstallOptions();
-        const sc = this.streamCityRecord(cityManifest.courseId);
-        cityOpts.seedDir = sc !== undefined && this.streamCityStore !== undefined ?
-          this.streamCityStore.courseDir(sc.id, sc.version) : '';
-        const cr = await cityStore.install(this.client, cityManifest, citySummary, cancel,
-          (p: InstallProgress) => onProgress(CourseRepository.offset(p, 0, 0, allBytes, allFiles)), cityOpts);
-        if (!cr.ok || cr.record === undefined) {
-          out.error = `city_${cr.error}`;
+      if (cityManifest !== undefined) {
+        const cityErr = await this.installCity(cityManifest, catCity, cancel,
+          (p: InstallProgress) => onProgress(CourseRepository.offset(p, 0, 0, allBytes, allFiles)), id);
+        if (cityErr !== '') {
+          out.error = `city_${cityErr}`;
           return out;
-        }
-        const newCity: CourseRecord = cr.record;
-        this.cityRecords = this.cityRecords.filter((r: CourseRecord) => r.id !== newCity.id);
-        this.cityRecords.push(newCity);
-        Log.i(LogEvents.COURSE, `event=city_installed city=${newCity.id} version=${newCity.version} for=${id}`);
-        // Another active course of this city was reading the old city folder: reload it on the new one.
-        const act = this.record(this.pack.activeId());
-        if (act !== undefined && act.id !== id && act.cityId === newCity.id) {
-          await this.activate(act.id);
         }
       }
       // Download after Play now: the stream's verified files (small files + every clip already played) are reused.
@@ -442,6 +425,102 @@ export class CourseRepository {
       return out;
     } finally {
       this.busy.delete(id);
+    }
+  }
+
+  /**
+   * Installs city places pack `cityManifest` (seeded from the stream city's verified files) and, when the active
+   * course is another course of that city, reloads it on the new city folder (`forId` = the course being downloaded,
+   * '' = none). Resolves '' on success, else the error.
+   */
+  private async installCity(cityManifest: CourseManifest, catCity: CitySummary | undefined, cancel: CancelToken,
+    onProgress: (p: InstallProgress) => void, forId: string): Promise<string> {
+    if (this.cityStore === undefined) {
+      return 'no_city_store';
+    }
+    const cityStore: CourseStore = this.cityStore;
+    const citySummary = new CourseSummary();
+    citySummary.id = cityManifest.courseId;
+    citySummary.version = cityManifest.version;
+    citySummary.cityId = cityManifest.courseId;
+    if (catCity !== undefined) {
+      citySummary.title = catCity.names;
+      citySummary.city = catCity.names.en;
+      citySummary.bytes = catCity.bytes;
+    }
+    const cityOpts = new InstallOptions();
+    const sc = this.streamCityRecord(cityManifest.courseId);
+    cityOpts.seedDir = sc !== undefined && this.streamCityStore !== undefined ?
+      this.streamCityStore.courseDir(sc.id, sc.version) : '';
+    const cr = await cityStore.install(this.client, cityManifest, citySummary, cancel, onProgress, cityOpts);
+    if (!cr.ok || cr.record === undefined) {
+      return cr.error !== '' ? cr.error : 'install_failed';
+    }
+    const newCity: CourseRecord = cr.record;
+    this.cityRecords = this.cityRecords.filter((r: CourseRecord) => r.id !== newCity.id);
+    this.cityRecords.push(newCity);
+    Log.i(LogEvents.COURSE, `event=city_installed city=${newCity.id} version=${newCity.version} for=${forId || 'explore'}`);
+    // The active course of this city was reading the old (or the stream's partial) city folder: reload it on the new one.
+    const act = this.record(this.pack.activeId());
+    if (act !== undefined && act.id !== forId && act.cityId === newCity.id) {
+      await this.activate(act.id);
+    }
+    return '';
+  }
+
+  /**
+   * Home "Explore" on a streamed walk (or right after Explore made one active): downloads only the city's places pack
+   * (every place, for the full map), not a whole walk. Already installed and current: nothing to do. The active course
+   * of that city is reloaded on it. Never rejects.
+   */
+  async downloadCity(cityId: string, cancel: CancelToken, onProgress: (p: InstallProgress) => void): Promise<OpResult> {
+    const out = new OpResult();
+    await this.init();
+    const key = `city:${cityId}`;
+    if (cityId === '' || this.cityStore === undefined) {
+      out.error = cityId === '' ? 'no_city' : 'no_city_store';
+      return out;
+    }
+    if (this.busy.has(key)) {
+      out.error = 'busy';
+      return out;
+    }
+    const cityRec = this.cityRecord(cityId);
+    const catCity = this.catalogState.cities.find((c: CitySummary) => c.id === cityId);
+    if (cityRec !== undefined &&
+      !cityNeedsDownload(cityRec.version, catCity !== undefined ? catCity.version : '')) {
+      out.ok = true;
+      return out;
+    }
+    if (!this.client.enabled()) {
+      out.error = 'disabled';
+      return out;
+    }
+    this.busy.add(key);
+    const t0 = Date.now();
+    try {
+      const cmr = await this.client.cityManifest(cityId);
+      if (!cmr.ok || cmr.manifest === undefined) {
+        out.error = `city_${cmr.error}`;
+        Log.w(LogEvents.COURSE, `event=city_manifest_fail city=${cityId} reason=${cmr.error} for=explore`);
+        return out;
+      }
+      const err = await this.installCity(cmr.manifest, catCity, cancel, onProgress, '');
+      if (err !== '') {
+        out.error = `city_${err}`;
+        Log.w(LogEvents.COURSE, `event=city_download_fail city=${cityId} reason=${err} for=explore`);
+        return out;
+      }
+      Log.i(LogEvents.COURSE, `event=city_download_ok city=${cityId} bytes=${manifestBytes(cmr.manifest)}` +
+        ` ms=${Date.now() - t0} for=explore`);
+      out.ok = true;
+      return out;
+    } catch (e) {
+      out.error = `exception ${Log.errKv(e as Object)}`;
+      Log.e(LogEvents.COURSE, `event=city_download_fail city=${cityId} ${out.error}`);
+      return out;
+    } finally {
+      this.busy.delete(key);
     }
   }
 

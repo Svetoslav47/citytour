@@ -1473,8 +1473,24 @@
       "value": "Couldn't start the walk. Check your connection and try again, or download it for offline use."
     },
     {
-      "name": "home_all_places_download",
-      "value": "Download this walk to explore every place offline"
+      "name": "home_all_places_get",
+      "value": "Download every place in the city to explore the map"
+    },
+    {
+      "name": "home_all_places_get_size",
+      "value": "Download every place in the city (%s) to explore the map"
+    },
+    {
+      "name": "home_all_places_preparing",
+      "value": "Preparing…"
+    },
+    {
+      "name": "home_all_places_progress",
+      "value": "Downloading places… %s"
+    },
+    {
+      "name": "home_all_places_failed",
+      "value": "Couldn't download the places. Tap to try again."
     },
     {
       "name": "courses_failed",
