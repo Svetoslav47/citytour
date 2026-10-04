@@ -263,7 +263,8 @@ small server ([`docs/SERVER.md`](docs/SERVER.md), `server/`) provides:
   (**Pick a walk to start** on first run). Each clip is then fetched on demand from `/v1/blobs/<sha256>` (verified,
   cached), the next three sentences of the story are prefetched, and a clip that is not there within 3 s falls back
   for that sentence only (studio voice from `/v1/tts`, built-in voice, text for Polish). "All places" needs the whole
-  city, so a streamed walk shows it as "Download this walk…" (it opens Courses). **Download** upgrades a streamed walk
+  city: Home › Explore is offered before any walk is loaded, and a tap makes a walk active (streamed) when none is,
+  fetches only the city's places pack (~9 MB, `COURSE event=city_download_ok`) when it is missing, then opens the map. **Download** upgrades a streamed walk
   to fully offline, reusing the files already fetched; **Delete** removes the stream too. Logs: `COURSE
   event=stream_ready`, `NARR_AUDIO event=stream_clip result=ok|fail`.
 - **Online studio voice** (always on). A sentence with no pre-rendered clip is requested from
