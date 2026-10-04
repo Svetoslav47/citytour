@@ -290,6 +290,15 @@ renderer.on('outputDeviceChangeWithInfo', (info) => /* headphones removed → pa
 - **Playback-end detection.** There is no end-of-stream API (VERIFIED, FAQ faqs-audio-56). `PcmPlayer` counts bytes consumed by `writeData` per utterance. When the utterance's bytes are fully consumed **and** its synthesis is complete, it schedules `onUtteranceDone` after `bufferDurationMs = getBufferSizeSync() / 32` (16 kHz × 2 B = 32 B/ms). Fallback: poll `getAudioTimestampInfo` every 250 ms until the frame position stops advancing.
 - **Prefetch.** `NarrationPlayer` synthesizes sentence *n+1* while *n* plays (look-ahead = 1) to hide TTS latency. If the queue preempts, the prefetched PCM is dropped.
 
+**Delta (Sun 4 Oct, as built): the studio voice is primary, the system voice is the last resort.** The order per
+line is (1) the course's pre-rendered ElevenLabs clip, matched by the sha256 of the exact text
+(`services/speech/NarrationPlayer.ets`); (2) for short dynamic lines without a clip (welcome, arrival,
+turn-by-turn with distances), the course server's `POST /v1/tts`, which renders only lines in the course's signed
+allowed-lines set and caches them forever (`services/speech/RemoteVoice.ets`, 2.5 s budget, file cache
+`filesDir/tts/<sha>.mp3`; server side in `docs/SERVER.md` §2, §4); (3) only then this section's Core Speech Kit TTS,
+or text for Polish. The Settings toggle for the online voice was removed (user decision): the studio voice is always
+on. Logged as `NARR_AUDIO src=prerendered|remote|remote_cache|tts|text`.
+
 ### 2.6 AVSession (lock screen, headset, notification card)
 
 **Setup.** `createAVSession(ctx, 'CityTour', 'audio')`. **Register commands first, then `activate()`** (VERIFIED order).
@@ -375,6 +384,11 @@ Panning disables follow mode; a "recenter" button re-enables it. Pan/pinch delta
 **Rendering (`views/map/MapRenderer.ets`, a plain class that takes `CanvasRenderingContext2D`).**
 
 - At load, build **one `Path2D` per style class** in world metres (`moveTo`/`lineTo`/`closePath`) for `water`, `green`, `buildings`, `unesco`, `paths`, `minor`, `major`, `river`. That is ~10 paths in total.
+- **Delta (as built): the paths are built time-sliced, not at once.** Building every layer in one go blocked the UI
+  thread on the emulator (`THREAD_BLOCK_6S`), and SVG path strings drew only part of the base map. `PathBuild` in
+  `MapRenderer.ets` adds features with `moveTo`/`lineTo` in 6 ms slices and yields with `setTimeout(step, 4)` (a 0 ms
+  timer re-ran in the same timer pass and still blocked); layers appear as they finish, and one build is shared by
+  every `MapCanvas` showing the same map data.
 - Per frame:
   1. `ctx.setTransform(s, 0, 0, −s, W/2 − cx·s, H/2 + cy·s)`.
   2. For each layer in z-order, set `fillStyle`/`strokeStyle`, set `lineWidth = px / s`, then `ctx.fill(path)` or `ctx.stroke(path)`.
