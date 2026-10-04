@@ -8,7 +8,13 @@
  * btnStops, btnNextStopText, btnBackHome, btnJumpNext, segSpeedN.
  * B11: when the tour ends (FINISHED or ABORTED) the page hands over to the Tour summary (SummaryPage).
  * B12: the ⋯ menu toggles the "How it works" HUD (views/walk/HowItWorksHud, id hudHowItWorks) over the map.
+ * §3.6.3: the panel is a two-detent bottom sheet (core/map/SheetDetents). EXPANDED = the full panel below the DESIGN
+ * map box; COLLAPSED ("peek") = next stop, distance + ETA, the turn text and play/pause + skip, so the map gets the
+ * rest of the screen. Drag or fling the handle / peek (spring), tap the handle to toggle; the detent is kept for the
+ * app session. Only translateY and opacity animate; the map's follow inset follows the settled detent.
+ * Ids: sheetWalk, btnSheetHandle, sheetPeek, btnPeekPlayPause, btnPeekSkip.
  */
+import { curves } from '@kit.ArkUI';
 import { IssueCode } from 'common';
 import { Log } from '../app/Log';
 import { LogEvents } from 'common';
@@ -27,12 +33,21 @@ import { NowPlayingCard } from '../views/walk/NowPlayingCard';
 import { WalkControls } from '../views/walk/WalkControls';
 import { SafeArea } from '../viewmodel/SafeArea';
 import { liveLangName } from 'common';
+import {
+  collapseProgress, detentOffset, dragOffset, expandedHeight, mapBottomInset, mapBoxHeight, peekHeight, resolveDetent,
+  SheetDetent, sheetTravel, toggleDetent, visibleSheetHeight
+} from 'common';
 
 const MAP_H: number = 300;
 const MAP_H_READING: number = 200;
 /** B12: with the HUD on, the map box reaches this far below the HUD, so the HUD never covers the panel and a strip of
  * map (user dot, route) stays visible under it (24 vp of it sit under the panel's rounded top). */
 const HUD_MAP_STRIP: number = 120;
+/** Drag handle strip at the top of the sheet (the bar is 36 x 4 vp, the strip is the touch area). */
+const HANDLE_H: number = 24;
+
+/** Sheet detent kept for the app session (the page is rebuilt each time Now Walking opens). */
+let sessionDetent: SheetDetent = SheetDetent.EXPANDED;
 
 @ComponentV2
 export struct NowWalkingPage {
@@ -45,6 +60,14 @@ export struct NowWalkingPage {
   @Local hud: HudPrefs = HudPrefs.get();
   /** Height of the chips + HUD overlay column (onAreaChange), for the map box and its follow inset. */
   @Local overlayH: number = 0;
+  /** Page height (onAreaChange), for the sheet and the map box. 0 until the first layout. */
+  @Local pageH: number = 0;
+  /** Settled sheet detent (§3.6.3). */
+  @Local detent: SheetDetent = sessionDetent;
+  /** While a finger drags the sheet, its offset follows `dragOff` instead of the detent. */
+  @Local dragging: boolean = false;
+  @Local dragOff: number = 0;
+  private dragStartOff: number = 0;
 
   aboutToAppear(): void {
     this.vm.onTourEnded = () => this.app.openSummary();   // B11: Tour summary when the tour ends
@@ -148,6 +171,85 @@ export struct NowWalkingPage {
   private mapTopInset(): number {
     const base: number = 96 + this.sa.top;
     return this.hud.visible && this.overlayH > 0 ? Math.max(base, this.overlayH) : base;
+  }
+
+  // ---------- sheet (§3.6.3) ----------
+
+  private peekH(): number {
+    return peekHeight(this.sa.bottom);
+  }
+
+  /** Expanded sheet: the page below the DESIGN map box (grown with the HUD), as the fixed panel was. */
+  private sheetH(): number {
+    return expandedHeight(this.pageH, this.mapBoxH(), this.peekH());
+  }
+
+  private travel(): number {
+    return sheetTravel(this.sheetH(), this.peekH());
+  }
+
+  private sheetOffset(): number {
+    return this.dragging ? this.dragOff : detentOffset(this.detent, this.travel());
+  }
+
+  /** 0 expanded .. 1 collapsed: the peek block fades in over the top of the full panel. */
+  private progress(): number {
+    return collapseProgress(this.sheetOffset(), this.travel());
+  }
+
+  private collapsed(): boolean {
+    return this.detent === SheetDetent.COLLAPSED;
+  }
+
+  /** The map runs behind the sheet down to the peek; before the first layout, the DESIGN box. */
+  private canvasH(): number {
+    return this.pageH > 0 ? mapBoxHeight(this.pageH, this.peekH()) : this.mapBoxH();
+  }
+
+  /** Follow inset from the settled detent (not every drag frame), so the camera moves once per detent change. */
+  private mapBottom(): number {
+    if (this.pageH <= 0) {
+      return 24;
+    }
+    const visible = visibleSheetHeight(this.sheetH(), detentOffset(this.detent, this.travel()));
+    return mapBottomInset(visible, this.pageH, this.canvasH());
+  }
+
+  private settle(d: SheetDetent, why: string): void {
+    sessionDetent = d;
+    try {
+      this.getUIContext().animateTo({ curve: curves.springMotion(0.4, 0.86) }, () => {
+        this.detent = d;
+        this.dragging = false;
+      });
+    } catch (e) {
+      this.detent = d;
+      this.dragging = false;
+    }
+    Log.i(LogEvents.APP_PAGE, `page=NowWalking sheet=${d === SheetDetent.COLLAPSED ? 'collapsed' : 'expanded'} by=${why}`);
+  }
+
+  private sheetDragStart(): void {
+    this.dragStartOff = this.sheetOffset();
+    this.dragOff = this.dragStartOff;
+    this.dragging = true;
+  }
+
+  private sheetDragMove(e: GestureEvent): void {
+    this.dragOff = dragOffset(this.dragStartOff, e.offsetY, this.travel());
+  }
+
+  private sheetDragEnd(e: GestureEvent): void {
+    if (!this.dragging) {
+      return;
+    }
+    this.settle(resolveDetent(this.dragOff, e.velocityY, this.travel()), 'drag');
+  }
+
+  private sheetDragCancel(): void {
+    if (this.dragging) {
+      this.settle(this.detent, 'cancel');
+    }
   }
 
   private toggleHud(): void {
@@ -366,81 +468,264 @@ export struct NowWalkingPage {
   }
 
   @Builder
+  handle() {
+    Button({ type: ButtonType.Normal, buttonStyle: ButtonStyleMode.TEXTUAL, stateEffect: false }) {
+      Row()
+        .width(36)
+        .height(4)
+        .borderRadius(2)
+        .backgroundColor($r('app.color.text_secondary'))
+        .opacity(0.5)
+    }
+    .id('btnSheetHandle')
+    .width('100%')
+    .height(HANDLE_H)
+    .responseRegion({ x: 0, y: -12, width: '100%', height: HANDLE_H + 24 })   // 48 vp touch target
+    .backgroundColor(Color.Transparent)
+    .accessibilityText(this.collapsed() ? $r('app.string.walk_sheet_expand') : $r('app.string.walk_sheet_collapse'))
+    .onClick(() => this.settle(toggleDetent(this.detent), 'tap'))
+    .gesture(
+      PanGesture({ direction: PanDirection.Vertical, distance: 4 })
+        .onActionStart(() => this.sheetDragStart())
+        .onActionUpdate((e: GestureEvent) => this.sheetDragMove(e))
+        .onActionEnd((e: GestureEvent) => this.sheetDragEnd(e))
+        .onActionCancel(() => this.sheetDragCancel()))
+  }
+
+  /** Peek line under the stop name: the distance + ETA, or the story being told at a stop. */
+  private peekSub(): ResourceStr {
+    if (this.hero() !== '') {
+      return this.hero();
+    }
+    return this.vm.nowPlaying() !== undefined ? this.vm.nowPlayingTitle : '';
+  }
+
+  private maneuver(): string {
+    if (this.vm.snap === undefined || this.vm.snap.next === undefined || this.atStop() || this.finished()) {
+      return '';
+    }
+    return this.vm.snap.next.maneuverText;
+  }
+
+  @Builder
+  peekControls() {
+    if (!this.finished()) {
+      Row({ space: Space.S3 }) {
+        if (this.vm.state() !== WalkState.READING) {
+          Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.EMPHASIZED }) {
+            SymbolGlyph(this.vm.paused() ? $r('sys.symbol.play_fill') : $r('sys.symbol.pause_fill'))
+              .fontSize(24)
+              .fontColor([$r('app.color.on_accent')])
+          }
+          .id('btnPeekPlayPause')
+          .width(56)
+          .height(56)
+          .backgroundColor($r('app.color.accent'))
+          .enabled(this.vm.state() !== WalkState.IDLE)
+          .accessibilityText(this.vm.paused() ? $r('app.string.walk_play') : $r('app.string.walk_pause'))
+          .onClick(() => this.vm.togglePlay())
+        }
+        Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.NORMAL }) {
+          SymbolGlyph($r('sys.symbol.forward_end_fill'))
+            .fontSize(20)
+            .fontColor([$r('app.color.text_primary')])
+        }
+        .id('btnPeekSkip')
+        .width(Size.TOUCH)
+        .height(Size.TOUCH)
+        .backgroundColor($r('app.color.bg_surface_sunken'))
+        .enabled(this.vm.state() !== WalkState.IDLE)
+        .accessibilityText(this.vm.state() === WalkState.READING ? $r('app.string.walk_next_stop_cta') :
+          $r('app.string.walk_skip'))
+        .onClick(() => this.vm.skip())
+      }
+    }
+  }
+
+  /** COLLAPSED content (§3.6.3): where next, how far, which way, play/pause. Opaque, over the full panel's top. */
+  @Builder
+  peek() {
+    Column({ space: Space.S1 }) {
+      Row({ space: Space.S3 }) {
+        Column({ space: 2 }) {
+          Text(this.overline())
+            .fontSize(Type.CAPTION)
+            .lineHeight(Type.CAPTION_LH)
+            .fontWeight(FontWeight.Medium)
+            .letterSpacing(Type.OVERLINE_SPACING)
+            .textCase(TextCase.UpperCase)
+            .maxLines(1)
+            .maxFontScale(1.3)
+            .fontColor($r('app.color.text_secondary'))
+          Text(this.title())
+            .id('peekTitle')
+            .fontSize(Type.TITLE3)
+            .lineHeight(Type.TITLE3_LH)
+            .fontWeight(FontWeight.Bold)
+            .maxLines(1)
+            .maxFontScale(1.3)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontColor($r('app.color.text_primary'))
+          if (this.peekSub() !== '') {
+            Row({ space: Space.S2 }) {
+              Text() {
+                if (this.hero() !== '' && this.vm.weakGps()) {
+                  Span('~')
+                }
+                Span(this.peekSub())
+              }
+              .id('peekHero')
+              .fontSize(this.hero() !== '' ? Type.TITLE2 : Type.CALLOUT)
+              .fontWeight(this.hero() !== '' ? FontWeight.Bold : FontWeight.Regular)
+              .fontFeature('"tnum" 1')
+              .maxLines(1)
+              .maxFontScale(1.3)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .flexShrink(1)
+              .fontColor(this.vm.paused() || this.hero() === '' ? $r('app.color.text_secondary') :
+                $r('app.color.text_primary'))
+              if (this.sub() !== '') {
+                Text(this.sub())
+                  .fontSize(Type.CALLOUT)
+                  .maxLines(1)
+                  .maxFontScale(1.3)
+                  .fontColor($r('app.color.text_secondary'))
+              }
+            }
+            .alignItems(VerticalAlign.Bottom)
+          }
+        }
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
+        .accessibilityGroup(true)
+
+        this.peekControls()
+      }
+      .width('100%')
+
+      if (this.maneuver() !== '') {
+        Row({ space: Space.S2 }) {
+          SymbolGlyph($r('sys.symbol.figure_walk'))
+            .fontSize(16)
+            .fontColor([$r('app.color.accent')])
+          Text(this.maneuver())
+            .fontSize(Type.CALLOUT)
+            .lineHeight(Type.CALLOUT_LH)
+            .maxLines(1)
+            .maxFontScale(1.3)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontColor($r('app.color.text_primary'))
+            .layoutWeight(1)
+        }
+        .id('peekDirections')
+        .width('100%')
+      }
+    }
+    .id('sheetPeek')
+    .width('100%')
+    .height(this.peekH() - HANDLE_H)
+    .padding({ left: Space.S4 + this.sa.left, right: Space.S4 + this.sa.right, top: Space.S1, bottom: this.sa.bottom })
+    .justifyContent(FlexAlign.Start)
+    .clip(true)
+    .backgroundColor($r('app.color.bg_surface'))
+    .opacity(this.progress())
+    // Fully expanded: transparent to touches and screen readers (kept in the tree so expanding crossfades).
+    .hitTestBehavior(this.progress() > 0 ? HitTestMode.Default : HitTestMode.None)
+    .accessibilityLevel(this.collapsed() ? 'auto' : 'no-hide-descendants')
+    .onClick(() => this.settle(SheetDetent.EXPANDED, 'peek'))
+    .gesture(
+      PanGesture({ direction: PanDirection.Vertical, distance: 4 })
+        .onActionStart(() => this.sheetDragStart())
+        .onActionUpdate((e: GestureEvent) => this.sheetDragMove(e))
+        .onActionEnd((e: GestureEvent) => this.sheetDragEnd(e))
+        .onActionCancel(() => this.sheetDragCancel()))
+  }
+
+  @Builder
   panel() {
     // The surface runs under the navigation indicator; the scroll viewport (and so every control) stays above it.
+    // §3.6.3: fixed expanded height, slid down by translateY to the peek; the peek block covers the panel's top.
     Column() {
-      Scroll() {
-        Column({ space: Space.S4 }) {
-          this.banner()
-          NextStopBlock({
-            overline: this.overline(),
-            title: this.title(),
-            hero: this.hero(),
-            approx: this.vm.weakGps(),
-            sub: this.sub(),
-            dim: this.vm.paused(),
-            showCue: !this.finished() && this.vm.state() !== WalkState.NO_GPS && this.vm.state() !== WalkState.IDLE,
-            angleDeg: this.vm.dialDeg,
-            relDir: this.vm.relDir(),
-            lookUp: this.vm.lookUp && (this.atStop() || this.vm.state() === WalkState.APPROACHING),
-            landmark: this.vm.stopName,
-            emphasised: this.vm.state() === WalkState.APPROACHING
-          })
-          this.playingOrDirections()
-          this.controls()
-          if (!this.finished() && this.vm.totalStops > 0) {
-            Row() {
-              if (this.vm.stopName !== '' && this.vm.snap !== undefined && this.vm.snap.next !== undefined) {
-                Button($r('app.string.walk_transcript'),
+      this.handle()
+      Stack({ alignContent: Alignment.Top }) {
+        Scroll() {
+          Column({ space: Space.S4 }) {
+            this.banner()
+            NextStopBlock({
+              overline: this.overline(),
+              title: this.title(),
+              hero: this.hero(),
+              approx: this.vm.weakGps(),
+              sub: this.sub(),
+              dim: this.vm.paused(),
+              showCue: !this.finished() && this.vm.state() !== WalkState.NO_GPS && this.vm.state() !== WalkState.IDLE,
+              angleDeg: this.vm.dialDeg,
+              relDir: this.vm.relDir(),
+              lookUp: this.vm.lookUp && (this.atStop() || this.vm.state() === WalkState.APPROACHING),
+              landmark: this.vm.stopName,
+              emphasised: this.vm.state() === WalkState.APPROACHING
+            })
+            this.playingOrDirections()
+            this.controls()
+            if (!this.finished() && this.vm.totalStops > 0) {
+              Row() {
+                if (this.vm.stopName !== '' && this.vm.snap !== undefined && this.vm.snap.next !== undefined) {
+                  Button($r('app.string.walk_transcript'),
+                    { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
+                    .id('btnTranscript')
+                    .height(Size.TOUCH)
+                    .fontSize(Type.CALLOUT)
+                    .fontColor($r('app.color.accent'))
+                    .onClick(() => this.app.openPlace(this.vm.snap?.next?.poiId ?? ''))
+                }
+                Blank()
+                Button($r('app.string.walk_stops', this.vm.totalStops),
                   { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
-                  .id('btnTranscript')
+                  .id('btnStops')
                   .height(Size.TOUCH)
                   .fontSize(Type.CALLOUT)
                   .fontColor($r('app.color.accent'))
-                  .onClick(() => this.app.openPlace(this.vm.snap?.next?.poiId ?? ''))
+                  .onClick(() => this.vm.openStops())
+                  .bindSheet(this.vm.showStopsSheet, this.stopsSheet(), {
+                    detents: [SheetSize.MEDIUM, SheetSize.LARGE],
+                    dragBar: true,
+                    showClose: true,
+                    preferType: SheetType.BOTTOM,
+                    title: { title: $r('app.string.stops_sheet_title') },
+                    onDisappear: () => {
+                      this.vm.showStopsSheet = false;
+                    }
+                  })
               }
-              Blank()
-              Button($r('app.string.walk_stops', this.vm.totalStops),
-                { type: ButtonType.Capsule, buttonStyle: ButtonStyleMode.TEXTUAL })
-                .id('btnStops')
-                .height(Size.TOUCH)
-                .fontSize(Type.CALLOUT)
-                .fontColor($r('app.color.accent'))
-                .onClick(() => this.vm.openStops())
-                .bindSheet(this.vm.showStopsSheet, this.stopsSheet(), {
-                  detents: [SheetSize.MEDIUM, SheetSize.LARGE],
-                  dragBar: true,
-                  showClose: true,
-                  preferType: SheetType.BOTTOM,
-                  title: { title: $r('app.string.stops_sheet_title') },
-                  onDisappear: () => {
-                    this.vm.showStopsSheet = false;
-                  }
-                })
+              .width('100%')
             }
-            .width('100%')
           }
+          .width('100%')
+          .padding({
+            left: Space.S4 + this.sa.left,
+            right: Space.S4 + this.sa.right,
+            top: Space.S5 - HANDLE_H / 2,
+            bottom: Space.S5 + this.sa.bottom
+          })
         }
+        .scrollBar(BarState.Off)
+        .align(Alignment.Top)
+        .height('100%')
         .width('100%')
-        .padding({
-          left: Space.S4 + this.sa.left,
-          right: Space.S4 + this.sa.right,
-          top: Space.S5,
-          bottom: Space.S5
-        })
+        .accessibilityLevel(this.collapsed() ? 'no-hide-descendants' : 'auto')
+
+        this.peek()
       }
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top)
       .layoutWeight(1)
       .width('100%')
     }
-    .padding({ bottom: this.sa.bottom })
-    .layoutWeight(1)
+    .id('sheetWalk')
     .width('100%')
+    .height(this.pageH > 0 ? this.sheetH() : '45%')
+    .translate({ y: this.sheetOffset() })
     .borderRadius({ topLeft: Radius.XL, topRight: Radius.XL })
     .backgroundColor($r('app.color.bg_surface'))
     .shadow(ShadowStyle.OUTER_FLOATING_SM)
-    .margin({ top: -Space.S5 })
   }
 
   @Builder
@@ -469,23 +754,31 @@ export struct NowWalkingPage {
   build() {
     NavDestination() {
       Stack({ alignContent: Alignment.TopStart }) {
-        Column() {
-          MapCanvas({
-            map: this.vm.map,
-            scene: this.vm.scene,
-            bounds: this.vm.sceneBounds,
-            follow: this.vm.scene.user !== undefined,
-            followScale: 1.4,
-            boxHeight: this.mapBoxH(),
-            topInset: this.mapTopInset(),
-            bottomInset: 24,
-            mapId: 'mapWalk'
-          })
-            .accessibilityText($r('app.string.walk_map_a11y', this.vm.stopName))
+        Stack({ alignContent: Alignment.Bottom }) {
+          Column() {
+            MapCanvas({
+              map: this.vm.map,
+              scene: this.vm.scene,
+              bounds: this.vm.sceneBounds,
+              follow: this.vm.scene.user !== undefined,
+              followScale: 1.4,
+              boxHeight: this.canvasH(),
+              topInset: this.mapTopInset(),
+              bottomInset: this.mapBottom(),
+              mapId: 'mapWalk'
+            })
+              .accessibilityText($r('app.string.walk_map_a11y', this.vm.stopName))
+          }
+          .width('100%')
+          .height('100%')
+
           this.panel()
         }
         .width('100%')
         .height('100%')
+        .onAreaChange((_old: Area, now: Area) => {
+          this.pageH = Number(now.height);
+        })
 
         this.header()
         this.chips()

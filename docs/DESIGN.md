@@ -454,7 +454,7 @@ Sentence by sentence (Polish): "Polskie opowieści są wyświetlane jako tekst. 
 3. **What am I hearing?**
 4. **How do I pause or replay?**
 
-**Layout (phone portrait, 390×844).** The map sits on top and the panel is anchored below; this is *not* a draggable sheet, for stability and glanceability.
+**Layout (phone portrait, 390×844).** The map sits on top and the panel is anchored below. The panel is a two-detent bottom sheet (§3.6.3, user request 2026-10-04): it opens expanded as drawn here and can be pulled down to a peek so the map gets most of the screen.
 
 ```
 ┌──────────────────────────────┐
@@ -551,6 +551,20 @@ It's dismissable and remembers its state per session. It's for demos, but honest
 **Accessibility:**
 - Reading order: header → banner → overline + title + distance + Look cue (grouped: "Next stop 5, Cloth Hall, 180 metres, about 2 minutes, ahead slightly right") → now playing (grouped) → controls → links.
 - **Don't** re-announce the distance on each update. Announce only on state changes (approaching, arrived), and through the voice guide, not the screen reader, to avoid double speech. When the screen reader is on, the guide still speaks. ⚠️ Test the overlap with the HarmonyOS screen reader.
+
+#### 3.6.3 Half-collapsible sheet (peek)
+
+User request (2026-10-04): "The navigation sheet on the tour screen has to be able to half-collapse, with the most important navigation visible, so the map becomes bigger." Pure maths in `common/src/main/ets/core/map/SheetDetents.ets` (unit-tested in `SheetDetents.test.ets`).
+
+| | Spec |
+|---|---|
+| Detents | **Expanded** (default, as in the layout above: the panel starts below the 300 vp map box, 200 vp while reading, lower with the HUD on). **Collapsed / peek**: 156 vp + the navigation-indicator inset, so no control sits under the gesture bar. |
+| Peek content | Overline (Next · stop 4 / Here · stop 4 / Waiting for GPS…), stop name (1 line), distance (title2, tabular, "~" with weak GPS) + "about N min" (or the story title at a stop), the A9 turn text with `figure_walk`, and Play/Pause 56 vp + Skip 48 vp (Skip = "Next stop" while reading). Tap the peek to expand. |
+| Handle | 36×4 vp bar in a 24 vp strip (48 vp touch region), a `Button` with a11y text **Expand** / **Collapse**. Tap toggles; drag follows the finger (rubber band 25% past a detent); on release a fling ≥ 600 vp/s picks its direction, otherwise the nearer detent. The peek can be dragged too. |
+| Motion | Only `translate.y` (sheet) and opacity (peek crossfading over the panel's top) change while dragging; release animates with `curves.springMotion(0.4, 0.86)` through `UIContext.animateTo`. |
+| Map | The map box runs behind the sheet down to the peek's rounded top; the follow camera's bottom inset is the part of the map the settled sheet covers, so the user dot stays between the header and the sheet in both detents (it moves once per detent change, not per drag frame). |
+| Memory | The last detent is kept for the app session (reopening Now Walking keeps it); no auto-collapse. |
+| A11y | The hidden layer (the full panel when collapsed, the peek when expanded) is hidden from the screen reader. |
 
 ### 3.7 Full map
 

@@ -53,7 +53,7 @@ export struct MapCanvas {
   private panLastY: number = 0;
   private frames: number = 0;
 
-  @Monitor('map', 'scene', 'bounds', 'follow', 'w', 'boxHeight', 'places', 'placesRev')
+  @Monitor('map', 'scene', 'bounds', 'follow', 'w', 'boxHeight', 'topInset', 'bottomInset', 'places', 'placesRev')
   onInputs(): void {
     this.placeCamera();
     this.draw(false);
