@@ -3,7 +3,7 @@
  * WatchContainer.init, log WATCH_APP_START, load pages/WatchHome. Launch parameter `demo` (`aa start ... --ps demo 1`)
  * starts the SIMULATED Demo walk tour right away, for verification from the command line.
  */
-import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
+import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { window } from '@kit.ArkUI';
 import { FixSource } from 'common';
 import { Log } from '../app/Log';
@@ -21,6 +21,12 @@ function wantsDemo(want: Want | undefined): boolean {
 
 export default class WatchAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    try {
+      // The watch is always dark: the shared colours (common/resources) resolve to the phone's dark palette.
+      this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_DARK);
+    } catch (e) {
+      Log.e('WATCH_UNCAUGHT', `where=setColorMode ${Log.errKv(e as Object)}`);
+    }
     WatchContainer.init(this.context);
     Log.i('WATCH_APP_START', `reason=${launchParam.launchReason} demo=${wantsDemo(want) ? 1 : 0}`);
     if (wantsDemo(want)) {

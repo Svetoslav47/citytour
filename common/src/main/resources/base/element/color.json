@@ -1,0 +1,76 @@
+{
+  "color": [
+    {
+      "name": "bg_canvas",
+      "value": "#F4F5F3"
+    },
+    {
+      "name": "bg_surface",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "bg_surface_sunken",
+      "value": "#EEEFEC"
+    },
+    {
+      "name": "bg_scrim",
+      "value": "#C2F4F5F3"
+    },
+    {
+      "name": "bg_overlay_button",
+      "value": "#0E16181A"
+    },
+    {
+      "name": "text_primary",
+      "value": "#16181A"
+    },
+    {
+      "name": "text_secondary",
+      "value": "#5A6066"
+    },
+    {
+      "name": "text_tertiary",
+      "value": "#6B7176"
+    },
+    {
+      "name": "divider",
+      "value": "#E1E3DF"
+    },
+    {
+      "name": "accent",
+      "value": "#1D6B5B"
+    },
+    {
+      "name": "on_accent",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "accent_subtle",
+      "value": "#E3F0EC"
+    },
+    {
+      "name": "map_user",
+      "value": "#2F6FDE"
+    },
+    {
+      "name": "map_land",
+      "value": "#EEEEEA"
+    },
+    {
+      "name": "signal_simulated_fg",
+      "value": "#7A4F00"
+    },
+    {
+      "name": "signal_simulated_bg",
+      "value": "#FFF1D6"
+    },
+    {
+      "name": "signal_warning_bg",
+      "value": "#FFF6E5"
+    },
+    {
+      "name": "signal_error",
+      "value": "#B3261E"
+    }
+  ]
+}
