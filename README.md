@@ -2,7 +2,9 @@
 
 > HackYeah 2026 · Huawei challenge "Imagine What's Next" · native ArkTS/ArkUI app for HarmonyOS / OpenHarmony (API 20+)
 
-**Status: work in progress (built during HackYeah 2026, 3–4 Oct 2026).**
+**Status: submitted (built during HackYeah 2026, 3–4 Oct 2026).**
+
+**Try it:** [`citytour.hap`](https://github.com/Svetoslav47/citytour/releases/latest/download/citytour.hap) (unsigned, latest release) · [Demo video, 68 s](https://github.com/Svetoslav47/citytour/releases/download/v1.0.1-hackyeah/citytour-demo.mp4) ([720p](https://github.com/Svetoslav47/citytour/releases/download/v1.0.1-hackyeah/citytour-demo-720p.mp4)) · landing page source in [`site/`](site/) · how AI was used: [`AI_WORKFLOW.md`](AI_WORKFLOW.md)
 
 CityTour is a mobile tour guide that follows you through the city. It tracks where you are and which way you are walking. When you reach a place of historic or cultural significance, it explains that place to you.
 
@@ -16,11 +18,10 @@ Project scope and decisions are recorded in [`HACKATHON_BRIEF.md`](HACKATHON_BRI
 
 ## Platform capabilities used
 
-_Updated as each capability lands. Every entry links to the code that uses it._
+_Every entry links to the code that uses it._
 
 | Capability | Kit / API | Where | Status |
 | --- | --- | --- | --- |
-| — | — | — | planned |
 | Next-stop notification (glanceable with the screen off; text-only arrival line) | Notification Kit `notificationManager` (`requestEnableNotification`, `publish` id 1001 `isAlertOnce` SERVICE_INFORMATION slot, `cancel`) | [`services/notify/TourNotifier.ets`](entry/src/main/ets/services/notify/TourNotifier.ets), text rules in [`core/notify/NotifyText.ets`](common/src/main/ets/core/notify/NotifyText.ets) | verified on emulator (sdk24) |
 | Pre-rendered stop-story clips (studio voice, offline once downloaded) with native-TTS fallback per sentence | Media Kit `AVPlayer` (`url = fd://` of the downloaded sandbox file, `STREAM_USAGE_AUDIOBOOK`) | [`services/audio/ClipPlayer.ets`](entry/src/main/ets/services/audio/ClipPlayer.ets), selection in [`core/speech/ClipSelection.ets`](common/src/main/ets/core/speech/ClipSelection.ets), used by [`services/speech/NarrationPlayer.ets`](entry/src/main/ets/services/speech/NarrationPlayer.ets) | **489 clips ship** (Historian, teaser + full, en/pl/zh, 22.4 MB, voice "George", `eleven_multilingual_v2`). A tour whose story language has clips runs on them (`NARR_AUDIO event=story_voice clips=yes`, then `src=prerendered reason=hash_match` per sentence); deep stories and dynamic lines stay native TTS (en/zh) or text (pl). Unit-tested; emulator run of the phase 2 tour path not yet verified |
 | Downloadable courses (the only source of a course) | Network Kit `http` (timeouts + overall deadline per call; `ohos.permission.INTERNET`), Crypto Architecture Kit Ed25519 `createVerify` over the signed catalog/manifest, async SHA-256 `createMd` per blob, Core File Kit `fileIo` (temp folder + one atomic `rename`), TaskPool (clip manifest parse) | [`services/remote/`](entry/src/main/ets/services/remote/), rules in [`core/remote/`](common/src/main/ets/core/remote/), UI [`pages/CoursesPage.ets`](entry/src/main/ets/pages/CoursesPage.ets) | unit-tested (canonical JSON vs the server's signed seed, course merge rules); not run against a live server yet |
@@ -96,14 +97,15 @@ Narration tiers in the pack (from [`validation-report.json`](data/course/krakow/
 
 ## Known limitations
 
-- **One city, one tour.** The pack covers Kraków (4,290 places on the map data, the Old Town map); there is one guided tour, the Royal Route (11 stops).
+- **One city so far.** The app is city-agnostic (cities and walks come from the server), but the server publishes only Kraków: the city pack (4,290 places on the map data, the Old Town map) and three walks, the Royal Route (11 stops), Scholars and Saints (10) and Kazimierz: Two Faiths, One Town (11).
 - **The emulator cannot move.** Its GPS is a fixed point and can't be driven from the command line, so tours on the emulator use the SIMULATED Demo walk. The real Location Kit path is wired in and selectable in Settings.
-- **Voices on the emulator.** The emulator has no English or Polish system voice: English is read by the Chinese voice, and Polish lines without a studio clip are shown as text. Stories with studio clips play in all three languages.
-- **AI-drafted content, not yet reviewed.** The Historian stories (English, then machine-translated to Polish and Chinese) and the Polish and Chinese UI strings were drafted by AI and have not been checked by a historian or native speakers. This is disclosed in Settings › About › Credits and licences and in the presentation; the everyday screens carry no provenance labels (user decision).
+- **Voices.** Everything is spoken by the studio voice: stop stories from the course's clips, and short dynamic lines (welcome, arrival, turn-by-turn) rendered by the course server at runtime. Only when a line has no clip and the server is unreachable does the built-in system voice speak it. The emulator has no English or Polish system voice, so that last resort is the Chinese voice reading English, and Polish is shown as text.
+- **AI-drafted content, not reviewed by a human.** The Historian stories (English, then machine-translated to Polish and Chinese) and the Polish and Chinese UI strings were drafted by AI from cited sources; by team decision they were not checked by a historian or native speakers. This is disclosed in Settings › About › Credits and licences and in the presentation; the everyday screens carry no provenance labels (user decision).
 - **Sparse Chinese sources.** Only 71 places have a Chinese Wikipedia summary; most Chinese place texts are the name-only template.
 - **Basic explore map.** Home › "All places in Kraków" opens the full map with every place as a dot (places with a sourced story from the overview zoom, name-only places as you zoom in, crowded dots thinned). The DESIGN §3.7 filter chips, count clusters and the card's Listen button are not built yet.
 - **Kraków ArcGIS licence unverified** (see the table above).
 - **Watch app scope.** The watch runs one bundled tour (the Royal Route, no stories: wearables have no TTS and the watch plays no audio yet), English UI only, no phone link (Wear Engine needs Huawei approval and no DevEco emulator supports it; see [`docs/research/WATCH.md`](docs/research/WATCH.md)). Not yet tried on a real watch. Its location and Demo walk adapters are copies of the phone's (follow-up: a shared platform HAR).
+- **Not yet run on a physical phone.** Everything above was verified on the Pura 90 emulator. The release `.hap` is unsigned; a device needs DevEco Studio's automatic signing with your own Huawei ID (see [Signing](#signing)) and HarmonyOS 6 (API 20+).
 - **No vibration on the emulator.** Arrival haptics are called and logged, but the emulator has no motor (`14600101`, no crash).
 
 ## Requirements (tested versions)
