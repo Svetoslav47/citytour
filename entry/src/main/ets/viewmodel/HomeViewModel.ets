@@ -3,7 +3,7 @@
  * catalog (CoursesViewModel rows: cached catalog offline, streamed/downloaded courses always), with the header
  * "You're in {city}" / "Walks in {city}" (core/remote/HomeRules). Each walk's card carries its actions:
  * Start (one tap: activate or stream the walk, location check, plan all stops, start, Now Walking; no Route ready),
- * Demo walk (SIMULATED source, x8; offered while the course ships demo-walk.json, CourseRules.demoWalkOffered),
+ * Demo walk (SIMULATED source, x2; offered while the course ships demo-walk.json, CourseRules.demoWalkOffered),
  * download / remove. The "Now walking" continue card comes from the TourControl snapshots.
  */
 import { EngineSnapshot, TourPhase } from '../contracts/EngineTypes';
@@ -27,7 +27,7 @@ import { CourseItem, CoursesViewModel } from './CoursesViewModel';
 import { LocBanner, TourPlanViewModel } from './TourPlanViewModel';
 
 const CONTROL_TIMEOUT_MS: number = 8000;
-const DEMO_HOME_SPEED: number = 8;   // PLAN B4: the Home shortcut runs the Demo walk at x8
+const DEMO_HOME_SPEED: number = 2;   // x2: fast enough to show the walk, slow enough to follow it on screen
 
 @ObservedV2
 export class HomeViewModel {
