@@ -225,7 +225,8 @@ The server runs on one instance with a persistent volume. That is enough for a h
   `StreamClips` fetches `/v1/blobs/<sha>` on demand (size + SHA-256, `.part` + rename, cached), `RemoteVoice` waits at
   most 3 s (`STREAM_CLIP_BUDGET_MS`) and prefetches the next 3 sentences of the story (`prefetchAfter`); a late clip
   falls back for that sentence (marked unavailable until it arrives); a network failure skips the wait for 30 s.
-  "All places" needs the downloaded city (`allPlacesAvailable`). *Download* copies the stream's already verified files
+  "All places" needs the downloaded city (`allPlacesAvailable`); Home › Explore fetches it alone when missing
+  (`CourseRepository.downloadCity`, seeded from the stream city, `HomeRules.exploreStep`). *Download* copies the stream's already verified files
   (`InstallOptions.seedDir`, re-verified) and then removes the stream; *Delete* removes both.
 - `RemoteVoice` (SpeechPort decorator) implements step 2 of the fallback chain. It checks `X-Text-Sha256` against the sha of its own text, and drops the audio on any mismatch.
 - The online studio voice is always on (no toggle). The HUD shows `server: online|offline|budget`.

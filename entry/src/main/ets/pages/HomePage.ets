@@ -21,7 +21,7 @@ import { SimulatedBadge } from '../views/common/SimulatedBadge';
 import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
 import { IssueCode, StopProgress } from 'common';
 import { SafeArea } from '../viewmodel/SafeArea';
-import { CardDownload, CardPrimary, HomeHeader } from 'common';
+import { CardDownload, CardPrimary, ExploreStep, HomeHeader } from 'common';
 import { CatalogNote, CourseItem } from '../viewmodel/CoursesViewModel';
 import { LocBanner } from '../viewmodel/TourPlanViewModel';
 import { Log } from '../app/Log';
@@ -574,13 +574,13 @@ export struct HomePage {
 
       Column() {
         Text(this.app.cityName !== '' ? $r('app.string.home_all_places', this.app.cityName) :
+          this.vm.cityLabel !== '' ? $r('app.string.home_all_places', this.vm.cityLabel) :
           $r('app.string.home_all_places_any'))
           .fontSize(Type.BODY)
           .lineHeight(Type.BODY_LH)
           .fontWeight(FontWeight.Medium)
           .fontColor($r('app.color.text_primary'))
-        Text(this.vm.allPlaces ? $r('app.string.home_places_count', this.vm.placesCount) :
-          $r('app.string.home_all_places_download'))
+        Text(this.exploreLine(this.vm.exploreStep(this.app.packState === PackState.READY)))
           .fontSize(Type.CALLOUT)
           .lineHeight(Type.CALLOUT_LH)
           .fontFeature(TABULAR)
@@ -595,8 +595,33 @@ export struct HomePage {
     .backgroundColor($r('app.color.bg_surface'))
     .accessibilityGroup(true)
     .id('rowAllPlaces')
-    // B13: full map, explore mode (all places). A streamed walk has only its stops: a tap downloads it.
-    .onClick(() => this.vm.allPlaces ? this.app.openFullMap('explore') : this.vm.downloadActive())
+    // B13: full map, explore mode (all places). No walk yet: a tap makes one active; a streamed walk has only its
+    // stops: a tap fetches the city's places first (HomeRules.exploreStep), then the map opens.
+    .onClick(() => {
+      this.onExplore();
+    })
+  }
+
+  /** The Explore row's second line for its step. */
+  private exploreLine(step: ExploreStep): ResourceStr {
+    if (step === ExploreStep.OPEN) {
+      return $r('app.string.home_places_count', this.vm.placesCount);
+    }
+    if (step === ExploreStep.BUSY) {
+      return this.vm.explorePct >= 0 ? $r('app.string.home_all_places_progress', `${this.vm.explorePct}%`) :
+        $r('app.string.home_all_places_preparing');
+    }
+    if (this.vm.exploreFailed) {
+      return $r('app.string.home_all_places_failed');
+    }
+    const size = this.vm.citySize();
+    return size !== '' ? $r('app.string.home_all_places_get_size', size) : $r('app.string.home_all_places_get');
+  }
+
+  private async onExplore(): Promise<void> {
+    if (await this.vm.explore(this.app.packState === PackState.READY)) {
+      this.app.openFullMap('explore');
+    }
   }
 
   @Builder
@@ -643,7 +668,8 @@ export struct HomePage {
           }
           .width('100%')
           .margin({ top: Space.S4 })
-          if (this.app.packState === PackState.READY && this.vm.hasTour) {
+          if (this.vm.exploreStep(this.app.packState === PackState.READY) !== ExploreStep.HIDDEN &&
+            this.app.packState !== PackState.LOADING && this.app.packState !== PackState.ERROR) {
             this.sectionHeader($r('app.string.home_explore'))
             this.exploreRow()
           }

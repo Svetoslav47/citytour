@@ -109,3 +109,80 @@ export function cardActions(i: CardInput): CardActions {
   a.showFailed = i.failed && !i.preparing && !i.downloading;
   return a;
 }
+
+/**
+ * Home "Explore" row ("All places in {city}", the full map with every place of the city, B13). It is offered whenever
+ * Home lists a city, not only once a walk is loaded: with no walk on the device yet, a tap first makes one of the
+ * city's walks active (PREPARE), and while the city's places pack is not on the device (no walk yet, or a streamed
+ * walk, which carries only its own stops) the tap fetches that pack (GET_PLACES, the city's places only, not a whole
+ * walk), then opens the map.
+ */
+export enum ExploreStep {
+  HIDDEN = 'hidden',          // no city on Home and no walk loaded
+  OPEN = 'open',              // the places are on the device: open the map
+  PREPARE = 'prepare',        // no walk of this city is loaded: make one active, then GET_PLACES when needed
+  GET_PLACES = 'getPlaces',   // a walk is loaded but the city's places are not on the device: fetch them, then open
+  BUSY = 'busy'               // preparing / fetching: the row shows progress
+}
+
+export class ExploreInput {
+  /** The city Home lists ('' = none known). */
+  homeCityId: string = '';
+  /** The active course is loaded (pack READY, a tour on it). */
+  activeLoaded: boolean = false;
+  /** The active course's city ('' = a self-contained course or none). */
+  activeCityId: string = '';
+  /** The active course's whole city (every place) is on the device (or it has no city). */
+  placesOnDevice: boolean = false;
+  /** A course server is configured (the places can be fetched). */
+  serverEnabled: boolean = false;
+  /** The row is already preparing / fetching. */
+  busy: boolean = false;
+}
+
+export function exploreStep(i: ExploreInput): ExploreStep {
+  const loadedHere = i.activeLoaded && (i.homeCityId === '' || i.activeCityId === '' || i.activeCityId === i.homeCityId);
+  if (!loadedHere && i.homeCityId === '') {
+    return ExploreStep.HIDDEN;
+  }
+  if (i.busy) {
+    return ExploreStep.BUSY;
+  }
+  if (loadedHere) {
+    // Without a server the map still opens on what is on the device (a streamed walk: its own stops).
+    return i.placesOnDevice || !i.serverEnabled ? ExploreStep.OPEN : ExploreStep.GET_PLACES;
+  }
+  return i.serverEnabled ? ExploreStep.PREPARE : ExploreStep.HIDDEN;
+}
+
+/** A walk Home lists, for choosing which one Explore makes active. */
+export class ExploreWalk {
+  id: string = '';
+  cityId: string = '';
+  downloaded: boolean = false;
+  streamed: boolean = false;
+
+  constructor(id: string, cityId: string, downloaded: boolean, streamed: boolean) {
+    this.id = id;
+    this.cityId = cityId;
+    this.downloaded = downloaded;
+    this.streamed = streamed;
+  }
+}
+
+/**
+ * The walk Explore makes active when none of `cityId` is loaded: a downloaded one (activates offline and brings the
+ * city's places), else a streamed one, else the first in list order. '' = none.
+ */
+export function exploreWalk(walks: ExploreWalk[], cityId: string): string {
+  const here = walks.filter((w: ExploreWalk) => cityId === '' || w.cityId === '' || w.cityId === cityId);
+  const dl = here.find((w: ExploreWalk) => w.downloaded);
+  if (dl !== undefined) {
+    return dl.id;
+  }
+  const st = here.find((w: ExploreWalk) => w.streamed);
+  if (st !== undefined) {
+    return st.id;
+  }
+  return here.length > 0 ? here[0].id : '';
+}

@@ -1473,8 +1473,24 @@
       "value": "Nie udało się uruchomić spaceru. Sprawdź połączenie i spróbuj ponownie albo pobierz spacer do użytku offline."
     },
     {
-      "name": "home_all_places_download",
-      "value": "Pobierz ten spacer, aby przeglądać wszystkie miejsca offline"
+      "name": "home_all_places_get",
+      "value": "Pobierz wszystkie miejsca w mieście, aby przeglądać mapę"
+    },
+    {
+      "name": "home_all_places_get_size",
+      "value": "Pobierz wszystkie miejsca w mieście (%s), aby przeglądać mapę"
+    },
+    {
+      "name": "home_all_places_preparing",
+      "value": "Przygotowywanie…"
+    },
+    {
+      "name": "home_all_places_progress",
+      "value": "Pobieranie miejsc… %s"
+    },
+    {
+      "name": "home_all_places_failed",
+      "value": "Nie udało się pobrać miejsc. Dotknij, aby spróbować ponownie."
     },
     {
       "name": "courses_failed",

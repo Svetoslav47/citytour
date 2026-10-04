@@ -1473,8 +1473,24 @@
       "value": "无法开始路线。请检查网络连接后重试，或下载路线以便离线使用。"
     },
     {
-      "name": "home_all_places_download",
-      "value": "下载此路线即可离线浏览所有地点"
+      "name": "home_all_places_get",
+      "value": "下载全城地点，在地图上自由探索"
+    },
+    {
+      "name": "home_all_places_get_size",
+      "value": "下载全城地点（%s），在地图上自由探索"
+    },
+    {
+      "name": "home_all_places_preparing",
+      "value": "正在准备…"
+    },
+    {
+      "name": "home_all_places_progress",
+      "value": "正在下载地点… %s"
+    },
+    {
+      "name": "home_all_places_failed",
+      "value": "地点下载失败，轻点重试。"
     },
     {
       "name": "courses_failed",

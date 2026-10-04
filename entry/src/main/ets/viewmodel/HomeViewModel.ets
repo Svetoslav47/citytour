@@ -21,13 +21,20 @@ import { MapCache, overlayBounds, previewOverlay } from './MapViewModel';
 import { withTimeout } from './Async';
 import { localName } from './Format';
 import { findTour, listedMetres, personaName, poiName, previewPoints } from './PackView';
-import { CardActions, CardInput, cardActions, homeCity, HomeHeader, homeHeader } from 'common';
+import {
+  CardActions, CardInput, cardActions, ExploreInput, ExploreStep, exploreStep, ExploreWalk, exploreWalk, homeCity,
+  HomeHeader, homeHeader
+} from 'common';
+import { progressPct, sizeLabel } from 'common';
+import { CancelToken, InstallProgress } from '../services/remote/CourseStore';
+import { OpResult } from '../services/remote/CourseRepository';
 import { CourseState } from 'common';
 import { CourseItem, CoursesViewModel } from './CoursesViewModel';
 import { LocBanner, TourPlanViewModel } from './TourPlanViewModel';
 
 const CONTROL_TIMEOUT_MS: number = 8000;
-const DEMO_HOME_SPEED: number = 2;   // x2: fast enough to show the walk, slow enough to follow it on screen
+const DEMO_HOME_SPEED: number = 2;
+const CITY_DOWNLOAD_TIMEOUT_MS: number = 15 * 60000;   // the city's places pack (~9 MB) on a slow connection   // x2: fast enough to show the walk, slow enough to follow it on screen
 
 @ObservedV2
 export class HomeViewModel {
@@ -43,6 +50,8 @@ export class HomeViewModel {
   @Trace placesCount: number = 0;
   /** "All places" can open: the city's places are on the device (false for a streamed walk: Download first). */
   @Trace allPlaces: boolean = true;
+  /** The active course's city ('' = none or a self-contained course). */
+  @Trace activeCityId: string = '';
   @Trace preview: PreviewPoint[] = [];
   @Trace map: MapData | undefined = undefined;
   @Trace mapScene: MapOverlay = new MapOverlay();
@@ -65,6 +74,12 @@ export class HomeViewModel {
   @Trace gateId: string = '';
   /** Demo walk asked for a walk whose pack ships no demo track. */
   @Trace noDemoId: string = '';
+  /** Explore row: preparing a walk / fetching the city's places. */
+  @Trace exploreBusy: boolean = false;
+  /** Explore row: places download progress (-1 = preparing, no percentage yet). */
+  @Trace explorePct: number = -1;
+  /** Explore row: the last prepare / fetch failed ("Tap to try again"). */
+  @Trace exploreFailed: boolean = false;
   private lang: Lang = Lang.EN;
   private unsubscribe: (() => void) | undefined = undefined;
 
@@ -96,6 +111,7 @@ export class HomeViewModel {
     try {
       this.placesCount = pack.pois().length;
       this.allPlaces = AppContainer.courses().allPlacesReady();
+      this.activeCityId = AppContainer.courses().activeCityId();
     } catch (e) {
       this.placesCount = 0;
       this.allPlaces = true;
@@ -283,15 +299,87 @@ export class HomeViewModel {
     }
   }
 
-  /** "All places" on a streamed walk: download the active course (the whole city comes with it). */
-  downloadActive(): void {
+  /** The Explore row's step (HomeRules.exploreStep). Reads only @Trace state, so the row re-renders with it. */
+  exploreStep(packReady: boolean): ExploreStep {
+    const i = new ExploreInput();
+    i.homeCityId = this.cityId;
+    i.activeLoaded = packReady && this.hasTour;
+    i.activeCityId = this.activeCityId;
+    i.placesOnDevice = this.allPlaces;
+    i.serverEnabled = this.courses.enabled;
+    i.busy = this.exploreBusy;
+    return exploreStep(i);
+  }
+
+  /** The size of the city's places pack ('' = unknown), for the Explore row. */
+  citySize(): string {
     try {
-      const id = AppContainer.courses().activeId();
-      if (id !== '') {
-        this.courses.download(id);
-      }
+      return sizeLabel(AppContainer.courses().cityBytes(this.cityId));
     } catch (e) {
-      Log.e(LogEvents.UNCAUGHT, `where=HomeViewModel.downloadActive ${Log.errKv(e as Object)}`);
+      return '';
+    }
+  }
+
+  /**
+   * Explore row tap (B13 "All places in {city}"): with no walk of the city loaded, make one active (HomeRules
+   * exploreWalk: downloaded, else streamed, else the first; streamed = its small files only); then, while the city's
+   * places are not on the device, fetch the city's places pack only (not a whole walk). Resolves true when the full
+   * map can open in explore mode. Never rejects; a failure shows "Tap to try again" on the row.
+   */
+  async explore(packReady: boolean): Promise<boolean> {
+    const step = this.exploreStep(packReady);
+    if (step === ExploreStep.OPEN) {
+      return true;
+    }
+    if (step !== ExploreStep.PREPARE && step !== ExploreStep.GET_PLACES) {
+      return false;
+    }
+    this.exploreBusy = true;
+    this.exploreFailed = false;
+    this.explorePct = -1;
+    Log.i(LogEvents.COURSE, `event=explore_start step=${step} city=${this.cityId || 'none'}`);
+    try {
+      if (step === ExploreStep.PREPARE) {
+        const walks = this.walks().map((it: CourseItem) =>
+          new ExploreWalk(it.id, it.cityId, it.state !== CourseState.AVAILABLE, it.streaming));
+        const id = exploreWalk(walks, this.cityId);
+        if (id === '' || !await this.courses.ensureActive(id)) {
+          Log.w(LogEvents.COURSE, `event=explore_fail stage=prepare id=${id || 'none'}`);
+          this.exploreFailed = true;
+          return false;
+        }
+        this.refresh(this.lang);
+      }
+      const repo = AppContainer.courses();
+      if (!repo.allPlacesReady()) {
+        const cancel = new CancelToken();
+        const timedOut = new OpResult();
+        timedOut.error = 'timeout';
+        const r = await withTimeout(repo.downloadCity(repo.activeCityId(), cancel, (p: InstallProgress) => {
+          this.explorePct = progressPct(p.doneBytes, p.totalBytes, p.doneFiles, p.totalFiles);
+        }), CITY_DOWNLOAD_TIMEOUT_MS, timedOut, 'courses.downloadCity');
+        if (r.error === 'timeout') {
+          cancel.cancelled = true;
+        }
+        if (!r.ok) {
+          Log.w(LogEvents.COURSE, `event=explore_fail stage=places reason=${r.error}`);
+          this.exploreFailed = true;
+          return false;
+        }
+        MapCache.reset();
+        await AppViewModel.get().reloadPack();   // the active walk now reads the whole city
+        this.refresh(this.lang);
+      }
+      const ok = AppViewModel.get().packState === PackState.READY && this.hasTour;
+      Log.i(LogEvents.COURSE, `event=explore_ready ok=${ok} places=${this.placesCount} all=${this.allPlaces}`);
+      this.exploreFailed = !ok;
+      return ok;
+    } catch (e) {
+      Log.e(LogEvents.UNCAUGHT, `where=HomeViewModel.explore ${Log.errKv(e as Object)}`);
+      this.exploreFailed = true;
+      return false;
+    } finally {
+      this.exploreBusy = false;
     }
   }
 
