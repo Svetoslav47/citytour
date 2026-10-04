@@ -1,9 +1,11 @@
 // Suite: HomeRules.test - module under test: core/remote/HomeRules (Home = the city's walks, actions on the card).
 // Cases: header from fix/bbox (inside, outside, no fix, bad bbox); which city Home lists; card actions for a walk
-// not on the device / streaming / downloaded / running / preparing / failed / another tour running / no server.
+// not on the device / streaming / downloaded / running / preparing / failed / another tour running / no server;
+// the Explore row's step (no walk yet, streamed walk, places on device, busy, no server) and which walk it activates.
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  CardActions, CardDownload, CardInput, cardActions, CardPrimary, homeCity, HomeHeader, homeHeader
+  CardActions, CardDownload, CardInput, cardActions, CardPrimary, ExploreInput, ExploreStep, exploreStep, ExploreWalk,
+  exploreWalk, homeCity, HomeHeader, homeHeader
 } from 'common';
 
 const KRAKOW: number[] = [49.97, 19.79, 50.13, 20.22];
@@ -128,6 +130,70 @@ export default function homeRulesTest() {
       expect(cardActions(i).demo).assertFalse();
       i.activeHasDemo = true;
       expect(cardActions(i).demo).assertTrue();
+    });
+    it('explore_offered_before_any_walk_is_loaded', 0, () => {
+      const i = new ExploreInput();
+      i.homeCityId = 'krakow';
+      i.serverEnabled = true;
+      expect(exploreStep(i)).assertEqual(ExploreStep.PREPARE);   // fresh install: was hidden (the bug)
+    });
+    it('explore_hidden_without_city_or_walk', 0, () => {
+      const i = new ExploreInput();
+      i.serverEnabled = true;
+      expect(exploreStep(i)).assertEqual(ExploreStep.HIDDEN);
+      i.homeCityId = 'krakow';
+      i.serverEnabled = false;
+      expect(exploreStep(i)).assertEqual(ExploreStep.HIDDEN);   // nothing loaded and nothing to fetch it from
+    });
+    it('explore_streamed_walk_fetches_the_places', 0, () => {
+      const i = new ExploreInput();
+      i.homeCityId = 'krakow';
+      i.activeLoaded = true;
+      i.activeCityId = 'krakow';
+      i.serverEnabled = true;
+      expect(exploreStep(i)).assertEqual(ExploreStep.GET_PLACES);
+      i.placesOnDevice = true;
+      expect(exploreStep(i)).assertEqual(ExploreStep.OPEN);
+    });
+    it('explore_opens_offline_on_what_is_on_device', 0, () => {
+      const i = new ExploreInput();
+      i.homeCityId = 'krakow';
+      i.activeLoaded = true;
+      i.activeCityId = 'krakow';
+      expect(exploreStep(i)).assertEqual(ExploreStep.OPEN);
+    });
+    it('explore_self_contained_course_opens', 0, () => {
+      const i = new ExploreInput();
+      i.activeLoaded = true;
+      i.placesOnDevice = true;
+      expect(exploreStep(i)).assertEqual(ExploreStep.OPEN);
+    });
+    it('explore_busy_shows_progress', 0, () => {
+      const i = new ExploreInput();
+      i.homeCityId = 'krakow';
+      i.serverEnabled = true;
+      i.busy = true;
+      expect(exploreStep(i)).assertEqual(ExploreStep.BUSY);
+    });
+    it('explore_other_city_loaded_prepares_home_city', 0, () => {
+      const i = new ExploreInput();
+      i.homeCityId = 'krakow';
+      i.activeLoaded = true;
+      i.activeCityId = 'warsaw';
+      i.placesOnDevice = true;
+      i.serverEnabled = true;
+      expect(exploreStep(i)).assertEqual(ExploreStep.PREPARE);
+    });
+    it('explore_walk_prefers_downloaded_then_streamed', 0, () => {
+      const a = new ExploreWalk('royal', 'krakow', false, false);
+      const b = new ExploreWalk('kazimierz', 'krakow', false, true);
+      const c = new ExploreWalk('scholars', 'krakow', true, false);
+      const w = new ExploreWalk('old', 'warsaw', true, false);
+      expect(exploreWalk([w, a, b, c], 'krakow')).assertEqual('scholars');
+      expect(exploreWalk([w, a, b], 'krakow')).assertEqual('kazimierz');
+      expect(exploreWalk([w, a], 'krakow')).assertEqual('royal');
+      expect(exploreWalk([w], 'krakow')).assertEqual('');
+      expect(exploreWalk([], '')).assertEqual('');
     });
   });
 }
