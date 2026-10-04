@@ -11,7 +11,10 @@
  *   - emitted timestamps are startMs + simulated elapsed time (strictly increasing, also while holding); a consumer
  *     that times dwell/off-route on fix timestamps then sees walking pace at any speed. DemoWalkSource restamps
  *     with the wall clock by default (setSimulatedTimestamps(true) keeps these);
- *   - the walk ends at the last fix (which may itself be a hold that loops while holdActive).
+ *   - the walk ends at the last fix (which may itself be a hold that loops while holdActive);
+ *   - jumpToStop(n) moves the cursor to the first sample of stop n's hold segment (forwards or backwards): the app's
+ *     Skip uses it so the walker stands where the tour's new target stop is (stopNumberOf maps the target's POI id
+ *     to the track's stop number via the track's `stops` list).
  * Pure: no platform imports, no randomness, no logging.
  */
 import { Fix, FixSource } from '../../contracts/Ports';
@@ -36,12 +39,19 @@ export interface DemoFix {
   stop: number;
 }
 
+/** A stop of the track: its number (as in DemoFix.stop, 1-based, the planner's order) and the pack POI. */
+export interface DemoStop {
+  n: number;
+  poiId: string;
+}
+
 export interface DemoTrack {
   id: string;
   name: string;
   simulated: boolean;          // must be true
   generatedBy: string;
   fixes: DemoFix[];
+  stops?: DemoStop[];          // optional (older tracks have none): stop number -> POI id
 }
 
 /** Shape of the JSON file before validation (every field optional, values unchecked). */
@@ -57,12 +67,38 @@ interface RawDemoFix {
   stop?: number;
 }
 
+interface RawDemoStop {
+  n?: number;
+  poiId?: string;
+}
+
 interface RawDemoTrack {
   id?: string;
   name?: string;
   simulated?: boolean;
   generatedBy?: string;
   fixes?: RawDemoFix[];
+  stops?: RawDemoStop[];
+}
+
+/** The track's stop list; entries without a positive integer n and a non-empty POI id are dropped. */
+function parseStops(raw: RawDemoStop[] | undefined): DemoStop[] {
+  const out: DemoStop[] = [];
+  if (raw === undefined || raw === null || !Array.isArray(raw)) {
+    return out;
+  }
+  for (const r of raw) {
+    if (r === null || r === undefined || !isNum(r.n) || typeof r.poiId !== 'string') {
+      continue;
+    }
+    const n = r.n as number;
+    const id = r.poiId as string;
+    if (n >= 1 && Math.floor(n) === n && id.length > 0) {
+      const d: DemoStop = { n: n, poiId: id };
+      out.push(d);
+    }
+  }
+  return out;
 }
 
 export class DemoTrackParse {
@@ -135,7 +171,8 @@ export function parseDemoTrack(json: string): DemoTrackParse {
     name: typeof raw.name === 'string' ? raw.name as string : 'Demo walk',
     simulated: true,
     generatedBy: typeof raw.generatedBy === 'string' ? raw.generatedBy as string : '',
-    fixes: fixes
+    fixes: fixes,
+    stops: parseStops(raw.stops)
   };
   out.track = track;
   return out;
@@ -316,6 +353,56 @@ export class DemoWalkPlayer {
     this.carryMs = 0;
     this.loopSeg = -1;
     return fixes[i].hold ? fixes[i].stop : 0;
+  }
+
+  /** Stop numbers of the hold segments in track order (a plain walk: 1, 2, ..., one segment per stop). */
+  holdStops(): number[] {
+    const out: number[] = [];
+    const fixes = this.track.fixes;
+    for (let i = 0; i < fixes.length; i++) {
+      if (fixes[i].hold && (i === 0 || !fixes[i - 1].hold || fixes[i - 1].stop !== fixes[i].stop)) {
+        out.push(fixes[i].stop);
+      }
+    }
+    return out;
+  }
+
+  /** The track's stop number of a pack POI (from the track's `stops`), 0 if unknown. */
+  stopNumberOf(poiId: string): number {
+    const stops = this.track.stops;
+    if (stops === undefined) {
+      return 0;
+    }
+    for (const s of stops) {
+      if (s.poiId === poiId) {
+        return s.n;
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * Skip in demo mode: moves the cursor to the first sample of stop n's hold segment (forwards or backwards), so the
+   * walker stands at the stop the tour now targets and its story plays there. Already inside that segment: stays.
+   * Returns n, or 0 (cursor unchanged) when the track has no hold segment for n.
+   */
+  jumpToStop(n: number): number {
+    const fixes = this.track.fixes;
+    if (!Number.isFinite(n) || n <= 0) {
+      return 0;
+    }
+    if (fixes[this.idx].hold && fixes[this.idx].stop === n) {
+      return n;
+    }
+    for (let i = 0; i < fixes.length; i++) {
+      if (fixes[i].hold && fixes[i].stop === n) {
+        this.idx = i;
+        this.carryMs = 0;
+        this.loopSeg = -1;
+        return n;
+      }
+    }
+    return 0;
   }
 
   private isHoldEnd(i: number): boolean {

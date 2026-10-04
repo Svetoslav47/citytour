@@ -67,9 +67,9 @@ rm -f "$LOG"
 
 # 4. Node pipeline tests, once any exist (explicit file list: works on every Node version).
 PACK_TESTS=()
-while IFS= read -r t; do PACK_TESTS+=("$t"); done < <(find scripts/pack scripts/voice -name '*.test.mjs' 2>/dev/null | sort)
+while IFS= read -r t; do PACK_TESTS+=("$t"); done < <(find scripts/pack scripts/voice scripts/demo -name '*.test.mjs' 2>/dev/null | sort)
 if [ "${#PACK_TESTS[@]}" -gt 0 ]; then
-  node --test "${PACK_TESTS[@]}" || fail "node --test scripts/pack scripts/voice (${#PACK_TESTS[@]} files)"
+  node --test "${PACK_TESTS[@]}" || fail "node --test scripts/pack scripts/voice scripts/demo (${#PACK_TESTS[@]} files)"
   echo "Pipeline: ${#PACK_TESTS[@]} node test file(s) passed"
 fi
 

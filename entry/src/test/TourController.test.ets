@@ -397,6 +397,13 @@ class FakeDemo implements DemoControls {
     this.jumps++;
   }
 
+  /** "poiId@plannedIdx" of every jumpToStop call. */
+  stopJumps: string[] = [];
+
+  jumpToStop(poiId: string, plannedIdx: number): void {
+    this.stopJumps.push(`${poiId}@${plannedIdx}`);
+  }
+
   setHoldPredicate(p: () => boolean): void {
     this.hold = p;
   }
@@ -882,7 +889,7 @@ export default function tourControllerTest() {
       async (done: Function) => {
         const h: Harness = new Harness(false, true, true);
         await h.ctrl.setSource(FixSource.DEMO);
-        await h.ctrl.plan(MINI_TOUR_ID, 0);
+        const plan: TourPlan = await h.ctrl.plan(MINI_TOUR_ID, 0);
         h.placeNear(MINI_BARBICAN, 200, 0);
         await h.ctrl.start();
         const cmd: MediaCommandListener = h.media.onCommand as MediaCommandListener;
@@ -902,9 +909,47 @@ export default function tourControllerTest() {
         expect(h.ctrl.current().phase).assertEqual(TourPhase.AT_STOP);
         expect(h.demoCtl.hold()).assertTrue();
         expect(h.ctrl.current().platform.demoHold).assertTrue();
+        // "Demo assist: jump" goes to the tour's next open stop (planned order), not just the track's next hold
         h.ctrl.demoJumpToNext();
-        expect(h.demoCtl.jumps).assertEqual(1);
+        expect(h.demoCtl.jumps).assertEqual(0);
+        expect(h.demoCtl.stopJumps.join(',')).assertEqual(`${plan.order[1]}@1`);
         h.ctrl.end();
+        done();
+      });
+
+    it('demo walk: Skip moves the walker to the tour\'s new target stop; no jump on real GPS or at a stop', 0,
+      async (done: Function) => {
+        const h: Harness = new Harness(false, true, true);
+        await h.ctrl.setSource(FixSource.DEMO);
+        const plan: TourPlan = await h.ctrl.plan(MINI_TOUR_ID, 0);
+        h.placeNear(MINI_BARBICAN, 200, 0);
+        await h.ctrl.start();
+        h.speech.sentenceMs = 1000000;                                 // keep the stop story from ending
+        h.walkTo(MINI_BARBICAN, 1.3);
+        h.second(0, Number.NaN);
+        expect(h.ctrl.current().phase).assertEqual(TourPhase.AT_STOP);
+        expect(h.demoCtl.hold()).assertTrue();                         // the walker waits while the story plays
+        for (let i = 0; i < 5 && h.ctrl.current().phase === TourPhase.AT_STOP; i++) {
+          expect(h.demoCtl.stopJumps.length).assertEqual(0);         // nothing moves while still at the stop
+          h.ctrl.skip();                                               // skip the Barbican lines: next stop
+        }
+        expect(h.ctrl.current().phase).assertEqual(TourPhase.WALKING);
+        expect(h.demoCtl.hold()).assertFalse();                        // released
+        expect(h.demoCtl.stopJumps.join(',')).assertEqual(`${plan.order[1]}@1`);
+        expect(h.log.find('LOC_SOURCE', `action=jump to=${plan.order[1]} idx=1 why=skip`, 0) >= 0).assertTrue();
+        h.ctrl.skip();                                                 // Skip while walking: (again) to the target
+        expect(h.demoCtl.stopJumps.length).assertEqual(2);
+        expect(h.demoCtl.stopJumps[1]).assertEqual(`${plan.order[1]}@1`);
+        h.ctrl.end();
+        // real GPS: Skip never moves anything
+        const g: Harness = new Harness(false, true, true);
+        await g.ctrl.setSource(FixSource.REAL);
+        await g.ctrl.plan(MINI_TOUR_ID, 0);
+        g.placeNear(MINI_BARBICAN, 200, 0);
+        await g.ctrl.start();
+        g.ctrl.skip();
+        expect(g.demoCtl.stopJumps.length).assertEqual(0);
+        g.ctrl.end();
         done();
       });
 

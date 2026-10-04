@@ -118,6 +118,10 @@ class DemoWalkControls implements DemoControls {
     this.src.jumpToNextStop();
   }
 
+  jumpToStop(poiId: string, plannedIdx: number): void {
+    this.src.jumpToStop(poiId, plannedIdx);
+  }
+
   setHoldPredicate(p: () => boolean): void {
     this.src.setHoldPredicate(p);
   }
