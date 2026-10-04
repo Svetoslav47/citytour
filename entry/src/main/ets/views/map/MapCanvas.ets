@@ -8,7 +8,7 @@
 import { common, ConfigurationConstant } from '@kit.AbilityKit';
 import { MapData } from 'common';
 import { Log } from '../../app/Log';
-import { Camera, fitBounds, pan, zoomAt } from 'common';
+import { Camera, fitBounds, locateScale, pan, zoomAt } from 'common';
 import { DARK, LIGHT, MapPalette } from './MapStyle';
 import { MapOverlay, MapRenderer } from './MapRenderer';
 import { PoiLayer } from './PoiLayer';
@@ -40,6 +40,12 @@ export struct MapCanvas {
   @Param placesRev: number = 0;
   /** Tap on a place dot: its id ('' = the tap hit no dot). */
   @Event onTapPlace: (poiId: string) => void = (poiId: string) => {};
+  /** Explore "you are here": bumped by the page to centre on (focusX, focusY); focusZoom also zooms in to at least
+   * street level (locateScale). */
+  @Param focusRev: number = 0;
+  @Param focusX: number = 0;
+  @Param focusY: number = 0;
+  @Param focusZoom: boolean = false;
   @Local w: number = 0;
   @Local userMoved: boolean = false;
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
@@ -56,6 +62,19 @@ export struct MapCanvas {
   @Monitor('map', 'scene', 'bounds', 'follow', 'w', 'boxHeight', 'topInset', 'bottomInset', 'places', 'placesRev')
   onInputs(): void {
     this.placeCamera();
+    this.draw(false);
+  }
+
+  @Monitor('focusRev')
+  onFocusRequest(): void {
+    if (this.focusRev <= 0 || !Number.isFinite(this.focusX) || !Number.isFinite(this.focusY)) {
+      return;
+    }
+    // Like a pan: later scene/bounds updates keep this camera; the recenter button returns to the fit.
+    this.userMoved = true;
+    const s = this.focusZoom ? locateScale(this.cam.s) : this.cam.s;
+    const band = (this.topInset - this.bottomInset) / 2;
+    this.cam = new Camera(this.focusX, this.focusY + band / s, s);
     this.draw(false);
   }
 
