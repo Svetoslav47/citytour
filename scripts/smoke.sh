@@ -100,10 +100,10 @@ while :; do
   ENTERS="$(printf '%s\n' "$ALL" | grep -o 'POI_ENTER id=[^ ]*' | sort -u | wc -l | tr -d ' ')"
   ELAPSED=$(( $(date +%s) - START_S ))
   echo "smoke.sh: demo t=${ELAPSED}s stops_entered=$ENTERS"
-  if [ "$SHOT_TAKEN" = "0" ] && printf '%s\n' "$ALL" | grep -q "STORY_START"; then
+  if [ "$SHOT_TAKEN" = "0" ] && grep -q "STORY_START" <<<"$ALL"; then
     devecocli ui screenshot --device "$DEVICE" --path "$OUT/demo-story.png" >/dev/null 2>&1 && SHOT_TAKEN=1
   fi
-  if printf '%s\n' "$ALL" | grep -Eq "STATE .*to=finished"; then FINISHED=1; break; fi
+  if grep -Eq "STATE .*to=finished" <<<"$ALL"; then FINISHED=1; break; fi
   [ "$ELAPSED" -ge "$TIMEOUT_S" ] && break
 done
 sleep 5
