@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CityTour demo renderer</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--accent:#2E8B74;--accent2:#8FD3BF;--ink:#0A1411}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1920px;height:1080px;overflow:hidden;background:#07110E}
+  body{font-family:'Plus Jakarta Sans','PingFang SC','Hiragino Sans GB',system-ui,sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+  .abs{position:absolute}
+  #center,#cap,#speech,#phone,#watch{z-index:10}
+  #stage{z-index:0}
+  #photoA,#photoB{position:absolute;inset:0;width:1920px;height:1080px;object-fit:cover;opacity:0;will-change:transform,opacity}
+  #shade{position:absolute;inset:0;opacity:0}
+  #stage{position:absolute;inset:0;opacity:0;background:radial-gradient(1200px 900px at 72% 48%,#123a31 0%,#0b1d18 45%,#06100d 100%)}
+  .stagebg{position:absolute;inset:-80px;width:2080px;height:1240px;object-fit:cover;filter:blur(46px) saturate(1.1) brightness(.42);opacity:0}
+  #grain{position:absolute;inset:0;opacity:.05;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.4) 0 1px,transparent 1px 3px)}
+  /* phone */
+  #phone{position:absolute;left:1188px;top:42px;width:482px;height:996px;border-radius:66px;background:#050807;padding:20px;
+         box-shadow:0 40px 120px rgba(0,0,0,.55),0 0 0 2px #1c2a26 inset,0 0 0 1px rgba(255,255,255,.06);opacity:0}
+  #screenwrap{position:relative;width:442px;height:956px;border-radius:48px;overflow:hidden;background:#000}
+  #screen{position:absolute;inset:0;width:442px;height:956px;display:block}
+  #dim{position:absolute;inset:0;background:#000;opacity:0}
+  #mag{position:absolute;width:210px;height:210px;border-radius:50%;border:4px solid #fff;box-shadow:0 18px 50px rgba(0,0,0,.45);
+       background-repeat:no-repeat;opacity:0}
+  .ripple{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:rgba(255,255,255,.55);
+          box-shadow:0 0 0 2px rgba(255,255,255,.9);opacity:0}
+  #tag{position:absolute;left:18px;bottom:18px;padding:8px 14px;border-radius:999px;background:rgba(10,20,17,.78);color:#fff;
+       font-size:15px;font-weight:700;letter-spacing:.4px;opacity:0;backdrop-filter:blur(6px)}
+  /* watch */
+  #watch{position:absolute;left:930px;top:560px;width:300px;height:300px;border-radius:50%;background:#000;opacity:0;
+         box-shadow:0 0 0 14px #1a1d1c,0 0 0 18px #2b302e,0 30px 80px rgba(0,0,0,.55)}
+  #watch img{position:absolute;inset:0;width:300px;height:300px;border-radius:50%}
+  /* captions */
+  #cap{position:absolute;left:150px;top:0;width:1000px;height:1080px;display:flex;flex-direction:column;justify-content:center;gap:22px}
+  .kicker{font-size:20px;font-weight:800;letter-spacing:2.4px;text-transform:uppercase;color:var(--accent2)}
+  .h{font-size:72px;line-height:1.06;font-weight:800;letter-spacing:-1.6px}
+  .sub{font-size:29px;line-height:1.4;font-weight:500;color:rgba(255,255,255,.82);max-width:900px}
+  .line{opacity:0;will-change:transform,opacity}
+  /* language chips */
+  #chips{display:flex;gap:14px;margin-top:6px}
+  .chip{font-size:26px;font-weight:700;padding:12px 24px;border-radius:999px;border:2px solid rgba(255,255,255,.28);color:rgba(255,255,255,.62);transition:none}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  #kits{display:flex;flex-wrap:wrap;gap:14px;max-width:960px;margin-top:8px}
+  .kit{font-size:26px;font-weight:700;padding:12px 20px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);opacity:0}
+  /* speech card */
+  #speech{position:absolute;left:150px;top:744px;width:900px;padding:22px 26px;border-radius:22px;background:rgba(255,255,255,.07);
+          border:1px solid rgba(255,255,255,.12);opacity:0;backdrop-filter:blur(8px)}
+  #speech .who{display:flex;align-items:center;gap:12px;font-size:16px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent2)}
+  #speech .txt{margin-top:10px;font-size:30px;line-height:1.35;font-weight:600}
+  #speech .tr{margin-top:8px;font-size:22px;line-height:1.4;color:rgba(255,255,255,.66);font-weight:500}
+  .eq{display:inline-flex;align-items:flex-end;gap:3px;height:18px}
+  .eq i{display:block;width:4px;background:var(--accent2);border-radius:2px;height:4px}
+  /* title + end */
+  #title,#end{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding-left:150px;gap:26px;opacity:0}
+  .brand{display:flex;align-items:center;gap:26px}
+  .brand img{width:118px;height:118px;border-radius:28px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+  .brand span{font-size:104px;font-weight:800;letter-spacing:-2.5px}
+  .tagline{font-size:72px;line-height:1.06;font-weight:800;letter-spacing:-1.4px}
+  .small{font-size:28px;font-weight:600;color:rgba(255,255,255,.78)}
+  .foot{font-size:22px;font-weight:600;color:rgba(255,255,255,.6);letter-spacing:.3px}
+  #center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center}
+  #center .big{font-size:84px;font-weight:800;letter-spacing:-1.8px;line-height:1.05}
+</style>
+</head>
+<body>
+  <img id="photoA" alt=""><img id="photoB" alt="">
+  <div id="shade"></div>
+  <div id="stage"><img class="stagebg" id="sbW" src="assets/wawel.jpg" alt=""><img class="stagebg" id="sbM" src="assets/maius.jpg" alt=""><img class="stagebg" id="sbS" src="assets/synagogue.jpg" alt=""><div id="grain"></div></div>
+
+  <div id="center"><div class="big line" id="p1">Every street has a story.</div><div class="big line" id="p2" style="color:#8FD3BF">Most of us walk right past it.</div></div>
+
+  <div id="phone"><div id="screenwrap">
+    <img id="screen" alt="">
+    <div id="dim"></div>
+    <div id="mag"></div>
+    <div class="ripple" id="rp0"></div><div class="ripple" id="rp1"></div>
+    <div id="tag">DEMO WALK · SPED UP</div>
+  </div></div>
+  <div id="watch"><img id="watchimg" alt=""></div>
+
+  <div id="cap">
+    <div class="kicker line" id="ck"></div>
+    <div class="h line" id="ch"></div>
+    <div class="sub line" id="cs"></div>
+    <div id="chips" class="line"><span class="chip" id="chEN">English</span><span class="chip" id="chPL">Polski</span><span class="chip" id="chZH">中文</span></div>
+    <div id="kits"></div>
+  </div>
+  <div id="speech"><div class="who"><span class="eq"><i></i><i></i><i></i><i></i><i></i></span><span id="who"></span></div><div class="txt" id="stxt"></div><div class="tr" id="str"></div></div>
+
+  <div id="title">
+    <div class="brand line" id="t1"><img src="assets/icon.png" alt=""><span>CityTour</span></div>
+    <div class="tagline line" id="t2">Eyes on the city,<br>not the screen.</div>
+  </div>
+  <div id="end">
+    <div class="brand line" id="e1"><img src="assets/icon.png" alt=""><span>CityTour</span></div>
+    <div class="tagline line" id="e2">Eyes on the city,<br>not the screen.</div>
+    <div class="small line" id="e3">Any city · any walk · no app update &nbsp;—&nbsp; HarmonyOS 6 · English · Polski · 中文</div>
+    <div class="foot line" id="e4">github.com/Svetoslav47/citytour &nbsp;·&nbsp; Built at HackYeah 2026</div>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ease = (x) => 1 - Math.pow(1 - clamp(x), 3);            // easeOutCubic
+const easeIO = (x) => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const lerp = (a, b, u) => a + (b - a) * u;
+// opacity window with fades
+function win(t, a, b, fi = .4, fo = .4) {
+  if (t < a || t > b) return 0;
+  return Math.min(fi > 0 ? clamp((t - a) / fi) : 1, fo > 0 ? clamp((b - t) / fo) : 1);
+}
+// line entrance: rise + fade; exit fade
+function line(el, t, a, b, dy = 34, fi = .55, fo = .35) {
+  const o = win(t, a, b, fi, fo);
+  const u = ease((t - a) / fi);
+  el.style.opacity = o;
+  el.style.transform = `translateY(${(1 - u) * dy}px)`;
+}
+
+const KITS = ['Location Kit', 'Background Tasks', 'AVSession', 'Core Speech Kit', 'Notification Kit', 'Network Kit', 'Form Kit widget', 'ArkUI Canvas map', 'Wearable'];
+$('kits').innerHTML = KITS.map((k, i) => `<span class="kit" id="kit${i}">${k}</span>`).join('');
+
+let PLAN = null;
+window.setPlan = (p) => { PLAN = p; };
+
+const CAPS = [ // [kicker, heading, sub, in, out]
+  ['', 'Pick a walk.', 'Stream it in seconds — or download it to walk offline.', 9.0, 13.45],
+  ['', 'It tells each place’s story<br>the moment you arrive.', 'Studio-voice narration, written from open sources for every stop.', 13.9, 22.95],
+  ['', 'Then it walks you<br>to the next one.', 'Spoken turn-by-turn. It re-routes if you wander off.', 23.45, 29.35],
+  ['', 'Phone in your pocket.<br>It keeps talking.', 'Background audio · lock-screen controls · arrival alerts', 30.0, 36.35],
+  ['', 'Your language.<br>Even mid-story.', '', 36.8, 50.15],
+  ['', 'Native HarmonyOS.', '', 50.55, 55.2],
+  ['', 'Download once.<br>Walk offline.', 'Courses and city maps come from our signed server.', 55.6, 57.55],
+  ['', 'On your wrist.<br>On your home screen.', '', 57.8, 60.0],
+];
+
+const SPEECH = [ // [in, out, who, text, translation]
+  [13.9, 17.3, 'The Historian · English', '“Look up at the seven turrets that crown the round brick walls.”', ''],
+  [17.3, 23.0, 'The Historian · English', '“This round brick fortress is the Barbican, built around 1498 to defend the city.”', ''],
+  [25.95, 28.25, 'The Historian · directions', '“In 30 metres, turn right.”', ''],
+  [30.5, 36.5, 'The Historian · English', '“Saint Mary’s Basilica is home to the trumpet call that sounds every hour…”', ''],
+  [36.6, 39.25, 'The Historian · English', '“…the main building of the Jagiellonian University.”', ''],
+  [39.3, 45.45, 'The Historian · Polski', '„Otwarto go w 1887 roku, na 500-lecie założenia uczelni.”', 'It opened in 1887, for the university’s 500th anniversary.'],
+  [45.5, 50.3, 'The Historian · 中文', '“建筑师设计它时，特意让它与大学最古老的建筑相呼应。”', 'Its architect designed it to match the university’s oldest building.'],
+];
+const VOICE = [[13.9, 17.29], [17.35, 23.01], [26.0, 28.0], [30.5, 36.54], [36.6, 39.22], [39.35, 45.39], [45.54, 50.32], [61.0, 64.16]];
+
+const RIPPLES = [ // [time, x, y] in screen px (442x956)
+  [13.05, 338, 568], [42.93, 404, 83], [44.175, 322, 373], [37.39, 328, 317], [31.95, 201, 868],
+];
+
+let lastScreen = '', lastWatch = '', lastA = '', lastB = '';
+async function setImg(el, src, key) {
+  if (!src) return;
+  if (el.dataset.src === src) return;
+  el.dataset.src = src;
+  el.src = src;
+  try { await el.decode(); } catch (e) {}
+}
+
+window.renderFrame = async (f) => {
+  const fr = PLAN.frames[f];
+  const t = fr.t;
+  const waits = [];
+
+  // ---------- photos (title, problem, end) ----------
+  let pa = null, paO = 0, paS = 1, paX = 0, pb = null, pbO = 0, pbS = 1;
+  if (t < 4.6) { pa = 'assets/wawel-hi.jpg'; paO = win(t, 0, 4.6, .9, .45); paS = lerp(1.12, 1.02, easeIO(t / 4.6)); paX = lerp(30, -10, t / 4.6); }
+  else if (t < 6.75) { pa = 'assets/maius-hi.jpg'; paO = win(t, 4.45, 6.75, .35, .0); paS = lerp(1.04, 1.12, (t - 4.45) / 2.3); paX = lerp(-20, 20, (t - 4.45) / 2.3); }
+  else if (t < 9.0) { pa = 'assets/synagogue-hi.jpg'; paO = win(t, 6.55, 9.0, .3, .45); paS = lerp(1.12, 1.03, (t - 6.55) / 2.45); paX = lerp(25, -15, (t - 6.55) / 2.45);
+    if (t < 6.75) { pb = 'assets/maius-hi.jpg'; pbO = 1; pbS = lerp(1.04, 1.12, (t - 4.45) / 2.3); } }
+  else if (t >= 59.9) { pa = 'assets/wawel-hi.jpg'; paO = win(t, 59.9, 68.2, .6, 0); paS = lerp(1.03, 1.11, (t - 59.9) / 8.1); paX = lerp(-10, 20, (t - 59.9) / 8.1); }
+  if (pa) waits.push(setImg($('photoA'), pa));
+  $('photoA').style.opacity = pa ? paO : 0;
+  $('photoA').style.transform = `scale(${paS}) translateX(${paX}px)`;
+  if (pb) waits.push(setImg($('photoB'), pb));
+  $('photoB').style.opacity = pb ? pbO : 0;
+  $('photoB').style.transform = `scale(${pbS})`;
+  $('photoB').style.zIndex = 0; $('photoA').style.zIndex = 1;
+  // shade
+  let shade = 'linear-gradient(90deg,rgba(5,12,10,.86) 0%,rgba(5,12,10,.62) 48%,rgba(5,12,10,.18) 100%)', shO = 0;
+  if (t < 4.6) shO = paO;
+  else if (t < 9.0) { shade = 'radial-gradient(1400px 800px at 50% 50%,rgba(5,12,10,.55) 0%,rgba(5,12,10,.82) 100%)'; shO = Math.max(paO, pbO); }
+  else if (t >= 59.9) shO = paO;
+  $('shade').style.background = shade; $('shade').style.opacity = shO; $('shade').style.zIndex = 2;
+
+  // ---------- stage (phone scenes) ----------
+  const stO = win(t, 8.45, 60.35, .55, .5);
+  $('stage').style.opacity = stO;
+  $('sbW').style.opacity = win(t, 8.4, 36.75, .5, .5) * .9;
+  $('sbM').style.opacity = win(t, 36.45, 50.6, .5, .5) * .9;
+  $('sbS').style.opacity = win(t, 50.3, 60.4, .5, .5) * .9;
+
+  // ---------- problem lines ----------
+  line($('p1'), t, 4.75, 8.55, 30, .5, .35);
+  line($('p2'), t, 6.15, 8.55, 30, .5, .35);
+
+  // ---------- phone ----------
+  const phIn = ease((t - 8.55) / .75), phOut = 1 - ease((t - 59.7) / .45);
+  const phO = t < 8.55 ? 0 : (t > 60.2 ? 0 : Math.min(phIn, phOut));
+  $('phone').style.opacity = phO;
+  $('phone').style.transform = `translateY(${(1 - phIn) * 160 + (1 - phOut) * 120}px)`;
+  if (fr.phone) waits.push(setImg($('screen'), fr.phone));
+  // screen off: dim 29.6-30.2, black until 30.9, fade to lock
+  let dim = 0;
+  if (t >= 29.6 && t < 30.2) dim = ease((t - 29.6) / .6);
+  else if (t >= 30.2 && t < 30.9) dim = 0;
+  $('dim').style.opacity = dim;
+  // sped-up tag on the timelapse
+  $('tag').style.opacity = win(t, 23.25, 25.85, .2, .2);
+  // magnifier on the download ring (55.4-57.6): screen coords of the ring ~ (366, 640) in 442x956
+  const magO = win(t, 55.75, 57.55, .3, .25);
+  const mag = $('mag');
+  mag.style.opacity = magO;
+  if (magO > 0 && fr.phone) {
+    const z = 2.6, cx = 376, cy = 667;  // ring centre in screen px (device 1124,1992)
+    mag.style.left = (cx - 105 - 90) + 'px'; mag.style.top = (cy - 105 - 150) + 'px';
+    mag.style.backgroundImage = `url(${fr.phone})`;
+    mag.style.backgroundSize = `${442 * z}px ${956 * z}px`;
+    mag.style.backgroundPosition = `${-(cx * z - 105)}px ${-(cy * z - 105)}px`;
+  }
+  // ripples (two slots)
+  const active = RIPPLES.filter(r => t >= r[0] - .05 && t < r[0] + .55).slice(0, 2);
+  ['rp0', 'rp1'].forEach((id, i) => {
+    const el = $(id), r = active[i];
+    if (!r) { el.style.opacity = 0; return; }
+    const u = clamp((t - r[0] + .05) / .6);
+    el.style.left = r[1] + 'px'; el.style.top = r[2] + 'px';
+    el.style.opacity = (1 - u) * .95;
+    el.style.transform = `scale(${1 + u * 3.6})`;
+  });
+
+  // ---------- watch ----------
+  const wO = win(t, 57.75, 59.95, .45, .3);
+  $('watch').style.opacity = wO;
+  $('watch').style.transform = `translateY(${(1 - ease((t - 57.75) / .5)) * 60}px)`;
+  const wimg = t < 58.65 ? 'assets/watch-start.png' : (t < 59.45 ? 'assets/watch-glance.png' : 'assets/watch-look-left.png');
+  if (wO > 0) waits.push(setImg($('watchimg'), wimg));
+
+  // ---------- captions ----------
+  const cap = CAPS.find(c => t >= c[3] - .05 && t <= c[4] + .05);
+  if (cap) {
+    $('ck').textContent = cap[0];
+    if ($('ch').dataset.k !== cap[1]) { $('ch').innerHTML = cap[1]; $('ch').dataset.k = cap[1]; }
+    $('cs').innerHTML = cap[2];
+    line($('ck'), t, cap[3], cap[4], 26);
+    line($('ch'), t, cap[3] + .05, cap[4], 36);
+    line($('cs'), t, cap[3] + .3, cap[4], 30);
+    $('cs').style.display = cap[2] ? 'block' : 'none';
+  } else { ['ck', 'ch', 'cs'].forEach(id => $(id).style.opacity = 0); }
+  // language chips
+  const chO = win(t, 37.2, 50.15, .5, .35);
+  $('chips').style.opacity = chO;
+  $('chips').style.transform = `translateY(${(1 - ease((t - 37.2) / .5)) * 24}px)`;
+  const L = PLAN.meta.lang;
+  $('chEN').className = 'chip' + (t < L.pl[0] ? ' on' : '');
+  $('chPL').className = 'chip' + (t >= L.pl[0] && t < L.zh[0] ? ' on' : '');
+  $('chZH').className = 'chip' + (t >= L.zh[0] ? ' on' : '');
+  // kits
+  KITS.forEach((k, i) => {
+    const a = 51.0 + i * .28;
+    const el = $('kit' + i);
+    el.style.opacity = win(t, a, 55.2, .3, .3);
+    el.style.transform = `translateY(${(1 - ease((t - a) / .35)) * 18}px)`;
+  });
+
+  // ---------- speech card ----------
+  const sp = SPEECH.find(s => t >= s[0] && t <= s[1]);
+  const prevSp = sp ? SPEECH.find(s2 => Math.abs(s2[1] - sp[0]) < .06) : null;
+  const spO = sp ? win(t, sp[0], sp[1], prevSp ? 0 : .3, .25) : 0;
+  $('speech').style.opacity = spO;
+  if (sp) {
+    $('who').textContent = sp[2]; $('stxt').textContent = sp[3];
+    $('str').textContent = sp[4]; $('str').style.display = sp[4] ? 'block' : 'none';
+    $('speech').style.transform = `translateY(${(1 - ease((t - sp[0]) / .35)) * 16}px)`;
+  }
+  const speaking = VOICE.some(v => t >= v[0] && t <= v[1]);
+  document.querySelectorAll('.eq i').forEach((b, i) => {
+    const h = speaking ? 5 + Math.abs(Math.sin(t * (7.1 + i * 1.9) + i * 1.3)) * 13 : 4;
+    b.style.height = h + 'px';
+  });
+
+  // ---------- title card ----------
+  $('title').style.opacity = t < 4.7 ? 1 : 0; $('title').style.zIndex = 5;
+  line($('t1'), t, .35, 4.35, 30, .7, .4);
+  line($('t2'), t, 1.15, 4.35, 36, .7, .4);
+
+  // ---------- end card ----------
+  $('end').style.opacity = t >= 60.0 ? 1 : 0; $('end').style.zIndex = 5;
+  line($('e1'), t, 60.35, 68.5, 30, .7, 0);
+  line($('e2'), t, 60.9, 68.5, 36, .7, 0);
+  line($('e3'), t, 62.4, 68.5, 26, .6, 0);
+  line($('e4'), t, 63.2, 68.5, 22, .6, 0);
+  // fade to black at the very end
+  document.body.style.filter = t > 67.35 ? `brightness(${clamp((68.0 - t) / .65)})` : 'none';
+
+  await Promise.all(waits);
+  return t;
+};
+</script>
+</body>
+</html>
