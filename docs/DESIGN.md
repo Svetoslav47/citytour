@@ -554,7 +554,7 @@ It's dismissable and remembers its state per session. It's for demos, but honest
 
 #### 3.6.3 Half-collapsible sheet (peek)
 
-User request (2026-10-04): "The navigation sheet on the tour screen has to be able to half-collapse, with the most important navigation visible, so the map becomes bigger." Pure maths in `core/map/SheetDetents.ets` (unit-tested in `SheetDetents.test.ets`).
+User request (2026-10-04): "The navigation sheet on the tour screen has to be able to half-collapse, with the most important navigation visible, so the map becomes bigger." Pure maths in `common/src/main/ets/core/map/SheetDetents.ets` (unit-tested in `SheetDetents.test.ets`).
 
 | | Spec |
 |---|---|
