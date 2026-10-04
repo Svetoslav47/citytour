@@ -61,6 +61,9 @@ export class WatchContainer {
   private static hapticsImpl: WatchHaptics | undefined = undefined;
   private static packImpl: WatchPackRepository | undefined = undefined;
   private static mainWindow: window.Window | undefined = undefined;
+  /** The page's tour start (WatchViewModel.start), and a start requested before the page attached. */
+  private static startHandler: ((kind: FixSource) => void) | undefined = undefined;
+  private static pendingStart: FixSource | undefined = undefined;
 
   /** Builds everything; touches no platform API until a tour is planned. Call once from WatchAbility.onCreate. */
   static init(ctx: common.UIAbilityContext): void {
@@ -147,6 +150,28 @@ export class WatchContainer {
     return WatchContainer.hapticsImpl;
   }
 
+  /**
+   * A tour start requested outside the page (the `demo` launch parameter): it goes through the page's start, like
+   * tapping the button, so the glance opens. Kept until the page attaches when the page is not up yet.
+   */
+  static requestStart(kind: FixSource): void {
+    const h: ((kind: FixSource) => void) | undefined = WatchContainer.startHandler;
+    if (h !== undefined) {
+      h(kind);
+    } else {
+      WatchContainer.pendingStart = kind;
+    }
+  }
+
+  static setStartHandler(h: ((kind: FixSource) => void) | undefined): void {
+    WatchContainer.startHandler = h;
+    const pending: FixSource | undefined = WatchContainer.pendingStart;
+    if (h !== undefined && pending !== undefined) {
+      WatchContainer.pendingStart = undefined;
+      h(pending);
+    }
+  }
+
   /** Plans and starts the watch tour on the given source (DEMO = SIMULATED). */
   static async startTour(kind: FixSource): Promise<void> {
     const ctrl: TourController | undefined = WatchContainer.ctrl;
@@ -167,6 +192,7 @@ export class WatchContainer {
   }
 
   static shutdown(): void {
+    WatchContainer.pendingStart = undefined;
     if (WatchContainer.hapticsImpl !== undefined) {
       WatchContainer.hapticsImpl.cancel();
     }
