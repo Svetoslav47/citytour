@@ -557,6 +557,14 @@
       "value": "Minimise, tour keeps running"
     },
     {
+      "name": "walk_sheet_expand",
+      "value": "Expand"
+    },
+    {
+      "name": "walk_sheet_collapse",
+      "value": "Collapse"
+    },
+    {
       "name": "walk_menu",
       "value": "More options"
     },

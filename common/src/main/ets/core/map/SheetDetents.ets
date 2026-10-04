@@ -84,10 +84,16 @@ export function visibleSheetHeight(expandedH: number, offset: number): number {
   return Math.max(0, finite(expandedH) - Math.max(0, finite(offset)));
 }
 
-/** Map follow bottom inset: the map runs full height behind the sheet, so the dot's band ends where the visible
- * sheet starts. */
-export function mapBottomInset(visibleSheetH: number): number {
-  return Math.max(0, finite(visibleSheetH));
+/** Map box height: the map runs behind the sheet down to the peek's rounded top (it is never seen lower). */
+export function mapBoxHeight(pageH: number, peekH: number): number {
+  return Math.max(0, finite(pageH) - finite(peekH) + SHEET_OVERLAP);
+}
+
+/** Map follow bottom inset: the part of the map box the visible sheet covers, so the user dot stays in the band
+ * between the header and the sheet. */
+export function mapBottomInset(visibleSheetH: number, pageH: number, mapBoxH: number): number {
+  const below = Math.max(0, finite(pageH) - finite(mapBoxH));   // page under the map box (always sheet)
+  return Math.max(0, finite(visibleSheetH) - below);
 }
 
 /** Expanded sheet height: the page below the DESIGN map box, plus the sheet's overlap over the map. */

@@ -2,7 +2,7 @@
 // Detent resolution from drag offset and fling velocity, rubber band, peek height with the safe area, map inset.
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  collapseProgress, detentOffset, dragOffset, expandedHeight, FLING_VPS, mapBottomInset, PEEK_CONTENT_H, peekHeight,
+  collapseProgress, detentOffset, dragOffset, expandedHeight, FLING_VPS, mapBottomInset, mapBoxHeight, PEEK_CONTENT_H, peekHeight,
   resolveDetent, RUBBER, SHEET_OVERLAP, SheetDetent, sheetTravel, toggleDetent, visibleSheetHeight
 } from 'common';
 
@@ -57,8 +57,13 @@ export default function sheetDetentsTest() {
       expect(visibleSheetHeight(500, 0)).assertEqual(500);
       expect(visibleSheetHeight(500, 310)).assertEqual(190);
       expect(visibleSheetHeight(500, -10)).assertEqual(500);   // rubber band above expanded
-      expect(mapBottomInset(visibleSheetHeight(500, 310))).assertEqual(190);
-      expect(mapBottomInset(Number.NaN)).assertEqual(0);
+      // page 844, peek 190: map box 678; collapsed only the peek's rounded top covers the map
+      const box = mapBoxHeight(844, 190);
+      expect(box).assertEqual(844 - 190 + SHEET_OVERLAP);
+      expect(mapBottomInset(visibleSheetHeight(500, 310), 844, box)).assertEqual(SHEET_OVERLAP);
+      expect(mapBottomInset(visibleSheetHeight(500, 0), 844, box)).assertEqual(500 - 190 + SHEET_OVERLAP);
+      expect(mapBottomInset(Number.NaN, 844, box)).assertEqual(0);
+      expect(mapBoxHeight(100, 190)).assertEqual(0);
     });
     it('expanded_height_matches_the_design_map_box', 0, () => {
       expect(expandedHeight(844, 340, 190)).assertEqual(844 - 340 + SHEET_OVERLAP);

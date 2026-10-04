@@ -557,6 +557,14 @@
       "value": "最小化，游览继续进行"
     },
     {
+      "name": "walk_sheet_expand",
+      "value": "展开"
+    },
+    {
+      "name": "walk_sheet_collapse",
+      "value": "收起"
+    },
+    {
       "name": "walk_menu",
       "value": "更多选项"
     },

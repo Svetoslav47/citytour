@@ -557,6 +557,14 @@
       "value": "Minimalizuj, trasa trwa dalej"
     },
     {
+      "name": "walk_sheet_expand",
+      "value": "Rozwiń"
+    },
+    {
+      "name": "walk_sheet_collapse",
+      "value": "Zwiń"
+    },
+    {
       "name": "walk_menu",
       "value": "Więcej opcji"
     },
