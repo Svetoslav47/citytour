@@ -72,7 +72,9 @@ const MAP_FRAME: string = 'MAP_FRAME';
 /** Pack geometry: decimetres. */
 const DM: number = 10;
 /** UI-thread budget per slice while building paths; the rest continues on the next macrotask. */
-const SLICE_MS: number = 8;
+const SLICE_MS: number = 6;
+/** Pause between slices so input, vsync and the watchdog run in between. */
+const YIELD_MS: number = 4;
 
 /**
  * The Path2Ds of one map, built incrementally: a slice of features at a time (moveTo/lineTo, one bridge call per
@@ -107,8 +109,10 @@ class PathBuild {
           while (fi < l.features.length) {
             addFeature(path, l.features[fi], polygon);
             fi++;
-            if ((fi & 63) === 0 && Date.now() - sliceStart > SLICE_MS) {
-              setTimeout(step, 0);
+            if ((fi & 31) === 0 && Date.now() - sliceStart > SLICE_MS) {
+              // A real delay, not 0: a 0 ms timer is already due when it is queued, so the event loop runs it in the
+              // same timer pass and never returns to the UI thread's other work (THREAD_BLOCK_6S on a busy device).
+              setTimeout(step, YIELD_MS);
               return;
             }
           }
