@@ -39,6 +39,7 @@ import svgPathTest from './SvgPath.test';
 import homeRulesTest from './HomeRules.test';
 import cueMapTest from './CueMap.test';
 import glanceTest from './Glance.test';
+import sheetDetentsTest from './SheetDetents.test';
 
 export default function testsuite() {
   harnessTest();
@@ -79,4 +80,5 @@ export default function testsuite() {
   homeRulesTest();
   cueMapTest();
   glanceTest();
+  sheetDetentsTest();
 }
