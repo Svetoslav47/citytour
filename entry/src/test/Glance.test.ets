@@ -1,8 +1,10 @@
 // Suite: Glance.test - module under test: core/watch/Glance (watch task W5, docs/research/WATCH.md).
 // Arrow = bearing to the stop minus the walking course; relDir fallback without a course; "here" at the stop;
-// the ring's progress count; the status line priority.
+// the ring's progress count; the status line priority; which snapshots reach the glance (Done after a finished tour).
 import { describe, it, expect } from '@ohos/hypium';
-import { GlanceArrow, GlanceStatus, glanceArrow, glanceStatus, glanceStopId, stopsDone } from 'common';
+import {
+  GlanceArrow, GlanceStatus, SnapshotUse, glanceArrow, glanceSnapshotUse, glanceStatus, glanceStopId, stopsDone
+} from 'common';
 import {
   AppIssue, EngineSnapshot, IssueCode, IssueSeverity, NextInfo, PlatformStatus, RelDir, SignalQuality, StopProgress,
   StopStatus, TourPhase, UserPos
@@ -112,6 +114,23 @@ export default function glanceTest() {
         .assertEqual(GlanceStatus.OUT_OF_AREA);
       expect(glanceStatus(snap(TourPhase.WALKING, [], user(0), true))).assertEqual(GlanceStatus.OFF_ROUTE);
       expect(glanceStatus(snap(TourPhase.WALKING, [], user(0), false))).assertEqual(GlanceStatus.NONE);
+    });
+
+    it('after Done (start screen) no snapshot reopens the glance, not even the FINISHED that ending publishes', 0, () => {
+      expect(glanceSnapshotUse(false, true, TourPhase.FINISHED)).assertEqual(SnapshotUse.IGNORE);
+      expect(glanceSnapshotUse(false, true, TourPhase.WALKING)).assertEqual(SnapshotUse.IGNORE);
+      expect(glanceSnapshotUse(false, false, TourPhase.ABORTED)).assertEqual(SnapshotUse.IGNORE);
+    });
+
+    it('a new tour ignores the previous tour\'s end until it runs, then shows its own phases', 0, () => {
+      expect(glanceSnapshotUse(true, false, TourPhase.FINISHED)).assertEqual(SnapshotUse.IGNORE);
+      expect(glanceSnapshotUse(true, false, TourPhase.ABORTED)).assertEqual(SnapshotUse.IGNORE);
+      expect(glanceSnapshotUse(true, false, TourPhase.PLANNING)).assertEqual(SnapshotUse.IGNORE);
+      expect(glanceSnapshotUse(true, false, TourPhase.READY)).assertEqual(SnapshotUse.IGNORE);
+      expect(glanceSnapshotUse(true, false, TourPhase.WALKING)).assertEqual(SnapshotUse.SHOW);
+      expect(glanceSnapshotUse(true, true, TourPhase.AT_STOP)).assertEqual(SnapshotUse.SHOW);
+      expect(glanceSnapshotUse(true, true, TourPhase.FINISHED)).assertEqual(SnapshotUse.SHOW);
+      expect(glanceSnapshotUse(true, true, TourPhase.ABORTED)).assertEqual(SnapshotUse.ABORTED);
     });
   });
 }

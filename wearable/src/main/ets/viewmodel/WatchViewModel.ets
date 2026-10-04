@@ -5,8 +5,9 @@
  * derivations are the pure core/watch/Glance functions.
  */
 import {
-  Cue, EngineSnapshot, FixSource, GlanceArrow, GlanceStatus, Lang, PackLoadResult, Poi, RoundedDistance, Tour,
-  TourController, TourPhase, glanceArrow, glanceStatus, glanceStopId, localized, roundWalkDistance, stopsDone
+  Cue, EngineSnapshot, FixSource, GlanceArrow, GlanceStatus, Lang, PackLoadResult, Poi, RoundedDistance,
+  SnapshotUse, Tour, TourController, TourPhase, glanceArrow, glanceSnapshotUse, glanceStatus, glanceStopId,
+  localized, roundWalkDistance, stopsDone
 } from 'common';
 import { Log } from '../app/Log';
 import { WatchConfig } from '../app/WatchConfig';
@@ -70,6 +71,7 @@ export class WatchViewModel {
     if (h !== undefined) {
       h.setListener((c: Cue) => this.showCue(c));
     }
+    WatchContainer.setStartHandler((kind: FixSource) => this.start(kind));
   }
 
   detach(): void {
@@ -81,6 +83,7 @@ export class WatchViewModel {
     if (h !== undefined) {
       h.setListener(undefined);
     }
+    WatchContainer.setStartHandler(undefined);
   }
 
   start(kind: FixSource): void {
@@ -105,11 +108,12 @@ export class WatchViewModel {
   }
 
   onSnapshot(s: EngineSnapshot): void {
-    if (s.phase === TourPhase.IDLE || s.phase === TourPhase.PLANNING || s.phase === TourPhase.READY) {
+    const use: SnapshotUse = glanceSnapshotUse(this.screen !== WatchScreen.START, this.live, s.phase);
+    if (use === SnapshotUse.IGNORE) {
       return;
     }
-    if (s.phase === TourPhase.ABORTED) {
-      if (this.live && this.screen === WatchScreen.GLANCE) {
+    if (use === SnapshotUse.ABORTED) {
+      if (this.screen === WatchScreen.GLANCE) {
         this.live = false;
         this.screen = WatchScreen.START;
         WatchContainer.keepScreenOn(false);

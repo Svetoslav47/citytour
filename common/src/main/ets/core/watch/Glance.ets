@@ -105,3 +105,25 @@ export function glanceStatus(s: EngineSnapshot): GlanceStatus {
   }
   return GlanceStatus.NONE;
 }
+
+/** What the watch view model does with an engine snapshot. */
+export enum SnapshotUse { IGNORE = 'ignore', ABORTED = 'aborted', SHOW = 'show' }
+
+/**
+ * Whether a snapshot belongs on the glance. `inTour`: the watch shows the glance or the finished screen (not the
+ * start screen); `live`: the current tour has reached an active phase. A snapshot that arrives after Done (ending
+ * a finished tour publishes FINISHED once more) or before the new tour runs (the previous tour's FINISHED/ABORTED)
+ * is ignored, so it cannot reopen the finished screen.
+ */
+export function glanceSnapshotUse(inTour: boolean, live: boolean, phase: TourPhase): SnapshotUse {
+  if (!inTour || phase === TourPhase.IDLE || phase === TourPhase.PLANNING || phase === TourPhase.READY) {
+    return SnapshotUse.IGNORE;
+  }
+  if (phase === TourPhase.ABORTED) {
+    return live ? SnapshotUse.ABORTED : SnapshotUse.IGNORE;
+  }
+  if (phase === TourPhase.FINISHED && !live) {
+    return SnapshotUse.IGNORE;
+  }
+  return SnapshotUse.SHOW;
+}

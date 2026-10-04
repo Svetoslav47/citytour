@@ -24,13 +24,13 @@ export default class WatchAbility extends UIAbility {
     WatchContainer.init(this.context);
     Log.i('WATCH_APP_START', `reason=${launchParam.launchReason} demo=${wantsDemo(want) ? 1 : 0}`);
     if (wantsDemo(want)) {
-      WatchContainer.startTour(FixSource.DEMO);
+      WatchContainer.requestStart(FixSource.DEMO);
     }
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     if (wantsDemo(want)) {
-      WatchContainer.startTour(FixSource.DEMO);
+      WatchContainer.requestStart(FixSource.DEMO);
     }
   }
 
