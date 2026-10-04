@@ -4,7 +4,7 @@
 
 **Status: submitted (built during HackYeah 2026, 3–4 Oct 2026).**
 
-**Try it:** [`citytour.hap`](https://github.com/Svetoslav47/citytour/releases/latest/download/citytour.hap) (unsigned, latest release) · [Demo video, 68 s](https://github.com/Svetoslav47/citytour/releases/download/v1.0.1-hackyeah/citytour-demo.mp4) ([720p](https://github.com/Svetoslav47/citytour/releases/download/v1.0.1-hackyeah/citytour-demo-720p.mp4)) · landing page source in [`site/`](site/) · how AI was used: [`AI_WORKFLOW.md`](AI_WORKFLOW.md)
+**Try it:** [`citytour.hap`](https://github.com/Svetoslav47/citytour/releases/latest/download/citytour.hap) (unsigned, latest release) · [Demo video, 68 s](https://github.com/Svetoslav47/citytour/releases/latest/download/citytour-demo.mp4) ([720p](https://github.com/Svetoslav47/citytour/releases/latest/download/citytour-demo-720p.mp4)) · landing page source in [`site/`](site/) · how AI was used: [`AI_WORKFLOW.md`](AI_WORKFLOW.md)
 
 CityTour is a mobile tour guide that follows you through the city. It tracks where you are and which way you are walking. When you reach a place of historic or cultural significance, it explains that place to you.
 
@@ -148,6 +148,20 @@ devecocli build
 ```
 
 The debug `.hap` is written to `entry/build/default/outputs/default/`.
+
+### Install the release HAP (no build)
+
+Every release attaches the unsigned phone build `citytour.hap` and a `SHA256SUMS.txt`, built from the release's tag. The submission build is [`v1.0.2-hackyeah`](https://github.com/Svetoslav47/citytour/releases/tag/v1.0.2-hackyeah).
+
+```bash
+curl -LO https://github.com/Svetoslav47/citytour/releases/latest/download/citytour.hap
+```
+
+```bash
+hdc install -r citytour.hap
+```
+
+Then open CityTour and tap **Demo walk** on any walk card. The HAP is unsigned, so it installs on an emulator only; for a physical device, build from source and sign it (see [Signing](#signing)).
 
 ### Watch build (`wearable` module)
 
