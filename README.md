@@ -381,7 +381,7 @@ Each simulated failure logs `src=debug`, so a log never presents a fake failure 
 
 ## Architecture
 
-Three modules: `entry` (the phone HAP: abilities, pages, view models and the platform services), `wearable` (the watch HAP: start screen, glance, watch adapters) and `common` (a HAR with the shared, platform-free `contracts/` and `core/`: geo, route planner, tour engine, content parsing, speech selection, and the pure `TourController` that hosts the engine). `entry` depends on it as `"common": "file:../common"` and imports `from 'common'`. `scripts/test.sh` keeps the whole HAR free of `@kit`/`@ohos` imports. Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §12.1. `wearable` depends on `common` the same way ([`docs/research/WATCH.md`](docs/research/WATCH.md)).
+Three modules: `entry` (the phone HAP: abilities, pages, view models and the platform services), `wearable` (the watch HAP: start screen, glance, watch adapters) and `common` (a HAR with the shared, platform-free `contracts/` and `core/`: geo, route planner, tour engine, content parsing, speech selection, and the pure `TourController` that hosts the engine), plus the shared colour palette (`common/src/main/resources/{base,dark}/element/color.json`, light and dark; the watch always uses the dark one). `entry` depends on it as `"common": "file:../common"` and imports `from 'common'`. `scripts/test.sh` keeps the whole HAR free of `@kit`/`@ohos` imports. Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §12.1. `wearable` depends on `common` the same way ([`docs/research/WATCH.md`](docs/research/WATCH.md)).
 
 ## Data pipeline
 
