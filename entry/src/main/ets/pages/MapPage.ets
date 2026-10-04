@@ -5,10 +5,16 @@
  * B13 explore mode (Home "All places in {city}"): every place of the course's city as dots (PoiLayer), fitted to the
  * course map (the city's default bounds from its city.json without one); the layers button toggles the same dots on the tour maps. Tapping a dot opens the place card sheet
  * (bindSheet, map stays interactive, doc ts-universal-attributes-sheet-transition) -> Details -> Place detail.
+ * Explore "you are here": the WALK-mode position marker, live. Source (core/map/ExploreMe): a running tour's
+ * snapshots (incl. the Demo walk, SIMULATED pill as in WALK mode), else Location Kit while the page is open (only
+ * when already permitted; the locate button asks via requestPermissionsFromUser). Logs MAP_ME per state change.
  */
 import { EngineSnapshot } from 'common';
 import { MapData } from 'common';
 import { FixSource } from 'common';
+import { Fix } from 'common';
+import { PermissionState } from 'common';
+import { centreOnFirstFix, chooseMeSource, MeChoice, MeSource } from 'common';
 import { Projection } from 'common';
 import { worldBox } from 'common';
 import { mapOpenBounds } from 'common';
@@ -16,7 +22,8 @@ import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
 import { LogEvents } from 'common';
 import { AppViewModel } from '../viewmodel/AppViewModel';
-import { MapCache, overlayBounds, walkOverlay } from '../viewmodel/MapViewModel';
+import { MapCache, overlayBounds, userMark, walkOverlay } from '../viewmodel/MapViewModel';
+import { RealLocationSource } from '../services/location/RealLocationSource';
 import { SafeArea } from '../viewmodel/SafeArea';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { SimulatedBadge } from '../views/common/SimulatedBadge';
@@ -38,6 +45,16 @@ function cityDefaultBounds(): number[] {
   return c === undefined ? [] : worldBox(c.defaultBounds, Projection.fromOrigin(c.origin));
 }
 
+/** The city's projection (the frame of its map and places); undefined without an active city. */
+function cityProjection(): Projection | undefined {
+  const c = AppContainer.activeCity();
+  return c === undefined ? undefined : Projection.fromOrigin(c.origin);
+}
+
+function permOk(p: PermissionState): boolean {
+  return p === PermissionState.GRANTED || p === PermissionState.APPROX_ONLY;
+}
+
 @ComponentV2
 export struct MapPage {
   @Param mode: string = MapMode.TOUR;
@@ -55,6 +72,18 @@ export struct MapPage {
   @Local cardPoi: string = '';
   @Local showCard: boolean = false;
   private unsubscribe: (() => void) | undefined = undefined;
+  /** Explore "you are here" (EXPLORE mode only). */
+  @Local meSrc: string = MeSource.NONE;
+  @Local focusRev: number = 0;
+  @Local focusX: number = 0;
+  @Local focusY: number = 0;
+  @Local focusZoom: boolean = false;
+  private meX: number = Number.NaN;
+  private meY: number = Number.NaN;
+  private meFirstHandled: boolean = false;
+  private meLoc: RealLocationSource | undefined = undefined;
+  private meProj: Projection | undefined = undefined;
+  private meGone: boolean = false;
 
   aboutToAppear(): void {
     this.map = MapCache.detailMap();
@@ -64,6 +93,7 @@ export struct MapPage {
     }
     if (this.mode === MapMode.EXPLORE) {
       this.bounds = mapOpenBounds(this.map?.bounds, cityDefaultBounds());
+      this.startMe();
     } else if (this.mode === MapMode.WALK) {
       try {
         this.unsubscribe = AppContainer.tourControl().subscribe((s: EngineSnapshot) => {
@@ -81,6 +111,120 @@ export struct MapPage {
       this.scene = plan.orderScene.stops.length > 0 ? plan.orderScene : plan.scene;
       this.bounds = overlayBounds(this.scene) ?? [];
     }
+  }
+
+  private setMe(src: MeSource, reason: string): void {
+    if (this.meSrc !== src) {
+      Log.i('MAP_ME', `src=${src} reason=${reason}`);
+    }
+    this.meSrc = src;
+  }
+
+  /** Picks the position source without ever opening a system dialog (that is the locate button's job). */
+  private async startMe(): Promise<void> {
+    try {
+      const tourRunning = AppContainer.tourController().isRunning();
+      let granted = false;
+      let switchOn = false;
+      if (!tourRunning) {
+        const perms = AppContainer.permissions();
+        granted = permOk(await perms.locationState());
+        switchOn = granted && perms.isLocationSwitchOn();
+      }
+      if (this.meGone) {
+        return;
+      }
+      const c: MeChoice = chooseMeSource(tourRunning, granted, switchOn);
+      if (c.src === MeSource.TOUR) {
+        this.setMe(MeSource.TOUR, c.reason);   // before subscribe: it delivers the current snapshot at once
+        this.unsubscribe = AppContainer.tourControl().subscribe((s: EngineSnapshot) => {
+          this.demo = s.source === FixSource.DEMO;
+          if (s.user !== undefined) {
+            this.onMe(s.user.x, s.user.y, s.user.accuracyM, s.user.speedMps, s.user.courseDeg, this.demo);
+          }
+        });
+      } else if (c.src === MeSource.LOCATION) {
+        this.startLocation(c.reason);
+      } else {
+        this.setMe(MeSource.NONE, c.reason);
+      }
+    } catch (e) {
+      this.setMe(MeSource.NONE, 'error');
+      Log.e(LogEvents.UNCAUGHT, `where=MapPage.startMe ${Log.errKv(e as Object)}`);
+    }
+  }
+
+  /** Location Kit directly (own RealLocationSource: the tour's shared one keeps its listener). start() asks for the
+   * permission / switch only when they are missing, i.e. only from the locate button. */
+  private startLocation(reason: string): void {
+    this.meProj = cityProjection();
+    if (this.meProj === undefined) {
+      this.setMe(MeSource.NONE, 'no_city');
+      return;
+    }
+    if (this.meLoc === undefined) {
+      this.meLoc = new RealLocationSource(AppContainer.permissions());
+    }
+    const src = this.meLoc;
+    src.start((f: Fix) => {
+      const p = this.meProj;
+      if (!this.meGone && p !== undefined) {
+        this.setMe(MeSource.LOCATION, reason);
+        this.onMe(p.x(f.lng), p.y(f.lat), f.accuracyM, f.speedMps, f.courseDeg, false);
+      }
+    }, (code: number, msg: string) => {
+      if (!src.isRunning()) {
+        this.setMe(MeSource.NONE, `location_error code=${code}`);
+      }
+    }).then(() => {
+      if (this.meGone) {
+        src.stop();
+      } else if (src.isRunning()) {
+        this.setMe(MeSource.LOCATION, reason);
+      }
+    });
+  }
+
+  private onMe(x: number, y: number, acc: number, speed: number, course: number, simulated: boolean): void {
+    const u = userMark(x, y, acc, speed, course, simulated);
+    if (u === undefined) {
+      return;
+    }
+    const ov = new MapOverlay();
+    ov.user = u;
+    this.scene = ov;
+    this.meX = x;
+    this.meY = y;
+    if (!this.meFirstHandled) {
+      const centre = centreOnFirstFix(false, this.bounds, x, y);
+      this.meFirstHandled = true;
+      Log.i('MAP_ME', `first_fix src=${this.meSrc} centred=${centre} reason=${centre ? 'inside_bounds' : 'outside_bounds'}`);
+      if (centre) {
+        this.focus(false);
+      }
+    }
+  }
+
+  private focus(zoom: boolean): void {
+    this.focusX = this.meX;
+    this.focusY = this.meY;
+    this.focusZoom = zoom;
+    this.focusRev++;
+  }
+
+  /** Locate: centre on the position; without one and without a source, ask for the permission (and switch). */
+  private locate(): void {
+    if (Number.isFinite(this.meX) && Number.isFinite(this.meY)) {
+      Log.i('MAP_ME', `locate src=${this.meSrc} action=centre`);
+      this.focus(true);
+      return;
+    }
+    if (this.meSrc !== MeSource.NONE) {
+      Log.i('MAP_ME', `locate src=${this.meSrc} action=wait_fix`);
+      return;
+    }
+    Log.i('MAP_ME', 'locate src=none action=request_permission');
+    this.startLocation('locate_button');
   }
 
   private loadPlaces(): void {
@@ -142,6 +286,11 @@ export struct MapPage {
   }
 
   aboutToDisappear(): void {
+    this.meGone = true;
+    if (this.meLoc !== undefined) {
+      this.meLoc.stop();
+      this.meLoc = undefined;
+    }
     if (this.unsubscribe !== undefined) {
       this.unsubscribe();
       this.unsubscribe = undefined;
@@ -163,6 +312,10 @@ export struct MapPage {
             mapId: 'mapFull',
             places: this.showPlaces ? this.places : undefined,
             placesRev: this.placesRev,
+            focusRev: this.focusRev,
+            focusX: this.focusX,
+            focusY: this.focusY,
+            focusZoom: this.focusZoom,
             onTapPlace: (poiId: string) => this.selectPlace(poiId)
           })
         }
@@ -186,6 +339,20 @@ export struct MapPage {
         // The map is full-bleed under both system bars; the floating controls sit below the status bar.
         .padding({ left: Space.S2 + this.sa.left, right: Space.S2 + this.sa.right, top: Space.S2 + this.sa.top })
         .height(Size.TOUCH + Space.S2 + this.sa.top)
+        if (this.mode === MapMode.EXPLORE) {
+          Row() {
+            Blank()
+            FloatingIconButton({
+              symbol: this.meSrc === MeSource.NONE ? $r('sys.symbol.location_up') : $r('sys.symbol.location_up_fill'),
+              label: $r('app.string.map_locate_me'),
+              buttonId: 'btnLocateMe',
+              onTap: () => this.locate()
+            })
+          }
+          .width('100%')
+          .padding({ right: Space.S2 + this.sa.right })
+          .margin({ top: Size.TOUCH + Space.S2 + this.sa.top })
+        }
       }
       .width('100%')
       .height('100%')

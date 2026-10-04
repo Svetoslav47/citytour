@@ -124,16 +124,29 @@ export function walkOverlay(s: EngineSnapshot, lang: Lang): MapOverlay {
     }
   });
   ov.labels = true;
-  if (s.user !== undefined && Number.isFinite(s.user.x) && Number.isFinite(s.user.y)) {
-    const u = new UserMark();
-    u.x = s.user.x;
-    u.y = s.user.y;
-    u.accuracyM = s.user.accuracyM;
-    u.courseDeg = Number.isFinite(s.user.speedMps) && s.user.speedMps >= 0.6 ? s.user.courseDeg : Number.NaN;
-    u.simulated = s.user.source === FixSource.DEMO;
-    ov.user = u;
+  if (s.user !== undefined) {
+    ov.user = userMark(s.user.x, s.user.y, s.user.accuracyM, s.user.speedMps, s.user.courseDeg,
+      s.user.source === FixSource.DEMO);
   }
   return ov;
+}
+
+/**
+ * The position marker of Now Walking / WALK mode (also the Explore map's "you are here"): heading cone only when
+ * moving (course unreliable below 0.6 m/s). undefined for a non-finite position.
+ */
+export function userMark(x: number, y: number, accuracyM: number, speedMps: number, courseDeg: number,
+  simulated: boolean): UserMark | undefined {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return undefined;
+  }
+  const u = new UserMark();
+  u.x = x;
+  u.y = y;
+  u.accuracyM = accuracyM;
+  u.courseDeg = Number.isFinite(speedMps) && speedMps >= 0.6 ? courseDeg : Number.NaN;
+  u.simulated = simulated;
+  return u;
 }
 
 /** Half-width in metres of the Place detail snippet: the place plus a block or two around it. */

@@ -1581,6 +1581,10 @@
       "value": "Dotknij, aby zacząć"
     },
     {
+      "name": "map_locate_me",
+      "value": "Pokaż moją lokalizację"
+    },
+    {
       "name": "map_places_show",
       "value": "Pokaż wszystkie miejsca"
     },

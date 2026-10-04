@@ -1581,6 +1581,10 @@
       "value": "点按开始游览"
     },
     {
+      "name": "map_locate_me",
+      "value": "显示我的位置"
+    },
+    {
       "name": "map_places_show",
       "value": "显示所有地点"
     },

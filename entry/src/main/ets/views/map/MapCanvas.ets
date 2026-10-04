@@ -8,7 +8,7 @@
 import { common, ConfigurationConstant } from '@kit.AbilityKit';
 import { MapData } from 'common';
 import { Log } from '../../app/Log';
-import { Camera, fitBounds, pan, zoomAt } from 'common';
+import { Camera, fitBounds, locateScale, pan, zoomAt } from 'common';
 import { DARK, LIGHT, MapPalette } from './MapStyle';
 import { MapOverlay, MapRenderer } from './MapRenderer';
 import { PoiLayer } from './PoiLayer';
@@ -40,6 +40,12 @@ export struct MapCanvas {
   @Param placesRev: number = 0;
   /** Tap on a place dot: its id ('' = the tap hit no dot). */
   @Event onTapPlace: (poiId: string) => void = (poiId: string) => {};
+  /** Explore "you are here": bumped by the page to centre on (focusX, focusY); focusZoom also zooms in to at least
+   * street level (locateScale). */
+  @Param focusRev: number = 0;
+  @Param focusX: number = 0;
+  @Param focusY: number = 0;
+  @Param focusZoom: boolean = false;
   @Local w: number = 0;
   @Local userMoved: boolean = false;
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
@@ -59,6 +65,34 @@ export struct MapCanvas {
     this.draw(false);
   }
 
+  @Monitor('focusRev')
+  onFocusRequest(): void {
+    if (this.applyFocus()) {
+      this.draw(false);
+    }
+  }
+
+  private focusApplied: number = 0;
+
+  /** Applies a pending focus request once the canvas has a size (a request may arrive before the first layout). */
+  private applyFocus(): boolean {
+    if (this.focusRev <= this.focusApplied || this.w <= 0 || !Number.isFinite(this.focusX) ||
+      !Number.isFinite(this.focusY)) {
+      return false;
+    }
+    this.focusApplied = this.focusRev;
+    if (!this.userMoved && this.bounds.length === 4) {
+      // Start from the fitted scale, not the placeholder camera.
+      this.cam = fitBounds(this.bounds, this.w, this.boxHeight, FIT_PAD, this.topInset, this.bottomInset);
+    }
+    // Like a pan: later scene/bounds updates keep this camera; the recenter button returns to the fit.
+    this.userMoved = true;
+    const s = this.focusZoom ? locateScale(this.cam.s) : this.cam.s;
+    const band = (this.topInset - this.bottomInset) / 2;
+    this.cam = new Camera(this.focusX, this.focusY + band / s, s);
+    return true;
+  }
+
   private palette(): MapPalette {
     try {
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
@@ -73,6 +107,9 @@ export struct MapCanvas {
 
   /** Static / follow cameras are recomputed from the inputs; a user-panned full map keeps its camera. */
   private placeCamera(): void {
+    if (this.applyFocus()) {
+      return;
+    }
     if (this.w <= 0 || (this.interactive && this.userMoved)) {
       return;
     }

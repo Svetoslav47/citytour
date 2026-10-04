@@ -1581,6 +1581,10 @@
       "value": "Tap to start a tour"
     },
     {
+      "name": "map_locate_me",
+      "value": "Show my location"
+    },
+    {
       "name": "map_places_show",
       "value": "Show all places"
     },
