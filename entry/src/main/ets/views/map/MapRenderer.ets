@@ -7,7 +7,7 @@
  */
 import { MapData } from '../../contracts/Model';
 import { Camera } from '../../core/map/Camera';
-import { svgPathOf } from '../../core/map/SvgPath';
+import { svgPathsOf } from '../../core/map/SvgPath';
 import { Log } from '../../app/Log';
 import { PlaqueState } from '../common/Plaque';
 import { defaultMinScale, LineWidth, MapPalette } from './MapStyle';
@@ -53,13 +53,13 @@ class LayerPath {
   id: string;
   polygon: boolean;
   minScale: number;
-  path: Path2D;
+  paths: Path2D[];
 
-  constructor(id: string, polygon: boolean, minScale: number, path: Path2D) {
+  constructor(id: string, polygon: boolean, minScale: number, paths: Path2D[]) {
     this.id = id;
     this.polygon = polygon;
     this.minScale = minScale;
-    this.path = path;
+    this.paths = paths;
   }
 }
 
@@ -97,7 +97,7 @@ export class MapRenderer {
     const t0 = Date.now();
     for (const l of data.layers) {
       this.layers.push(new LayerPath(l.id, l.geom === 'polygon', l.minScale > 0 ? l.minScale : defaultMinScale(l.id),
-        new Path2D(svgPathOf(l))));
+        svgPathsOf(l).map((d: string) => new Path2D(d))));
     }
     if (MapRenderer.cache.size >= 4) {
       MapRenderer.cache.clear();
@@ -162,47 +162,47 @@ export class MapRenderer {
     switch (l.id) {
       case 'water':
         ctx.fillStyle = pal.water;
-        ctx.fill(l.path);
+        l.paths.forEach((p: Path2D) => ctx.fill(p));
         return;
       case 'river':
         ctx.strokeStyle = pal.water;
         ctx.lineWidth = Math.max(4, LineWidth.RIVER_M * s) / s;
-        ctx.stroke(l.path);
+        l.paths.forEach((p: Path2D) => ctx.stroke(p));
         return;
       case 'green':
         ctx.fillStyle = pal.green;
-        ctx.fill(l.path);
+        l.paths.forEach((p: Path2D) => ctx.fill(p));
         return;
       case 'buildings':
         ctx.fillStyle = pal.buildings;
-        ctx.fill(l.path);
+        l.paths.forEach((p: Path2D) => ctx.fill(p));
         if (s > 1.5) {
           ctx.strokeStyle = pal.buildingStroke;
           ctx.lineWidth = 1 / s;
-          ctx.stroke(l.path);
+          l.paths.forEach((p: Path2D) => ctx.stroke(p));
         }
         return;
       case 'unesco':
         ctx.strokeStyle = pal.unesco;
         ctx.lineWidth = 1 / s;
         ctx.setLineDash([6 / s, 4 / s]);
-        ctx.stroke(l.path);
+        l.paths.forEach((p: Path2D) => ctx.stroke(p));
         ctx.setLineDash([]);
         return;
       case 'paths':
         ctx.strokeStyle = pal.path;
         ctx.lineWidth = clampPx(LineWidth.PATH_M, s, LineWidth.PATH_MIN_PX, LineWidth.PATH_MAX_PX) / s;
-        ctx.stroke(l.path);
+        l.paths.forEach((p: Path2D) => ctx.stroke(p));
         return;
       case 'minor':
         ctx.strokeStyle = pal.minorStreet;
         ctx.lineWidth = clampPx(LineWidth.MINOR_M, s, LineWidth.MINOR_MIN_PX, LineWidth.MINOR_MAX_PX) / s;
-        ctx.stroke(l.path);
+        l.paths.forEach((p: Path2D) => ctx.stroke(p));
         return;
       case 'major':
         ctx.strokeStyle = pal.majorStreet;
         ctx.lineWidth = clampPx(LineWidth.MAJOR_M, s, LineWidth.MAJOR_MIN_PX, LineWidth.MAJOR_MAX_PX) / s;
-        ctx.stroke(l.path);
+        l.paths.forEach((p: Path2D) => ctx.stroke(p));
         return;
       default:
         return;
