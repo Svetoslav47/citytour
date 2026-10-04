@@ -89,12 +89,21 @@ export struct MapCanvas {
     }
   }
 
+  /** A map layer finished building (incremental, off the critical frame): redraw with it. */
+  private onPathsReady = (): void => {
+    this.draw(false);
+  };
+
+  aboutToDisappear(): void {
+    this.renderer.release();
+  }
+
   private draw(fast: boolean): void {
     if (!this.ready || this.w <= 0) {
       return;
     }
     try {
-      this.renderer.setMap(this.map);
+      this.renderer.setMap(this.map, this.onPathsReady);
       const ms = this.renderer.draw(this.ctx, this.w, this.boxHeight, this.cam, this.scene, this.palette(), fast,
         false, this.places, this.lodScale);
       this.frames++;
