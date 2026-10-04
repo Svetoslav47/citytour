@@ -15,7 +15,7 @@ export enum SheetDetent {
 /** A fling at or above this speed (vp/s) picks the detent in its direction, whatever the offset. */
 export const FLING_VPS: number = 600;
 /** Peek content height (handle + next stop + distance + controls row), without the bottom safe area. */
-export const PEEK_CONTENT_H: number = 164;
+export const PEEK_CONTENT_H: number = 156;
 /** Rubber band past a detent: the sheet moves this fraction of the finger travel. */
 export const RUBBER: number = 0.25;
 /** Overlap of the sheet's rounded top over the map (the map runs this far under it). */
