@@ -67,15 +67,30 @@ export struct MapCanvas {
 
   @Monitor('focusRev')
   onFocusRequest(): void {
-    if (this.focusRev <= 0 || !Number.isFinite(this.focusX) || !Number.isFinite(this.focusY)) {
-      return;
+    if (this.applyFocus()) {
+      this.draw(false);
+    }
+  }
+
+  private focusApplied: number = 0;
+
+  /** Applies a pending focus request once the canvas has a size (a request may arrive before the first layout). */
+  private applyFocus(): boolean {
+    if (this.focusRev <= this.focusApplied || this.w <= 0 || !Number.isFinite(this.focusX) ||
+      !Number.isFinite(this.focusY)) {
+      return false;
+    }
+    this.focusApplied = this.focusRev;
+    if (!this.userMoved && this.bounds.length === 4) {
+      // Start from the fitted scale, not the placeholder camera.
+      this.cam = fitBounds(this.bounds, this.w, this.boxHeight, FIT_PAD, this.topInset, this.bottomInset);
     }
     // Like a pan: later scene/bounds updates keep this camera; the recenter button returns to the fit.
     this.userMoved = true;
     const s = this.focusZoom ? locateScale(this.cam.s) : this.cam.s;
     const band = (this.topInset - this.bottomInset) / 2;
     this.cam = new Camera(this.focusX, this.focusY + band / s, s);
-    this.draw(false);
+    return true;
   }
 
   private palette(): MapPalette {
@@ -92,6 +107,9 @@ export struct MapCanvas {
 
   /** Static / follow cameras are recomputed from the inputs; a user-panned full map keeps its camera. */
   private placeCamera(): void {
+    if (this.applyFocus()) {
+      return;
+    }
     if (this.w <= 0 || (this.interactive && this.userMoved)) {
       return;
     }

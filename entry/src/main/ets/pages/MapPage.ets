@@ -136,13 +136,13 @@ export struct MapPage {
       }
       const c: MeChoice = chooseMeSource(tourRunning, granted, switchOn);
       if (c.src === MeSource.TOUR) {
+        this.setMe(MeSource.TOUR, c.reason);   // before subscribe: it delivers the current snapshot at once
         this.unsubscribe = AppContainer.tourControl().subscribe((s: EngineSnapshot) => {
           this.demo = s.source === FixSource.DEMO;
           if (s.user !== undefined) {
             this.onMe(s.user.x, s.user.y, s.user.accuracyM, s.user.speedMps, s.user.courseDeg, this.demo);
           }
         });
-        this.setMe(MeSource.TOUR, c.reason);
       } else if (c.src === MeSource.LOCATION) {
         this.startLocation(c.reason);
       } else {
