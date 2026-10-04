@@ -78,7 +78,13 @@ const MAX_FALLBACK_LINES: number = 12;
  */
 export interface DemoControls {
   setSpeed(mult: number): void;
+  /** Fallback when the tour has no open stop: the next hold segment of the track. */
   jumpToNextStop(): void;
+  /**
+   * Moves the walker to the start of the hold segment of the tour stop `poiId` (the track's stop list maps it; a
+   * track without one uses `plannedIdx` + 1, the stop's 0-based index in the engine's planned order).
+   */
+  jumpToStop(poiId: string, plannedIdx: number): void;
   /** While it returns true the demo walk holds at a stop (re-emits jittered hold fixes). */
   setHoldPredicate(p: () => boolean): void;
   /** The last tick extended a hold ("Demo assist: waiting at stop while the story plays"). */
@@ -381,8 +387,14 @@ export class TourController implements TourControl {
     this.userEvent(EngineEventType.USER_RESUME);
   }
 
+  /**
+   * Skip / "Next stop". On the Demo walk the walker follows the tour: when the skip moved the tour on (or the tour is
+   * walking to its next stop), the walker jumps to that stop's hold segment, so dot and tour agree and the stop's story
+   * plays there (the hold predicate keeps the walker there while it plays).
+   */
   skip(): void {
     this.userEvent(EngineEventType.USER_SKIP);
+    this.demoFollowTarget('skip');
   }
 
   replay(): void {
@@ -470,6 +482,7 @@ export class TourController implements TourControl {
     }
   }
 
+  /** "Demo assist: jump to next stop": to the tour's next open stop (planned order), else the track's next hold. */
   demoJumpToNext(): void {
     const dc: DemoControls | undefined = this.demo();
     if (dc === undefined) {
@@ -477,10 +490,55 @@ export class TourController implements TourControl {
       return;
     }
     try {
-      dc.jumpToNextStop();
-      this.deps.log.info(LogEvents.LOC_SOURCE, 'kind=demo action=jump');
+      const idx: number = this.nextOpenStopIdx();
+      if (idx >= 0 && this.state !== undefined) {
+        const poi: string = this.state.stops[idx].poiId;
+        dc.jumpToStop(poi, idx);
+        this.deps.log.info(LogEvents.LOC_SOURCE, `kind=demo action=jump to=${poi} idx=${idx} why=demoAssist`);
+      } else {
+        dc.jumpToNextStop();
+        this.deps.log.info(LogEvents.LOC_SOURCE, 'kind=demo action=jump to=nextHold why=demoAssist');
+      }
     } catch (e) {
       this.deps.log.error(LogEvents.UNCAUGHT, `where=DemoControls.jumpToNextStop ${errText(e as Object)}`);
+    }
+  }
+
+  /** First open (pending / approaching) stop in the engine's planned order, -1 if none or no tour. */
+  private nextOpenStopIdx(): number {
+    const st: TourState | undefined = this.state;
+    if (st === undefined) {
+      return -1;
+    }
+    for (let i = 0; i < st.stops.length; i++) {
+      const status: StopStatus = st.stops[i].status;
+      if (status === StopStatus.PENDING || status === StopStatus.APPROACHING) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * Demo walk only: while the tour walks to its target stop (after a Skip finished the previous stop, or a Skip while
+   * walking), the walker jumps to that stop. Not while a stop's story is still active (AT_STOP), never on GPS.
+   */
+  private demoFollowTarget(why: string): void {
+    try {
+      const st: TourState | undefined = this.state;
+      if (!this.running || this.sourceKind !== FixSource.DEMO || st === undefined || st.targetIdx < 0 ||
+        (st.phase !== TourPhase.WALKING && st.phase !== TourPhase.APPROACHING)) {
+        return;
+      }
+      const dc: DemoControls | undefined = this.demo();
+      if (dc === undefined) {
+        return;
+      }
+      const poi: string = st.stops[st.targetIdx].poiId;
+      dc.jumpToStop(poi, st.targetIdx);
+      this.deps.log.info(LogEvents.LOC_SOURCE, `kind=demo action=jump to=${poi} idx=${st.targetIdx} why=${why}`);
+    } catch (e) {
+      this.deps.log.error(LogEvents.UNCAUGHT, `where=TourController.demoFollowTarget ${errText(e as Object)}`);
     }
   }
 

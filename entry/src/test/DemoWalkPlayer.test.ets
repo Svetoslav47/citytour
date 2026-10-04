@@ -1,11 +1,12 @@
 // Suite: DemoWalkPlayer.test - module under test: core/sim/DemoWalkPlayer (task A5).
 // PLAN A5 DoD: order, speed multiplier, hold while the predicate is true. Plus: JSON validation (simulated flag,
 // time order, null course -> NaN), strictly increasing timestamps while holding, jump to the next stop, the end of
-// the track, and the generated fixture (fixtures/DemoTrackMini.ets) played through at x8.
+// the track, jump to a stop by number / POI (Skip in demo mode), and the generated fixture (fixtures/DemoTrackMini.ets:
+// a plain walk with a hold at every stop) played through at x8.
 // Registered in List.test.ets by T1 (do not rename the exported function).
 import { describe, it, expect } from '@ohos/hypium';
 import {
-  DemoFix, DemoTick, DemoTrack, DemoWalkPlayer, DEMO_PROVIDER, nextDemoSpeed, normalizeDemoSpeed, parseDemoTrack
+  DemoFix, DemoStop, DemoTick, DemoTrack, DemoWalkPlayer, DEMO_PROVIDER, nextDemoSpeed, normalizeDemoSpeed, parseDemoTrack
 } from 'common';
 import { FixSource } from 'common';
 import { DEMO_MINI_EVENTS, DEMO_MINI_STOPS, demoTrackMini } from './fixtures/DemoTrackMini';
@@ -34,6 +35,15 @@ function testTrack(): DemoTrack {
     fixes.push(sample(i, stop));
   }
   const t: DemoTrack = { id: 't', name: 'test', simulated: true, generatedBy: 'test', fixes: fixes };
+  return t;
+}
+
+/** testTrack() with its stop list: stop 1 = poi_a, stop 2 = poi_b. */
+function testTrackWithStops(): DemoTrack {
+  const t = testTrack();
+  const a: DemoStop = { n: 1, poiId: 'poi_a' };
+  const b: DemoStop = { n: 2, poiId: 'poi_b' };
+  t.stops = [a, b];
   return t;
 }
 
@@ -175,6 +185,63 @@ export default function demoWalkPlayerTest() {
       expect(p.isAtEnd()).assertTrue();
     });
 
+    it('jump_to_stop_by_number_goes_forwards_and_backwards_to_the_hold_start', 0, () => {
+      const p = player();
+      expect(p.jumpToStop(2)).assertEqual(2);       // Skip from the start straight to stop 2 (the tour's target)
+      expect(p.index()).assertEqual(15);
+      expect(p.currentStop()).assertEqual(2);
+      p.tick(1000, false);
+      expect(p.index()).assertEqual(16);
+      expect(p.jumpToStop(2)).assertEqual(2);       // already in stop 2's hold: stays
+      expect(p.index()).assertEqual(16);
+      expect(p.jumpToStop(1)).assertEqual(1);       // backwards (a re-plan put stop 1 next)
+      expect(p.index()).assertEqual(5);
+      expect(p.jumpToStop(3)).assertEqual(0);       // no such stop: cursor unchanged
+      expect(p.jumpToStop(0)).assertEqual(0);
+      expect(p.jumpToStop(Number.NaN)).assertEqual(0);
+      expect(p.index()).assertEqual(5);
+    });
+
+    it('jump_to_stop_then_holds_while_the_story_plays_and_releases_after', 0, () => {
+      const p = player();
+      p.jumpToStop(2);                               // 15-17 hold at stop 2
+      const idx: number[] = [];
+      for (let k = 0; k < 6; k++) {
+        idx.push(p.tick(1000, true).index);          // story playing: loops inside the segment
+      }
+      expect(idx.every((i: number) => i >= 15 && i <= 17)).assertTrue();
+      expect(p.currentStop()).assertEqual(2);
+      let t = p.tick(1000, false);                   // story over: walks on
+      while (t.index <= 17) {
+        t = p.tick(1000, false);
+      }
+      expect(t.index).assertEqual(18);
+      expect(t.holding).assertFalse();
+    });
+
+    it('stop_number_of_poi_and_hold_stops', 0, () => {
+      const p = new DemoWalkPlayer(testTrackWithStops());
+      p.reset(T0);
+      expect(p.stopNumberOf('poi_b')).assertEqual(2);
+      expect(p.stopNumberOf('poi_a')).assertEqual(1);
+      expect(p.stopNumberOf('poi_x')).assertEqual(0);
+      expect(player().stopNumberOf('poi_a')).assertEqual(0);    // a track without a stop list
+      expect(p.holdStops().join(',')).assertEqual('1,2');
+      expect(p.jumpToStop(p.stopNumberOf('poi_b'))).assertEqual(2);
+      expect(p.index()).assertEqual(15);
+    });
+
+    it('parse_reads_the_stop_list_and_drops_bad_entries', 0, () => {
+      const json = '{"simulated":true,"fixes":[{"tRelMs":0,"lat":50,"lng":19.9}],"stops":[' +
+        '{"n":1,"poiId":"poi_a"},{"n":0,"poiId":"poi_z"},{"n":2.5,"poiId":"poi_y"},{"n":3},{"n":4,"poiId":""},' +
+        '{"n":2,"poiId":"poi_b","name":"B"}]}';
+      const t = parseDemoTrack(json).track as DemoTrack;
+      const stops = t.stops as DemoStop[];
+      expect(stops.map((s: DemoStop) => `${s.n}:${s.poiId}`).join(',')).assertEqual('1:poi_a,2:poi_b');
+      const none = parseDemoTrack('{"simulated":true,"fixes":[{"tRelMs":0,"lat":50,"lng":19.9}]}').track as DemoTrack;
+      expect((none.stops as DemoStop[]).length).assertEqual(0);
+    });
+
     it('ends_on_the_last_sample', 0, () => {
       const p = player();
       let t = p.tick(8000, false);
@@ -195,21 +262,13 @@ export default function demoWalkPlayerTest() {
       const track = demoTrackMini();
       expect(track.simulated).assertTrue();
       expect(track.fixes.length).assertLarger(600);
-      // the pass-by stop has no hold samples; dwell stops have 40
-      let passByHolds = 0;
-      let dwellHolds = 0;
-      for (const f of track.fixes) {
-        if (f.hold && f.stop === 9) {
-          passByHolds++;
-        }
-        if (f.hold && f.stop === 8) {
-          dwellHolds++;
-        }
+      // plain walk: every stop has one 40 s hold segment, in the planned order
+      for (const s of DEMO_MINI_STOPS) {
+        expect(track.fixes.filter((f: DemoFix) => f.hold && f.stop === s.n).length).assertEqual(40);
+        expect(s.mode).assertEqual('dwell');
       }
-      expect(passByHolds).assertEqual(0);
-      expect(dwellHolds).assertEqual(40);
-      expect(DEMO_MINI_STOPS[2].mode).assertEqual('passBy');
-      expect(DEMO_MINI_EVENTS.length).assertEqual(2);
+      expect(new DemoWalkPlayer(track).holdStops().join(',')).assertEqual('7,8,9,10,11');
+      expect(DEMO_MINI_EVENTS.length).assertEqual(1);           // the detour only
       const p = new DemoWalkPlayer(track);
       p.reset(T0);
       const stopsSeen: number[] = [];
@@ -224,7 +283,7 @@ export default function demoWalkPlayerTest() {
         n++;
       }
       expect(t.ended).assertTrue();
-      expect(stopsSeen.join(',')).assertEqual('7,8,10,11');
+      expect(stopsSeen.join(',')).assertEqual('7,8,9,10,11');
       expect(n).assertLess(Math.ceil(track.fixes.length / 8) + 2);
     });
   });

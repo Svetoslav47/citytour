@@ -124,6 +124,29 @@ export class DemoWalkSource implements LocationSource {
     return stop;
   }
 
+  /**
+   * TourControl.skip / demoJumpToNext on the Demo walk: moves the walker to the start of the hold segment of the tour
+   * stop `poiId` (track stop number from the track's stop list, else plannedIdx + 1) and emits that fix now.
+   * Returns the stop number reached, 0 if the track has no such stop (the walker stays).
+   */
+  jumpToStop(poiId: string, plannedIdx: number): number {
+    if (this.player === undefined) {
+      return 0;
+    }
+    const byPoi = this.player.stopNumberOf(poiId);
+    const n = byPoi > 0 ? byPoi : plannedIdx + 1;
+    const stop = this.player.jumpToStop(n);
+    Log.i(LogEvents.LOC_SOURCE, `kind=demo simulated=true action=jumpToStop poi=${poiId} stop=${stop}` +
+      ` by=${byPoi > 0 ? 'poi' : 'index'} i=${this.player.index()}`);
+    if (stop > 0) {
+      this.ended = false;
+      if (this.running) {
+        this.emit(this.player.current(), this.player.index(), false);
+      }
+    }
+    return stop;
+  }
+
   /** Starts or resumes the walk (a finished walk restarts from the beginning). */
   async start(onFix: FixListener, onError: LocationErrorListener): Promise<void> {
     this.onFix = onFix;

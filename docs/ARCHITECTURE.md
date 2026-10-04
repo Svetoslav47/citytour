@@ -590,13 +590,15 @@ export interface LocationSource {
   - It emits through `setInterval(…, 1000)` with `speedMultiplier ∈ {1, 2, 4, 8}`.
   - **Hold segments.** At stops, `hold: true` fixes are re-emitted (standing still, with jitter) **while `holdPredicate()` returns true**. The controller wires that predicate to `queue.isStoryActive()`, so at ×8 the demo doesn't race past a story.
   - The hold is announced in the UI as **"Demo assist: waiting at stop while the story plays"**.
-  - The track is **generated** from the precomputed OSRM legs in planned order. It includes:
-    - Gaussian jitter (σ = 4 m)
+  - The track is **generated** from the precomputed OSRM legs in planned order, as a **plain, predictable walk** (a live demo must not surprise the presenter). It includes:
+    - a start standing at stop 1 (the planner's fixed start), 8 s warm-up
+    - Gaussian jitter (σ = 4 m), accuracy 4-9 m
     - realistic speeds (1.3 m/s ± 0.15)
-    - 40 s dwells at most stops
-    - one stop **passed at walking speed** (shows teaser-only)
-    - one **deliberate 80 m detour** (shows off-route and re-plan)
-    - one **10 s accuracy degradation to 60 m** (shows "low accuracy, triggers paused")
+    - a 40 s dwell (`hold: true`, `stop: n`) at **every** stop
+    - a `stops` list (`n` → `poiId`) so the app can find a tour stop's hold segment
+    - on the Royal Route only, one **deliberate ~80 m detour** between stops 7 and 8 (shows off-route and a re-plan that keeps stop 8 next)
+    - a generator self-check: wherever a later stop's arrival zone is reachable, the planned next stop's zone is surely reached on the same fix (the engine then defers the later stop), so stops are visited strictly in the planned order
+  - **Skip follows the tour.** On the Demo walk, `TourController.skip()` also calls `DemoControls.jumpToStop(poiId, idx)` once the engine walks to its new target, so the walker jumps to the start of that stop's hold segment (`DemoWalkPlayer.jumpToStop`), the stop is entered there and its story plays while the hold predicate keeps the walker standing. "Demo assist: jump" goes to the next open stop the same way. On real GPS Skip only affects the audio.
 - **Same pipeline.** Both sources feed `TourController.onFix` → `FixFilter` → `TourEngine` (`FIX` event). Nothing downstream branches on `source` except UI labelling and logs.
 - **Labelling.** In DEMO mode:
   - a persistent amber **"SIMULATED LOCATION · Demo walk"** banner on every page (`views/common/SimulatedBadge.ets`)

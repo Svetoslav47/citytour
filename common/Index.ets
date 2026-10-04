@@ -39,7 +39,7 @@ export * from './src/main/ets/core/route/LegTracker';
 export { WALK_SPEED_MPS, SNAP_RADIUS_M, DEFAULT_DETOUR_FACTOR, CityPack, PlanInputs, buildCostInputs, plan } from './src/main/ets/core/route/Planner';
 export { haversineM as plannerHaversineM } from './src/main/ets/core/route/Planner';
 export * from './src/main/ets/core/settings/SettingsRules';
-export { DEMO_TICK_MS, DEMO_PROVIDER, DemoFix, DemoTrack, DemoTrackParse, parseDemoTrack, normalizeDemoSpeed, nextDemoSpeed, demoFixToFix, DemoTick, DemoWalkPlayer } from './src/main/ets/core/sim/DemoWalkPlayer';
+export { DEMO_TICK_MS, DEMO_PROVIDER, DemoFix, DemoStop, DemoTrack, DemoTrackParse, parseDemoTrack, normalizeDemoSpeed, nextDemoSpeed, demoFixToFix, DemoTick, DemoWalkPlayer } from './src/main/ets/core/sim/DemoWalkPlayer';
 export * from './src/main/ets/core/speech/ClipSelection';
 export * from './src/main/ets/core/speech/Sha256';
 export * from './src/main/ets/core/speech/VoicePolicy';

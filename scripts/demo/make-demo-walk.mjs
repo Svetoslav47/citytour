@@ -6,9 +6,8 @@
 // same pipeline as real fixes. Everything in the output is labelled simulated (`simulated: true`, `notice`).
 //
 // Input (committed, never fetched here):
-//   data/course/krakow/packs/krakow/{routes,tours,pois}.json  the Kraków course pack (task B2; downloaded by the app):
-//       the Royal Route stops, their OSRM foot legs (geometry + steps) and the walking-time matrix
-//   data/raw/osm/oldtown-tile*.osm.gz    OSM ways of ul. Floriańska, for the walk from the start point
+//   data/course/<id>/packs/<id>/{routes,tours,pois}.json  the course pack (downloaded by the app): the tour's stops,
+//       their OSRM foot legs (geometry + steps) and the walking-time matrix
 // The walk follows the pack's legs in the order the app's planner (core/route/Planner, Held-Karp: walking time +
 // dwell, fixed first and last stop) visits the stops, so the simulated walker stays on the route the app draws and
 // guides along (task A9: turn cues and off-route detection run against exactly these legs).
@@ -17,43 +16,38 @@
 //                                            the app downloads it with the course)
 //   entry/src/test/fixtures/DemoTrackMini.ets  (with --fixture, krakow only: stops 7-11 for A11's replay test)
 //
-// --course <id> (default krakow): the pack data/course/<id>/packs/<id>/ and its single tour. Only krakow (The Royal
-// Route) gets the scripted extras below (Floriańska warm-up, pass-by stop, detour, accuracy dip); every other course
-// is a plain walk: warm-up at the first stop, then the pack's legs in the planner's order with a dwell at every stop.
-//
-// The walk (defaults, all seeded and deterministic):
-//   - starts slightly off-route on ul. Floriańska at the Main Square end (a visitor coming from the square),
-//     warms up 8 s (accuracy 30 m -> 6 m), walks up Floriańska, passes St Florian's Gate at walking speed,
-//     reaches the Barbican (tour start) and then follows the pack's legs stop by stop to Wawel (planned order:
-//     the Adam Mickiewicz Monument comes before the Cloth Hall);
+// Every course gets the same PLAIN, predictable walk (a live demo must never surprise the presenter):
+//   - starts standing at stop 1 (the planner's fixed start), warms up 8 s (accuracy 30 m -> 6 m);
+//   - then the pack's legs stop by stop in the planner's order, so stop n is always reached before stop n+1;
+//   - a 40 s dwell at EVERY stop (the last one too), flagged `hold: true` + `stop: n` (the player extends a hold
+//     while the story plays, and the app's Skip moves the walker to the start of a stop's hold segment), at the
+//     leg's end point (the OSRM snap of the stop), or `dwellTowardPoiM` metres from it towards the stop's POI;
 //   - walking speed 1.3 +- 0.15 m/s per leg, gentle per-second variation, accelerates from stops, slows at corners;
 //   - GPS-like error: AR(1)-correlated Gaussian jitter, sigma 4 m, reported accuracy 4-9 m;
-//   - course over ground from the direction of motion (+- 4 deg), speed ~0 and course unknown while standing;
-//   - 40 s dwell at every stop, flagged `hold: true` (the player extends a hold while the story plays), at the
-//     leg's end point (the OSRM snap of the stop), or `dwellTowardPoiM` metres from it towards the stop's POI;
-//   - St Andrew's Church (stop 9) is passed at walking speed (no dwell): the teaser-only case;
-//   - one ~80 m detour off Grodzka between stops 7 and 8: the off-route + re-plan case;
-//   - 10 s of degraded accuracy (60 m, sigma 25 m) in ul. Kanonicza between stops 10 and 11.
+//   - course over ground from the direction of motion (+- 4 deg), speed ~0 and course unknown while standing.
+// The Royal Route (krakow) adds exactly one scripted moment that does not change the order: a ~80 m detour off
+// Grodzka between stops 7 and 8 (off-route warning -> re-plan, which keeps stop 8 as the next stop).
+// Self-check (the script fails instead of writing a confusing track): wherever a LATER stop's arrival zone (trigger
+// radius + accuracy allowance, 2 m margin) is reachable, the planned next stop's own zone is surely reached on the
+// same fix (the engine then makes the later stop wait), so the stops can only be marked visited in the planned order.
 //
-// Usage: node scripts/demo/make-demo-walk.mjs [--course ID] [--seed N] [--start florianska|barbican] [--out FILE] [--fixture]
+// Usage: node scripts/demo/make-demo-walk.mjs [--course ID] [--seed N] [--out FILE] [--fixture]
 // Node 22+, standard library only.
 
 import fs from 'node:fs';
 import path from 'node:path';
-import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { unproject } from '../pack/projection.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DEFAULT_COURSE = 'krakow';
 const DEFAULT_TOUR_ID = 'royal-route';
-const OSM_DIR = 'data/raw/osm';
 const FIXTURE_FILE = 'entry/src/test/fixtures/DemoTrackMini.ets';
 
 // ---- parameters (written into the output under "params") ----
 const P = {
-  seed: 20261003,
-  start: 'florianska',
+  seed: 20261004,          // any seed must pass the order self-check below (20261003 grazed St Adalbert's zone)
+  start: 'first-stop',
   walkMeanMps: 1.3,
   walkSdMps: 0.15,
   walkMinMps: 1.0,
@@ -63,27 +57,22 @@ const P = {
   courseNoiseDeg: 4,
   dwellS: 40,
   warmupS: 8,
-  passByStop: 9,           // St Andrew's Church
   detourAfterStop: 7,      // on the leg 7 -> 8 (ul. Grodzka)
   detourAtFraction: 0.45,
   detourOutM: 80,
-  poorAccAfterStop: 10,    // on the leg 10 -> 11 (ul. Kanonicza)
-  poorAccAtFraction: 0.2,
-  poorAccS: 10,
-  poorAccM: 60,
-  poorAccSigmaM: 25,
   fixtureFromStop: 7,
   detourSide: 'left',      // east of Grodzka (towards stop 8: the re-plan keeps stop 8 as the next stop)
   // Sts Peter and Paul (stop 8) and St Andrew's (stop 9) are neighbours on Grodzka: the OSRM snap of stop 8 is 39 m
-  // from St Andrew's POI (trigger radius 35 + accuracy allowance), so a walker waiting there would already "arrive"
-  // at the pass-by stop. They wait in the church forecourt instead (30 m from the snap towards the POI: 10 m from
-  // stop 8, 58 m from St Andrew's) and walk back to Grodzka when the story is over.
-  dwellTowardPoiM: { 8: 30 }
+  // from St Andrew's POI. The walker waits in the church forecourt instead (30 m from the snap towards the POI:
+  // 10 m from stop 8, 58 m from St Andrew's) and walks back to Grodzka when the story is over.
+  dwellTowardPoiM: { 8: 30 },
+  // Order self-check margin: the check runs on the exact emitted fixes (jitter included), so a small margin covers
+  // the engine's rounding; the closest case is the Royal Route's walk into the Main Square towards St Mary's (stop 3),
+  // which passes 2.5 m outside the Cloth Hall's (stop 5, R = 70 m) zone while already inside St Mary's.
+  orderMarginM: 2
 };
-// OSM ways of ul. Floriańska, ordered from the Main Square to St Florian's Gate (data/raw/osm, ODbL).
-const FLORIANSKA_WAYS = ['3989492', '234974342', '359169341', '1013618099'];
-// Start: the OSM node of Floriańska nearest to this point (about 60 m before the Main Square corner).
-const FLORIANSKA_START = { lat: 50.06260, lng: 19.93963 };
+const ACC_ALLOWANCE_CAP_M = 15;     // core/tour/TourConfig.accuracyAllowanceCapM
+const DEFAULT_TRIGGER_RADIUS_M = 35; // core/tour/TourConfig.defaultTriggerRadiusM
 
 // ---- CLI ----
 const argv = process.argv.slice(2);
@@ -94,26 +83,23 @@ for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === '--course') { courseId = String(argv[++i]); }
   else if (a === '--seed') { P.seed = Number(argv[++i]); }
-  else if (a === '--start') { P.start = argv[++i]; }
   else if (a === '--out') { outFile = argv[++i]; }
   else if (a === '--fixture') { writeFixture = true; }
   else if (a === '-h' || a === '--help') {
-    console.log('node scripts/demo/make-demo-walk.mjs [--course ID] [--seed N] [--start florianska|barbican] [--out FILE] [--fixture]');
+    console.log('node scripts/demo/make-demo-walk.mjs [--course ID] [--seed N] [--out FILE] [--fixture]');
     process.exit(0);
   } else { die(`unknown argument ${a}`); }
 }
 if (!Number.isInteger(P.seed)) { die('--seed must be an integer'); }
-if (P.start !== 'florianska' && P.start !== 'barbican') { die('--start must be florianska or barbican'); }
 if (!/^[a-z0-9][a-z0-9-]*$/.test(courseId)) { die(`--course ${courseId}: expected a lowercase id like krakow-scholars`); }
 const PACK_DIR = `data/course/${courseId}/packs/${courseId}`;
 if (outFile === null) { outFile = `data/course/${courseId}/demo-walk.json`; }
-// The scripted extras exist only for the Royal Route (krakow); other courses get a plain walk (see the header).
+// The detour exists only on the Royal Route (krakow); other courses are the plain walk alone (see the header).
 const ROYAL = courseId === DEFAULT_COURSE;
 if (!ROYAL) {
   if (writeFixture) { die('--fixture is only for the default course krakow'); }
-  Object.assign(P, { start: 'first-stop', passByStop: 0, detourAfterStop: 0, detourAtFraction: 0, detourOutM: 0,
-    poorAccAfterStop: 0, poorAccAtFraction: 0, poorAccS: 0, poorAccM: 0, poorAccSigmaM: 0, fixtureFromStop: 0,
-    detourSide: 'none', dwellTowardPoiM: {} });
+  Object.assign(P, { detourAfterStop: 0, detourAtFraction: 0, detourOutM: 0, fixtureFromStop: 0, detourSide: 'none',
+    dwellTowardPoiM: {} });
 }
 
 function die(msg) {
@@ -254,68 +240,10 @@ const stops = order.map((id, k) => {
   return { n: k + 1, poiId: id, name: poi.names?.en || poi.names?.pl || id, lat: poi.lat, lng: poi.lng, p };
 });
 
-function florianskaPolyline() {
-  const nodes = new Map();
-  const ways = new Map();
-  let files = [];
-  try {
-    files = fs.readdirSync(path.join(ROOT, OSM_DIR)).filter((f) => f.endsWith('.osm.gz')).sort();
-  } catch (e) {
-    die(`cannot list ${OSM_DIR}: ${e.message}`);
-  }
-  for (const f of files) {
-    const xml = zlib.gunzipSync(fs.readFileSync(path.join(ROOT, OSM_DIR, f))).toString('utf8');
-    for (const m of xml.matchAll(/<node id="(\d+)"[^>]*?lat="(-?[\d.]+)" lon="(-?[\d.]+)"/g)) {
-      nodes.set(m[1], { lat: Number(m[2]), lng: Number(m[3]) });
-    }
-    for (const m of xml.matchAll(/<way id="(\d+)"[^>]*>([\s\S]*?)<\/way>/g)) {
-      if (FLORIANSKA_WAYS.includes(m[1])) {
-        ways.set(m[1], [...m[2].matchAll(/<nd ref="(\d+)"/g)].map((x) => x[1]));
-      }
-    }
-  }
-  // Chain the ways through their shared end nodes (each way may run either direction).
-  let chain = [];
-  for (const id of FLORIANSKA_WAYS) {
-    const nds = ways.get(id);
-    if (!nds) { die(`OSM way ${id} (ul. Floriańska) not found in ${OSM_DIR}`); }
-    if (chain.length === 0) { chain = [...nds]; continue; }
-    const head = chain[0];
-    const tail = chain[chain.length - 1];
-    if (nds[0] === tail) { chain = [...chain, ...nds.slice(1)]; }
-    else if (nds[nds.length - 1] === tail) { chain = [...chain, ...[...nds].reverse().slice(1)]; }
-    else if (nds[nds.length - 1] === head) { chain = [...nds.slice(0, -1), ...chain]; }
-    else if (nds[0] === head) { chain = [...[...nds].reverse().slice(0, -1), ...chain]; }
-    else { die(`OSM way ${id} does not connect to the other Floriańska ways`); }
-  }
-  const pts = [];
-  for (const nd of chain) {
-    const ll = nodes.get(nd);
-    if (!ll) { die(`OSM node ${nd} of ul. Floriańska not found`); }
-    const p = toXY(ll.lat, ll.lng);
-    if (pts.length === 0 || dist(pts[pts.length - 1], p) > 0.5) { pts.push(p); }
-  }
-  // Orient from the Main Square (south) to St Florian's Gate (north).
-  if (pts[0].y > pts[pts.length - 1].y) { pts.reverse(); }
-  const s = toXY(FLORIANSKA_START.lat, FLORIANSKA_START.lng);
-  let k = 0;
-  for (let i = 1; i < pts.length; i++) {
-    if (dist(s, pts[i]) < dist(s, pts[k])) { k = i; }
-  }
-  return pts.slice(k);
-}
-
 // ---- the plan: a list of pieces ----
-// walk: { pts: XY[], toStop: n | 0 }   dwell: { stop: n, s: seconds }
+// warmup: { at: XY, s }   walk: { pts: XY[], toStop: n }   dwell: { stop: n, s: seconds }
 const pieces = [];
-if (P.start === 'florianska') {
-  const up = florianskaPolyline();
-  pieces.push({ kind: 'warmup', at: up[0], s: P.warmupS });
-  // Up Floriańska through the gate to the Barbican (stop 1).
-  pieces.push({ kind: 'walk', pts: [...up, stops[0].p], toStop: 1 });
-} else {
-  pieces.push({ kind: 'warmup', at: stops[0].p, s: P.warmupS });
-}
+pieces.push({ kind: 'warmup', at: stops[0].p, s: P.warmupS });
 pieces.push({ kind: 'dwell', stop: 1, s: P.dwellS });
 /** The incoming leg, extended `dwellTowardPoiM` metres from its end towards the stop's POI where asked. */
 function legToStop(k) {
@@ -337,10 +265,8 @@ for (let k = 1; k < stops.length; k++) {
   let pts = legToStop(k);
   if (dist(stops[k - 1].p, pts[0]) > 0.5) { pts = [stops[k - 1].p, ...pts]; }   // from where the walker waited
   if (k === P.detourAfterStop) { pts = withDetour(pts); }
-  const piece = { kind: 'walk', pts, toStop: stops[k].n };
-  if (k === P.poorAccAfterStop) { piece.poorAccAt = P.poorAccAtFraction; }
-  pieces.push(piece);
-  if (stops[k].n !== P.passByStop) { pieces.push({ kind: 'dwell', stop: stops[k].n, s: P.dwellS }); }
+  pieces.push({ kind: 'walk', pts, toStop: stops[k].n });
+  pieces.push({ kind: 'dwell', stop: stops[k].n, s: P.dwellS });
 }
 
 /** Leaves the polyline at a fraction of its length, walks ~detourOutM sideways and back, rejoins 30 m later. */
@@ -390,7 +316,7 @@ function sharpTurnNear(pts, cum, s, win) {
 
 // ---- simulation at 1 Hz ----
 const fixes = [];
-const stopLog = new Map(); // n -> { arrivalMs, departMs, mode }
+const stopLog = new Map(); // n -> { arrivalMs, departMs, mode }: the stop's hold segment
 const events = [];
 let t = 0;
 const jit = { x: 0, y: 0 };
@@ -430,9 +356,7 @@ for (const piece of pieces) {
     events.push({ kind: 'warmup', fromMs: 0, toMs: (t - 1) * 1000, note: 'standing at the start, accuracy 30 m -> 6 m' });
   } else if (piece.kind === 'dwell') {
     const s = stops[piece.stop - 1];
-    if (!stopLog.has(piece.stop)) { stopLog.set(piece.stop, { arrivalMs: t * 1000, departMs: t * 1000, mode: 'dwell' }); }
-    stopLog.get(piece.stop).departMs = (t + piece.s - 1) * 1000;
-    stopLog.get(piece.stop).mode = 'dwell';
+    stopLog.set(piece.stop, { arrivalMs: t * 1000, departMs: (t + piece.s - 1) * 1000, mode: 'dwell' });
     let wander = { x: 0, y: 0 };
     for (let k = 0; k < piece.s; k++) {
       stepJitter(P.jitterSigmaM, P.jitterRho);
@@ -445,7 +369,6 @@ for (const piece of pieces) {
     const cum = cumulative(pts);
     const total = cum[cum.length - 1];
     const legSpeed = clamp(P.walkMeanMps + P.walkSdMps * gauss(), P.walkMinMps, P.walkMaxMps);
-    const poorFrom = piece.poorAccAt !== undefined ? Math.round((total * piece.poorAccAt) / legSpeed) : -1;
     let s = 0;
     let k = 0;
     let vNoise = 0;
@@ -460,21 +383,10 @@ for (const piece of pieces) {
       const back = pointAt(pts, cum, Math.max(0, s - 4)).p;
       const ahead = pointAt(pts, cum, Math.min(total, s + 2)).p;
       const course = bearing(back, ahead) + P.courseNoiseDeg * gauss();
-      const poor = poorFrom >= 0 && k >= poorFrom && k < poorFrom + P.poorAccS;
-      if (poor) {
-        stepJitter(P.poorAccSigmaM, 0.7);
-      } else {
-        stepJitter(P.jitterSigmaM, P.jitterRho);
-      }
-      const acc = poor ? P.poorAccM + 3 * gauss() : normalAccuracy();
-      emit(here, v + 0.08 * gauss(), course, { acc, crsAcc: poor ? 45 + 5 * Math.abs(gauss()) : 8 + 3 * Math.abs(gauss()) });
-      if (poor && k === poorFrom) {
-        events.push({ kind: 'poorAccuracy', fromMs: (t - 1) * 1000, toMs: (t - 2 + P.poorAccS) * 1000,
-          accuracyM: P.poorAccM, note: `leg ${piece.toStop - 1}->${piece.toStop}` });
-      }
+      stepJitter(P.jitterSigmaM, P.jitterRho);
+      emit(here, v + 0.08 * gauss(), course, { acc: normalAccuracy(), crsAcc: 8 + 3 * Math.abs(gauss()) });
       k++;
     }
-    stopLog.set(piece.toStop, { arrivalMs: (t - 1) * 1000, departMs: (t - 1) * 1000, mode: 'passBy' });
   }
 }
 
@@ -510,6 +422,58 @@ if (P.detourAfterStop > 0) {
 }
 events.sort((a, b) => a.fromMs - b.fromMs);
 
+// ---- order self-check: only the planned next stop can be entered ----
+// The engine (core/tour/TourEngine.checkArrivalAndApproach) enters any open stop whose geofence confirms, except that
+// a different stop waits while the planned next stop (the target) is itself inside its zone on the same fix (its
+// entry streak is running). With k = the stop the walker is heading for or standing at (the warm-up counts as
+// heading for stop 1), the target is k, or k + 1 once k has been entered and its story is over. Per fix:
+//   (a) if any stop j > k is enterable, k must surely be inside its zone (target k: the others wait);
+//   (b) once k may have been entered (the walker has been in k's zone, or stands at k), if any stop j > k + 1 is
+//       enterable, k + 1 must surely be inside its zone (target k + 1: the others wait).
+// "Enterable" is the engine's accuracy-aware entry distance d - min(acc, 15) <= R (+ margin), "surely inside" the
+// same <= R - margin. The check runs per fix, so it also holds when the player skips samples at x2..x8.
+const zoneOf = stops.map((s) => {
+  const poi = poiById.get(s.poiId);
+  const r = Number.isFinite(poi?.triggerRadiusM) && poi.triggerRadiusM > 0 ? poi.triggerRadiusM : DEFAULT_TRIGGER_RADIUS_M;
+  return { r, p: toXY(s.lat, s.lng) };
+});
+const orderProblems = [];
+let minClearanceM = Infinity;
+{
+  let heading = 1;
+  let mayHaveEntered = false;
+  for (let i = 0; i < fixes.length; i++) {
+    const f = fixes[i];
+    const standing = f.hold === true;
+    if (!standing && i > 0 && fixes[i - 1].hold === true) {   // left stop k's hold: heading for k + 1
+      heading = fixes[i - 1].stop + 1;
+      mayHaveEntered = false;
+    }
+    if (standing && f.stop !== heading) { die(`hold of stop ${f.stop} while heading for stop ${heading}`); }
+    const allowance = Math.min(f.accuracyM, ACC_ALLOWANCE_CAP_M);
+    const here = toXY(f.lat, f.lng);
+    const entryOver = (n) => dist(here, zoneOf[n - 1].p) - allowance - zoneOf[n - 1].r;   // <= 0: enterable
+    const sure = (n) => n <= stops.length && entryOver(n) <= -P.orderMarginM;
+    if (standing || entryOver(heading) <= P.orderMarginM) { mayHaveEntered = true; }
+    const check = (from, guard, why) => {
+      if (sure(guard)) { return; }
+      for (let j = from; j <= stops.length; j++) {
+        const clearance = entryOver(j);
+        minClearanceM = Math.min(minClearanceM, clearance);
+        if (clearance < P.orderMarginM && orderProblems.length < 10) {
+          orderProblems.push(`t=${f.tRelMs / 1000}s ${standing ? 'at' : 'to'} stop ${heading} (${why}): ` +
+            `stop ${j} (${stops[j - 1].name}) zone only ${clearance.toFixed(1)} m away`);
+        }
+      }
+    };
+    check(heading + 1, heading, 'a');
+    if (mayHaveEntered) { check(heading + 2, heading + 1, 'b'); }
+  }
+}
+if (orderProblems.length > 0) {
+  die(`a later stop could be entered before the planned one:\n  ${orderProblems.join('\n  ')}`);
+}
+
 // ---- output ----
 let walkedM = 0;
 for (const pc of pieces) {
@@ -521,10 +485,10 @@ const track = {
   simulated: true,
   notice: 'SIMULATED location track for the emulator demo (the emulator GPS is a fixed point). Not recorded GPS.',
   generatedBy: 'scripts/demo/make-demo-walk.mjs',
-  source: `${PACK_DIR}/routes.json (the pack's OSRM foot legs in the planner's order, OSM data ODbL)` +
-    (ROYAL ? ` + ul. Floriańska from ${OSM_DIR} (ODbL)` : ''),
+  source: `${PACK_DIR}/routes.json (the pack's OSRM foot legs in the planner's order, OSM data ODbL)`,
   params: P,
-  summary: { fixes: fixes.length, durationS: fixes.length - 1, walkedM: Math.round(walkedM) },
+  summary: { fixes: fixes.length, durationS: fixes.length - 1, walkedM: Math.round(walkedM),
+    minLaterStopClearanceM: Number(minClearanceM.toFixed(1)) },
   stops: stops.map((s) => ({
     n: s.n, poiId: s.poiId, name: s.name, lat: s.lat, lng: s.lng,
     mode: stopLog.get(s.n).mode, arrivalMs: stopLog.get(s.n).arrivalMs, departMs: stopLog.get(s.n).departMs
@@ -564,7 +528,7 @@ function fmt(sec) {
 }
 
 if (writeFixture) {
-  // Stops >= fixtureFromStop (detour, pass-by, accuracy dip, Wawel), times rebased to 0. Compact rows:
+  // Stops >= fixtureFromStop (the detour, then a dwell at every stop to Wawel), times rebased to 0. Compact rows:
   // [tRelMs, lat, lng, accuracyM, speedMps, courseDeg (-1 = unknown), hold stop number (0 = moving)].
   const t0 = stopLog.get(P.fixtureFromStop).arrivalMs;
   const rows = fixes.filter((f) => f.tRelMs >= t0).map((f) =>
@@ -572,7 +536,7 @@ if (writeFixture) {
   const fixtureStops = track.stops.filter((s) => s.n >= P.fixtureFromStop);
   const miniStops = fixtureStops.map((s) =>
     `  { n: ${s.n}, poiId: '${s.poiId}', name: '${s.name.replace(/'/g, '\\\'')}', lat: ${s.lat}, lng: ${s.lng}, ` +
-    `mode: '${s.mode}', arrivalMs: ${s.arrivalMs - t0}, departMs: ${s.departMs - t0} }`);
+    `triggerRadiusM: ${zoneOf[s.n - 1].r}, mode: '${s.mode}', arrivalMs: ${s.arrivalMs - t0}, departMs: ${s.departMs - t0} }`);
   // The pack's legs between every ordered pair of the fixture stops (a re-plan may pick any of them) and their
   // walking matrix, verbatim from routes.json (pack projection, like RouteLeg.geometry in the app).
   const MAN = { 'depart': 'DEPART', 'turn': 'TURN', 'continue': 'CONTINUE', 'new name': 'NEW_NAME', 'fork': 'FORK',
@@ -597,11 +561,11 @@ if (writeFixture) {
     `  { kind: '${e.kind}', fromMs: ${e.fromMs - t0}, toMs: ${e.toMs - t0} }`);
   const ets = `/*
  * GENERATED by \`node scripts/demo/make-demo-walk.mjs --fixture\` (seed ${P.seed}). Do not edit by hand.
- * SIMULATED: the last part of the Royal Route Demo walk (stops ${P.fixtureFromStop}-11: the ~80 m detour, the pass-by
- * stop ${P.passByStop}, the 10 s accuracy dip to ${P.poorAccM} m), times rebased to 0, for the replay test (A11).
+ * SIMULATED: the last part of the Royal Route Demo walk (stops ${P.fixtureFromStop}-11: a dwell at every stop, the ~80 m
+ * detour between stops ${P.detourAfterStop} and ${P.detourAfterStop + 1}), times rebased to 0, for the replay test (A11).
  * Row = [tRelMs, lat, lng, accuracyM, speedMps, courseDeg (-1 = unknown), hold stop number (0 = moving)].
  */
-import { DemoFix, DemoTrack } from 'common';
+import { DemoFix, DemoStop, DemoTrack } from 'common';
 import { Maneuver, RouteLeg, RouteStep } from 'common';
 
 export interface MiniStop {
@@ -610,13 +574,14 @@ export interface MiniStop {
   name: string;
   lat: number;
   lng: number;
-  mode: string;      // 'dwell' | 'passBy'
+  triggerRadiusM: number;  // the pack POI's arrival radius (the replay uses the app's real geofences)
+  mode: string;      // 'dwell' (every stop)
   arrivalMs: number;
   departMs: number;
 }
 
 export interface MiniEvent {
-  kind: string;      // 'detour' | 'poorAccuracy'
+  kind: string;      // 'detour'
   fromMs: number;
   toMs: number;
 }
@@ -669,7 +634,10 @@ export function demoTrackMini(): DemoTrack {
   }
   const t: DemoTrack = {
     id: 'royal-route-walk-mini', name: 'Royal Route demo walk (stops ${P.fixtureFromStop}-11)', simulated: true,
-    generatedBy: 'scripts/demo/make-demo-walk.mjs --fixture', fixes: fixes
+    generatedBy: 'scripts/demo/make-demo-walk.mjs --fixture', fixes: fixes, stops: DEMO_MINI_STOPS.map((s: MiniStop) => {
+      const d: DemoStop = { n: s.n, poiId: s.poiId };
+      return d;
+    })
   };
   return t;
 }
