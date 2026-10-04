@@ -15,6 +15,7 @@ export * from './src/main/ets/core/geo/FixFilter';
 export * from './src/main/ets/core/geo/GeoMath';
 export * from './src/main/ets/core/geo/GridIndex';
 export * from './src/main/ets/core/geo/Projection';
+export * from './src/main/ets/core/haptics/CueMap';
 export * from './src/main/ets/core/hud/HudRows';
 export * from './src/main/ets/core/map/Camera';
 export * from './src/main/ets/core/map/PoiDots';
@@ -48,6 +49,7 @@ export * from './src/main/ets/core/tour/TourConfig';
 export * from './src/main/ets/core/tour/TourEngine';
 export * from './src/main/ets/core/tour/TourSummary';
 export * from './src/main/ets/core/tour/TriggerPolicy';
+export * from './src/main/ets/core/watch/Glance';
 export * from './src/main/ets/core/widget/CardModel';
 export { FIX_TIMEOUT_MS, NO_FIRST_FIX_MS, TICK_MS, SNAPSHOT_MIN_INTERVAL_MS, OUT_OF_AREA_KM, ORIGIN_MAX_AGE_MS, ORIGIN_WAIT_MS, PLATFORM_START_TIMEOUT_MS, DemoControls, TourControllerDeps, TourOptions, kmOutsideBbox, predictNextUtteranceId, openStopIds, LOC_ERR_PERMISSION, LOC_ERR_SWITCH_OFF, locationErrorIssue, voiceIssueFor, enStatusOf, TourController } from './src/main/ets/control/TourController';
 // TourController.normalizeDemoSpeed (NaN => 4) differs from DemoWalkPlayer's (NaN => 1): re-exported renamed.

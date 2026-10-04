@@ -16,8 +16,8 @@ The user owns the decisions recorded here. Unresolved fields may remain blank; d
 
 - Platform: HarmonyOS (API 20+; compiled against 6.1.1(24))
 - API level: 20 or later
-- Device type: phone
-- Validation target: DevEco emulator "Pura 90", HarmonyOS 6.1.1(24); physical device from the Huawei mentors if available
+- Device type: phone, plus a standalone watch app (wearable, Huawei WATCH 5 class; user decision 2026-10-03, docs/research/WATCH.md)
+- Validation target: DevEco emulator "Pura 90", HarmonyOS 6.1.1(24); watch: DevEco emulator "Watch 5" (wearable, 6.1.1(24)); physical device from the Huawei mentors if available
 
 ## Intended user flow
 

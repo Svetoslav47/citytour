@@ -86,7 +86,7 @@ These rules add to the template guidance above. Where they overlap, the stricter
 
 ### Branches and worktrees
 
-- `main` is the **demo/judging branch**. It must build and pass the emulator smoke run (`devecocli run --device "Pura 90"` → `Smoke: PASS`) at every commit.
+- `main` is the **demo/judging branch**. It must build and pass the emulator smoke run (`devecocli run --module entry --device "Pura 90"` → `Smoke: PASS`) at every commit.
 - All feature, capability-integration and experiment work happens on a branch, each checked out in **its own git worktree** so parallel agents and teammates never share a working directory:
   - `feat/<slug>` for user-facing features, `cap/<slug>` for platform-capability integrations (location, sensors, widgets, TTS, wearable), `exp/<slug>` for throwaway spikes, `fix/<slug>` for bug fixes, `docs/<slug>` for larger documentation changes.
   - Create: `scripts/wt.sh new feat/<slug>`. It creates the worktree at `../citytour-wt/<slug>` from the latest `main`. List: `scripts/wt.sh list`. Remove after merge: `scripts/wt.sh rm <slug>`.

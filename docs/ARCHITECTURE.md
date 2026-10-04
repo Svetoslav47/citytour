@@ -992,7 +992,7 @@ Every row has a UI state, a log line, and **no crash**. All platform calls are w
 ### 11.2 Emulator smoke (`scripts/smoke.sh`)
 
 ```bash
-devecocli run --device "Pura 90"                       # must print Smoke: PASS
+devecocli run --module entry --device "Pura 90"        # must print Smoke: PASS
 devecocli ui click --device "Pura 90" --id btnDemoWalk  # Home → start Demo walk (component .id('btnDemoWalk')), x8 speed preset
 sleep 90
 devecocli log --device "Pura 90" --bundle-name com.hackyeah.citytour --keyword CityTour --from 120s > /tmp/ct.log
