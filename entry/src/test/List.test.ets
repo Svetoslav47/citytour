@@ -35,7 +35,6 @@ import poiDotsTest from './PoiDots.test';
 import coverRulesTest from './CoverRules.test';
 import cityPackTest from './CityPack.test';
 import streamRulesTest from './StreamRules.test';
-import svgPathTest from './SvgPath.test';
 import homeRulesTest from './HomeRules.test';
 import cueMapTest from './CueMap.test';
 import glanceTest from './Glance.test';
@@ -75,7 +74,6 @@ export default function testsuite() {
   coverRulesTest();
   cityPackTest();
   streamRulesTest();
-  svgPathTest();
   homeRulesTest();
   cueMapTest();
   glanceTest();

@@ -19,7 +19,6 @@ export * from './src/main/ets/core/haptics/CueMap';
 export * from './src/main/ets/core/hud/HudRows';
 export * from './src/main/ets/core/map/Camera';
 export * from './src/main/ets/core/map/PoiDots';
-export * from './src/main/ets/core/map/SvgPath';
 export * from './src/main/ets/core/map/WalkDisplay';
 export * from './src/main/ets/core/notify/NotifyText';
 export * from './src/main/ets/core/onboarding/OnboardingRules';

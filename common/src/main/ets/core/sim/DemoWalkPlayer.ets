@@ -185,14 +185,6 @@ export interface DemoTick {
 }
 
 export class DemoWalkPlayer {
-  /** App demo walks: also stand still between the track's stop segments while a story plays (off by default, so
-   * the replay tests keep the track's own timing). */
-  private holdAnywhere: boolean = false;
-
-  setHoldAnywhere(on: boolean): void {
-    this.holdAnywhere = on;
-  }
-
   private readonly track: DemoTrack;
   private idx: number = 0;
   private carryMs: number = 0;
@@ -263,16 +255,6 @@ export class DemoWalkPlayer {
     this.simMs += step;
     this.carryMs += step;
     const fixes = this.track.fixes;
-    // A story is playing while the walker is between the track's own stop segments (e.g. a stop it passes on the
-    // way to the planned next one): stand still at the current sample until the story ends, so every story is
-    // heard where it belongs instead of the walker moving on mid-story.
-    if (this.holdAnywhere && holdActive && !fixes[this.idx].hold && this.idx < fixes.length - 1) {
-      this.carryMs = 0;
-      const still: DemoTick = {
-        fix: demoFixToFix(fixes[this.idx], this.startMs + this.simMs), index: this.idx, holding: true, ended: false
-      };
-      return still;
-    }
     let holding = false;
     let guard = 0;
     while (guard < 100000) {

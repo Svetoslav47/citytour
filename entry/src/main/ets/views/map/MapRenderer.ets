@@ -5,9 +5,8 @@
  * (`fast`) only water, green, major streets and the overlays are drawn. Returns the frame time in ms
  * (logged as MAP_FRAME by MapCanvas). Canvas: doc ts-components-canvas-canvas (CanvasRenderingContext2D, Path2D).
  */
-import { MapData } from 'common';
+import { MapData, MapFeature, MapLayer } from 'common';
 import { Camera } from 'common';
-import { svgPathsOf } from 'common';
 import { Log } from '../../app/Log';
 import { PlaqueState } from '../common/Plaque';
 import { defaultMinScale, LineWidth, MapPalette } from './MapStyle';
@@ -53,13 +52,13 @@ class LayerPath {
   id: string;
   polygon: boolean;
   minScale: number;
-  paths: Path2D[];
+  path: Path2D;
 
-  constructor(id: string, polygon: boolean, minScale: number, paths: Path2D[]) {
+  constructor(id: string, polygon: boolean, minScale: number, path: Path2D) {
     this.id = id;
     this.polygon = polygon;
     this.minScale = minScale;
-    this.paths = paths;
+    this.path = path;
   }
 }
 
@@ -70,40 +69,147 @@ function clampPx(metres: number, s: number, minPx: number, maxPx: number): numbe
 
 const MAP_FRAME: string = 'MAP_FRAME';
 
-export class MapRenderer {
-  private layers: LayerPath[] = [];
-  private source: MapData | undefined = undefined;
-  /** Built paths per MapData object (a few maps per session: the city map, a course's own map). */
-  private static cache: Map<MapData, LayerPath[]> = new Map<MapData, LayerPath[]>();
+/** Pack geometry: decimetres. */
+const DM: number = 10;
+/** UI-thread budget per slice while building paths; the rest continues on the next macrotask. */
+const SLICE_MS: number = 8;
 
-  /** Builds the layer paths once per MapData object. */
-  setMap(data: MapData | undefined): void {
+/**
+ * The Path2Ds of one map, built incrementally: a slice of features at a time (moveTo/lineTo, one bridge call per
+ * point), yielding to the UI thread between slices. A one-shot build took > 6 s on the emulator and the system killed
+ * the app (THREAD_BLOCK_6S); the SVG-string constructor (Path2D(d)) was fast but drew the base map only partly.
+ * Layers become visible one by one as they finish; every MapCanvas showing this map is notified.
+ */
+class PathBuild {
+  layers: LayerPath[] = [];
+  done: boolean = false;
+  private listeners: Set<() => void> = new Set<() => void>();
+
+  listen(f: () => void): void {
+    this.listeners.add(f);
+  }
+
+  unlisten(f: () => void): void {
+    this.listeners.delete(f);
+  }
+
+  start(data: MapData): void {
+    const t0 = Date.now();
+    let li = 0;
+    let fi = 0;
+    let path: Path2D = new Path2D();
+    const step = (): void => {
+      const sliceStart = Date.now();
+      try {
+        while (li < data.layers.length) {
+          const l: MapLayer = data.layers[li];
+          const polygon = l.geom === 'polygon';
+          while (fi < l.features.length) {
+            addFeature(path, l.features[fi], polygon);
+            fi++;
+            if ((fi & 63) === 0 && Date.now() - sliceStart > SLICE_MS) {
+              setTimeout(step, 0);
+              return;
+            }
+          }
+          this.layers.push(new LayerPath(l.id, polygon, l.minScale > 0 ? l.minScale : defaultMinScale(l.id), path));
+          this.notify();
+          li++;
+          fi = 0;
+          path = new Path2D();
+        }
+      } catch (e) {
+        Log.e(MAP_FRAME, `event=paths_fail layer=${li} ${Log.errKv(e as Object)}`);
+      }
+      this.done = true;
+      Log.i(MAP_FRAME, `event=paths_built layers=${this.layers.length} ms=${Date.now() - t0}`);
+      this.notify();
+    };
+    step();
+  }
+
+  private notify(): void {
+    this.listeners.forEach((f: () => void) => {
+      try {
+        f();
+      } catch (e) {
+        // a disappeared canvas: ignore
+      }
+    });
+  }
+}
+
+/** `rings` are start offsets into `c` (flat index, even); one ring when absent. */
+function addFeature(p: Path2D, f: MapFeature, polygon: boolean): void {
+  const c = f.c;
+  const starts: number[] = f.rings !== undefined && f.rings !== null && f.rings.length > 0 ? f.rings : [0];
+  for (let r = 0; r < starts.length; r++) {
+    const from = starts[r];
+    const to = r + 1 < starts.length ? starts[r + 1] : c.length;
+    if (from < 0 || from + 1 >= c.length) {
+      continue;
+    }
+    p.moveTo(c[from] / DM, c[from + 1] / DM);
+    for (let i = from + 2; i + 1 < to; i += 2) {
+      p.lineTo(c[i] / DM, c[i + 1] / DM);
+    }
+    if (polygon) {
+      p.closePath();
+    }
+  }
+}
+
+export class MapRenderer {
+  private build: PathBuild | undefined = undefined;
+  private source: MapData | undefined = undefined;
+  private onUpdate: (() => void) | undefined = undefined;
+  /** Path builds per MapData object (a few maps per session: the city map, a course's own map). */
+  private static builds: Map<MapData, PathBuild> = new Map<MapData, PathBuild>();
+
+  private get layers(): LayerPath[] {
+    return this.build !== undefined ? this.build.layers : [];
+  }
+
+  /** Starts (or joins) the incremental path build for this map; `onUpdate` fires as layers become ready. */
+  setMap(data: MapData | undefined, onUpdate?: () => void): void {
     if (data === this.source) {
       return;
     }
+    if (this.build !== undefined && this.onUpdate !== undefined) {
+      this.build.unlisten(this.onUpdate);
+    }
     this.source = data;
-    this.layers = [];
+    this.build = undefined;
+    this.onUpdate = onUpdate;
     if (data === undefined) {
       return;
     }
-    // Building the Path2Ds for the whole detail map takes seconds on the emulator; every MapCanvas (Home, Tour
-    // detail, Route ready, Now Walking, Place detail, Full map) used to rebuild it and Now Walking froze the UI
-    // thread (THREAD_BLOCK_6S). Paths are immutable once built, so they are shared per MapData object.
-    const hit = MapRenderer.cache.get(data);
-    if (hit !== undefined) {
-      this.layers = hit;
+    let b = MapRenderer.builds.get(data);
+    if (b === undefined) {
+      if (MapRenderer.builds.size >= 4) {
+        MapRenderer.builds.clear();
+      }
+      b = new PathBuild();
+      MapRenderer.builds.set(data, b);
+      if (onUpdate !== undefined) {
+        b.listen(onUpdate);
+      }
+      this.build = b;
+      b.start(data);
       return;
     }
-    const t0 = Date.now();
-    for (const l of data.layers) {
-      this.layers.push(new LayerPath(l.id, l.geom === 'polygon', l.minScale > 0 ? l.minScale : defaultMinScale(l.id),
-        svgPathsOf(l).map((d: string) => new Path2D(d))));
+    if (onUpdate !== undefined && !b.done) {
+      b.listen(onUpdate);
     }
-    if (MapRenderer.cache.size >= 4) {
-      MapRenderer.cache.clear();
+    this.build = b;
+  }
+
+  /** Stop notifying this renderer's canvas (the canvas is going away). */
+  release(): void {
+    if (this.build !== undefined && this.onUpdate !== undefined) {
+      this.build.unlisten(this.onUpdate);
     }
-    MapRenderer.cache.set(data, this.layers);
-    Log.i(MAP_FRAME, `event=paths_built layers=${this.layers.length} ms=${Date.now() - t0}`);
+    this.onUpdate = undefined;
   }
 
   hasBase(): boolean {
@@ -162,47 +268,47 @@ export class MapRenderer {
     switch (l.id) {
       case 'water':
         ctx.fillStyle = pal.water;
-        l.paths.forEach((p: Path2D) => ctx.fill(p));
+        ctx.fill(l.path);
         return;
       case 'river':
         ctx.strokeStyle = pal.water;
         ctx.lineWidth = Math.max(4, LineWidth.RIVER_M * s) / s;
-        l.paths.forEach((p: Path2D) => ctx.stroke(p));
+        ctx.stroke(l.path);
         return;
       case 'green':
         ctx.fillStyle = pal.green;
-        l.paths.forEach((p: Path2D) => ctx.fill(p));
+        ctx.fill(l.path);
         return;
       case 'buildings':
         ctx.fillStyle = pal.buildings;
-        l.paths.forEach((p: Path2D) => ctx.fill(p));
+        ctx.fill(l.path);
         if (s > 1.5) {
           ctx.strokeStyle = pal.buildingStroke;
           ctx.lineWidth = 1 / s;
-          l.paths.forEach((p: Path2D) => ctx.stroke(p));
+          ctx.stroke(l.path);
         }
         return;
       case 'unesco':
         ctx.strokeStyle = pal.unesco;
         ctx.lineWidth = 1 / s;
         ctx.setLineDash([6 / s, 4 / s]);
-        l.paths.forEach((p: Path2D) => ctx.stroke(p));
+        ctx.stroke(l.path);
         ctx.setLineDash([]);
         return;
       case 'paths':
         ctx.strokeStyle = pal.path;
         ctx.lineWidth = clampPx(LineWidth.PATH_M, s, LineWidth.PATH_MIN_PX, LineWidth.PATH_MAX_PX) / s;
-        l.paths.forEach((p: Path2D) => ctx.stroke(p));
+        ctx.stroke(l.path);
         return;
       case 'minor':
         ctx.strokeStyle = pal.minorStreet;
         ctx.lineWidth = clampPx(LineWidth.MINOR_M, s, LineWidth.MINOR_MIN_PX, LineWidth.MINOR_MAX_PX) / s;
-        l.paths.forEach((p: Path2D) => ctx.stroke(p));
+        ctx.stroke(l.path);
         return;
       case 'major':
         ctx.strokeStyle = pal.majorStreet;
         ctx.lineWidth = clampPx(LineWidth.MAJOR_M, s, LineWidth.MAJOR_MIN_PX, LineWidth.MAJOR_MAX_PX) / s;
-        l.paths.forEach((p: Path2D) => ctx.stroke(p));
+        ctx.stroke(l.path);
         return;
       default:
         return;
