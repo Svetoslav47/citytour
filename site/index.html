@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CityTour — audio walking tours for HarmonyOS</title>
+<meta name="description" content="Eyes on the city, not the screen. Pick a walk, put your headphones in and hear each place's story the moment you reach it. Any city, in your language.">
+<meta property="og:title" content="CityTour — Eyes on the city, not the screen.">
+<meta property="og:description" content="Audio walking tours for HarmonyOS: a narrator that guides you and tells each place's story as you reach it. Any city, in your language.">
+<meta property="og:image" content="assets/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--accent:#1D6B5B;--accent-bright:#2E8B74;--ink:#16181A;--muted:#4A5157;--ground:#F4F5F3;--card:#FFFFFF}
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--ground);-webkit-font-smoothing:antialiased}
+  a{color:var(--accent)}a:hover{color:#155446}
+  .wrap{max-width:1160px;margin:0 auto;padding-left:24px;padding-right:24px}
+  .hero{color:#fff;background-image:linear-gradient(90deg,rgba(8,20,17,.92) 0%,rgba(8,20,17,.80) 45%,rgba(8,20,17,.35) 100%),url(assets/hero.jpg);background-size:cover;background-position:center}
+  nav{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:24px;padding-bottom:24px}
+  .brand{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none}
+  .brand img{width:40px;height:40px;border-radius:10px}
+  .brand span{font-size:22px;font-weight:800;letter-spacing:-.3px}
+  .navlinks{display:flex;gap:24px;align-items:center;flex-wrap:wrap;font-size:16px;font-weight:600}
+  .navlinks a{color:#fff;text-decoration:none}.navlinks a:hover{text-decoration:underline}
+  .hero-body{display:flex;flex-wrap:wrap;gap:56px;align-items:center;padding-top:72px;padding-bottom:112px}
+  .hero-copy{flex:1 1 460px;min-width:0;display:flex;flex-direction:column;gap:24px}
+  .eyebrow{margin:0;font-size:15px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#8FD3BF}
+  h1{margin:0;font-size:clamp(40px,6vw,64px);line-height:1.04;font-weight:800;letter-spacing:-1.5px}
+  .lead{margin:0;font-size:20px;line-height:1.55;color:rgba(255,255,255,.86);max-width:560px}
+  .ctas{display:flex;gap:14px;flex-wrap:wrap;align-items:center;padding-top:8px}
+  .btn{display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:0 26px;border-radius:999px;font-size:17px;font-weight:700;text-decoration:none}
+  .btn-primary{background:var(--accent-bright);color:#fff}.btn-primary:hover{background:#277a66;color:#fff}
+  .btn-ghost{border:1.5px solid rgba(255,255,255,.55);color:#fff;font-weight:600}.btn-ghost:hover{border-color:#fff;color:#fff}
+  .fine{margin:0;font-size:14px;color:rgba(255,255,255,.7)}
+  .phone{width:300px;max-width:100%;border-radius:44px;background:#0B0F0E;padding:10px}
+  .phone img{display:block;width:100%;height:auto;border-radius:35px}
+  .hero .phone{box-shadow:0 30px 80px rgba(0,0,0,.45)}
+  .phone-col{flex:0 1 300px;min-width:240px;display:flex;justify-content:center;margin:0 auto}
+  section{padding-top:56px;padding-bottom:56px}
+  .kicker{margin:0;font-size:14px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent)}
+  h2{margin:0;font-size:clamp(30px,4vw,42px);line-height:1.1;font-weight:800;letter-spacing:-.8px}
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-top:40px}
+  .step{background:var(--card);border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:12px}
+  .num{width:40px;height:40px;border-radius:999px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+  h3{margin:0;font-size:20px;font-weight:700}
+  p.body{margin:0;font-size:16px;line-height:1.55;color:var(--muted)}
+  .features{display:flex;flex-wrap:wrap;gap:48px;align-items:center}
+  .feature-grid{flex:1 1 420px;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:28px 32px}
+  .feature{display:flex;flex-direction:column;gap:8px}
+  .features .phone{box-shadow:0 24px 60px rgba(22,24,26,.25)}
+  .install{background:var(--ink);color:#fff;border-radius:28px;padding:48px 40px;display:flex;flex-wrap:wrap;gap:40px}
+  .install-copy{flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:14px}
+  .install-copy p{margin:0;font-size:17px;line-height:1.6;color:rgba(255,255,255,.78)}
+  .install-code{flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:12px;font-size:15px}
+  .install-code p{margin:0;color:rgba(255,255,255,.7);font-weight:600}
+  pre{margin:0;padding:18px 20px;border-radius:14px;background:#0B0D0E;color:#CFEFE5;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;line-height:1.6;overflow-x:auto}
+  footer{border-top:1px solid #DDE1DE}
+  .foot{display:flex;flex-wrap:wrap;gap:16px 32px;justify-content:space-between;font-size:14px;color:#5B636A;padding-top:32px;padding-bottom:48px}
+  @media (max-width:640px){.hero-body{padding-top:32px;padding-bottom:72px;gap:40px}.install{padding:32px 22px}.navlinks{gap:16px}}
+</style>
+</head>
+<body>
+  <header class="hero">
+    <nav class="wrap" aria-label="Main">
+      <a class="brand" href="#top"><img src="assets/icon.png" alt=""><span>CityTour</span></a>
+      <div class="navlinks">
+        <a href="#how">How it works</a>
+        <a href="#install">Install</a>
+        <a href="https://github.com/Svetoslav47/citytour">GitHub</a>
+      </div>
+    </nav>
+    <div id="top" class="wrap hero-body">
+      <div class="hero-copy">
+        <p class="eyebrow">Audio walking tours for HarmonyOS</p>
+        <h1>Eyes on the city, not the screen.</h1>
+        <p class="lead">Pick a walk, put your headphones in and go. A narrator tells each place's story the moment you reach it, guides you to the next one and keeps talking with the screen off. Any city, in your language.</p>
+        <div class="ctas">
+          <a class="btn btn-primary" href="https://github.com/Svetoslav47/citytour/releases/latest/download/citytour.hap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
+            Download the app (.hap)
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/Svetoslav47/citytour">View the source</a>
+        </div>
+        <p class="fine">HarmonyOS 6 · English · Polski · 中文 · Works offline once downloaded</p>
+      </div>
+      <div class="phone-col">
+        <div class="phone"><img src="assets/walking.jpg" alt="CityTour guiding a walk: the map with the route, the next stop 240 metres ahead and the cue 'In 150 metres, turn right.'" width="720" height="1558"></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="how" class="wrap" style="padding-top:96px">
+      <p class="kicker">How it works</p>
+      <h2 style="margin-top:12px;max-width:640px">A guide in your pocket, three steps.</h2>
+      <div class="steps">
+        <div class="step"><span class="num">1</span><h3>Pick a walk</h3><p class="body">Start it right away, or download it to use offline. One tap, no account.</p></div>
+        <div class="step"><span class="num">2</span><h3>Put your headphones in</h3><p class="body">Spoken directions lead you from stop to stop and re-plan if you wander off.</p></div>
+        <div class="step"><span class="num">3</span><h3>Hear the place as you reach it</h3><p class="body">Each story starts when you arrive and tells you exactly where to look.</p></div>
+      </div>
+    </section>
+
+    <section class="wrap features">
+      <div class="feature-grid">
+        <div class="feature"><h3>Keeps talking, screen off</h3><p class="body">Runs in the background with lock-screen media controls and a gentle buzz on arrival.</p></div>
+        <div class="feature"><h3>A natural voice, your language</h3><p class="body">Studio-quality narration in English, Polish and Chinese. Switch language mid-story.</p></div>
+        <div class="feature"><h3>Stream or go offline</h3><p class="body">Start in seconds, or download a walk once and use it with no connection.</p></div>
+        <div class="feature"><h3>Any city, no app update</h3><p class="body">Walks and cities come from our signed course server, so new places arrive as content.</p></div>
+        <div class="feature"><h3>Fits your time</h3><p class="body">The best stop order is worked out on the phone; short on time, it keeps the stops that fit.</p></div>
+        <div class="feature"><h3>Native HarmonyOS</h3><p class="body">Location Kit, AVSession, background tasks, Core Speech, a home-screen card and a watch companion.</p></div>
+      </div>
+      <div class="phone-col">
+        <div class="phone"><img src="assets/walks.jpg" alt="CityTour's walk list: cards with a cover photo, stops, distance and time, Start and Demo walk buttons." width="720" height="1347" loading="lazy"></div>
+      </div>
+    </section>
+
+    <section id="install" class="wrap" style="padding-bottom:96px">
+      <div class="install">
+        <div class="install-copy">
+          <h2 style="font-size:clamp(28px,3.5vw,36px)">Try it on a HarmonyOS emulator</h2>
+          <p>Download the app package, install it on a phone emulator (HarmonyOS 6, API 24) and tap <strong>Demo walk</strong> on any card: a simulated walk follows the real route so you can hear the whole tour from your desk.</p>
+          <a class="btn btn-primary" style="align-self:flex-start;min-height:48px;font-size:16px" href="https://github.com/Svetoslav47/citytour/releases/latest/download/citytour.hap">Download citytour.hap</a>
+        </div>
+        <div class="install-code">
+          <p>With the emulator running:</p>
+          <pre>hdc install citytour.hap</pre>
+          <p>Or build it from source:</p>
+          <pre>git clone https://github.com/Svetoslav47/citytour
+cd citytour
+devecocli run --device "Pura 90" --modules entry</pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot">
+      <span>CityTour · built at HackYeah 2026 · open source on <a href="https://github.com/Svetoslav47/citytour">GitHub</a></span>
+      <span>Map data © OpenStreetMap contributors · Photo: Jakub Hałun, CC BY-SA 4.0 · Narration voice: ElevenLabs</span>
+    </div>
+  </footer>
+</body>
+</html>
