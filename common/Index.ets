@@ -18,6 +18,7 @@ export * from './src/main/ets/core/geo/Projection';
 export * from './src/main/ets/core/haptics/CueMap';
 export * from './src/main/ets/core/hud/HudRows';
 export * from './src/main/ets/core/map/Camera';
+export * from './src/main/ets/core/map/ExploreMe';
 export * from './src/main/ets/core/map/PoiDots';
 export * from './src/main/ets/core/map/SheetDetents';
 export * from './src/main/ets/core/map/WalkDisplay';
