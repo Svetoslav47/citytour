@@ -1,10 +1,10 @@
 // Suite: PackParser.test - module under test: core/content/PackParser (task B3, Person B).
 // Runtime re-validation of the offline pack: bad records are dropped with a reason, bad files are blocking.
 import { describe, it, expect } from '@ohos/hypium';
-import { Lang, Maneuver, Poi } from '../main/ets/contracts/Model';
+import { Lang, Maneuver, Poi } from 'common';
 import {
   parseManifest, parseMap, parseNarrations, parsePois, parseRoutes, parseTours, pruneTourStops
-} from '../main/ets/core/content/PackParser';
+} from 'common';
 import {
   MANIFEST_OK, MANIFEST_V2, MAP_JSON, NARR_EN_JSON, POI_BARBICAN, POIS_JSON, ROUTES_JSON, TOURS_JSON
 } from './fixtures/PackJson';

@@ -6,13 +6,13 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   bearingDeg, haversineM, normalizeDeg, normalizeSignedDeg, pointToSegment, relAngleDeg, relDir, relDirForAngle,
   SegmentHit
-} from '../main/ets/core/geo/GeoMath';
+} from 'common';
 import {
   M_PER_DEG_LAT, M_PER_DEG_LNG_EQUATOR, PACK_ORIGIN_LAT, PACK_ORIGIN_LNG, Projection, XY
-} from '../main/ets/core/geo/Projection';
-import { GridHit, GridIndex } from '../main/ets/core/geo/GridIndex';
-import { RelDir } from '../main/ets/contracts/EngineTypes';
-import { LatLng } from '../main/ets/contracts/Model';
+} from 'common';
+import { GridHit, GridIndex } from 'common';
+import { RelDir } from 'common';
+import { LatLng } from 'common';
 
 /** The Kraków fixture pack's projection (origin Rynek Główny), as its manifest.json origin gives it. */
 const KRAKOW_PROJECTION: Projection = new Projection(PACK_ORIGIN_LAT, PACK_ORIGIN_LNG);

@@ -18,9 +18,9 @@
  */
 import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
 import { geoLocationManager } from '@kit.LocationKit';
-import { PermissionPort, PermissionState } from '../../contracts/Ports';
+import { PermissionPort, PermissionState } from 'common';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 
 export const PERM_APPROX: Permissions = 'ohos.permission.APPROXIMATELY_LOCATION';
 export const PERM_PRECISE: Permissions = 'ohos.permission.LOCATION';

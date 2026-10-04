@@ -13,12 +13,12 @@ import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { IssueBanner } from '../views/common/IssueBanner';
 import { MapCanvas } from '../views/map/MapCanvas';
 import { CoverPhoto } from '../views/common/CoverPhoto';
-import { CoverView } from '../core/remote/CoverRules';
+import { CoverView } from 'common';
 import { StopList } from '../views/common/StopList';
 import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
-import { IssueCode } from '../contracts/EngineTypes';
+import { IssueCode } from 'common';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import { SafeArea } from '../viewmodel/SafeArea';
 
 /** The route card is fitted to the whole walk (s ~0.25 for a 2 km route): show streets/buildings at that scale. */

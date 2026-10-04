@@ -8,8 +8,8 @@
  * Every method resolves (never rejects); '' / undefined = no cover, and the caller shows its fallback.
  */
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
-import { COVER_JPG, COVER_JSON, coverCacheName, CoverCredit, MAX_COVER_BYTES, parseCoverJson } from '../../core/remote/CoverRules';
+import { LogEvents } from 'common';
+import { COVER_JPG, COVER_JSON, coverCacheName, CoverCredit, MAX_COVER_BYTES, parseCoverJson } from 'common';
 import { FileStore } from './FileStore';
 import { RemoteClient } from './RemoteClient';
 

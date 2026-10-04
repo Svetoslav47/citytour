@@ -37,15 +37,15 @@ import { i18n } from '@kit.LocalizationKit';
 import {
   BackgroundPort, Clock, FixSource, HapticsPort, LocationSource, LoggerPort, MediaSessionPort, NotifierPort,
   PackRepository, PermissionPort, PermissionState, SpeechPort, TourControl, VoicePlan, VoicePort
-} from '../contracts/Ports';
-import { VoiceLabel } from '../contracts/Settings';
-import { ClipIndex } from '../core/speech/ClipSelection';
+} from 'common';
+import { VoiceLabel } from 'common';
+import { ClipIndex } from 'common';
 import { PcmPlayer } from '../services/audio/PcmPlayer';
 import { ClipPlayer } from '../services/audio/ClipPlayer';
 import { BackgroundRunner } from '../services/background/BackgroundRunner';
 import { MediaSessionService } from '../services/media/MediaSessionService';
 import { DemoTrackText, DemoWalkSource } from '../services/location/DemoWalkSource';
-import { CityInfo, cityDisplayName } from '../core/content/CityPack';
+import { CityInfo, cityDisplayName } from 'common';
 import { PermissionService } from '../services/location/PermissionService';
 import { RealLocationSource } from '../services/location/RealLocationSource';
 import { CorruptPackRepository } from '../services/debug/CorruptPackRepository';
@@ -55,12 +55,12 @@ import { VoiceManager } from '../services/speech/VoiceManager';
 import { TourNotifier } from '../services/notify/TourNotifier';
 import { Haptics } from '../services/haptics/Haptics';
 import { ScriptedTourControl } from '../services/tour/ScriptedTourControl';
-import { DemoControls, TourController, TourControllerDeps } from '../services/tour/TourController';
-import { Lang } from '../contracts/Model';
-import { ClipEntry } from '../core/speech/ClipSelection';
+import { DemoControls, TourController, TourControllerDeps } from 'common';
+import { Lang } from 'common';
+import { ClipEntry } from 'common';
 import { ActivePackRepository } from '../services/pack/ActivePackRepository';
 import { ActiveCourse, CourseRepository } from '../services/remote/CourseRepository';
-import { demoWalkOffered, InstalledCourse } from '../core/remote/CourseRules';
+import { demoWalkOffered, InstalledCourse } from 'common';
 import { CourseStore } from '../services/remote/CourseStore';
 import { CoverStore } from '../services/remote/CoverStore';
 import { courseClipsOffThread } from '../services/remote/ClipManifestTask';
@@ -70,10 +70,10 @@ import { Ed25519Verifier } from '../services/remote/SignatureVerifier';
 import { RemoteVoice } from '../services/speech/RemoteVoice';
 import { StreamClips } from '../services/remote/StreamClips';
 import { RemoteConfig } from './RemoteConfig';
-import { SystemClock, SystemScheduler } from './Clock';
+import { SystemClock, SystemScheduler } from 'common';
 import { AppConfig } from './AppConfig';
 import { HilogLogger, Log } from './Log';
-import { LogEvents } from './LogEvents';
+import { LogEvents } from 'common';
 
 /** Before init() (no UIAbilityContext): reports UNKNOWN and never opens a dialog. */
 class StubPermissionPort implements PermissionPort {

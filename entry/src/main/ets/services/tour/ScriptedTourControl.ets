@@ -4,16 +4,16 @@
  * every AppConfig.SCRIPTED_STEP_MS / speed. Every snapshot has source = DEMO, so the UI shows SIMULATED.
  * A7's TourController replaces it in AppContainer.tourControl().
  */
-import { ContentTier, Lang } from '../../contracts/Model';
-import { VoiceLabel } from '../../contracts/Settings';
+import { ContentTier, Lang } from 'common';
+import { VoiceLabel } from 'common';
 import {
   EngineSnapshot, NextInfo, NowPlaying, PlatformStatus, RelDir, SignalQuality, StopProgress, StopStatus, TourPhase,
   TourPlan, UserPos
-} from '../../contracts/EngineTypes';
-import { FixSource, SnapshotListener, TourControl } from '../../contracts/Ports';
+} from 'common';
+import { FixSource, SnapshotListener, TourControl } from 'common';
 import { AppConfig } from '../../app/AppConfig';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 
 /** Royal Route order (docs/REVIEW.md stop numbering). The first, third and fourth ids match StubPackRepository. */
 export const SCRIPTED_ROUTE_IDS: string[] = [

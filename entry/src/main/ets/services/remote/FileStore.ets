@@ -12,7 +12,7 @@ import { fileIo as fs } from '@kit.CoreFileKit';
 import { cryptoFramework } from '@kit.CryptoArchitectureKit';
 import { util } from '@kit.ArkTS';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 
 const CHUNK: number = 64 * 1024;
 

@@ -3,13 +3,13 @@
  * Pages own navigation; this class only reports outcomes (true = go on). All service calls have timeouts.
  * Services: AppContainer.packRepository(), tourControl(), permissions(), voice() (ARCHITECTURE §12.2).
  */
-import { TourPlan } from '../contracts/EngineTypes';
-import { Lang } from '../contracts/Model';
-import { FixSource, PermissionState } from '../contracts/Ports';
+import { TourPlan } from 'common';
+import { Lang } from 'common';
+import { FixSource, PermissionState } from 'common';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
-import { MapData } from '../contracts/Model';
+import { LogEvents } from 'common';
+import { MapData } from 'common';
 import { PreviewPoint } from '../views/common/RoutePreview';
 import { MapOverlay } from '../views/map/MapRenderer';
 import { MapCache, overlayBounds, previewOverlay } from './MapViewModel';

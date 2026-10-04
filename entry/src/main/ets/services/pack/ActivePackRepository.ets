@@ -9,11 +9,11 @@
  * - switchTo(): loads the new pack first and swaps only when it loaded; the old pack stays active otherwise.
  * - switchToNone(): back to "no course" (the last course was deleted).
  */
-import { Lang, MapData, Narration, NarrationLength, Persona, Poi, RouteData, SourceRef, Tour } from '../../contracts/Model';
-import { PackLoadResult, PackRepository } from '../../contracts/Ports';
+import { Lang, MapData, Narration, NarrationLength, Persona, Poi, RouteData, SourceRef, Tour } from 'common';
+import { PackLoadResult, PackRepository } from 'common';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
-import { CityInfo, DEMO_WALK_FILE } from '../../core/content/CityPack';
+import { LogEvents } from 'common';
+import { CityInfo, DEMO_WALK_FILE } from 'common';
 import { CityCoursePackRepository } from './CityCoursePackRepository';
 import { EmptyPackRepository } from './EmptyPackRepository';
 import { SourcePackRepository } from './SourcePackRepository';

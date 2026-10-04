@@ -6,7 +6,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   BUDGET_BACKOFF_MS, ChainInput, decideVoice, judgeRemote, OFFLINE_BACKOFF_MS, REMOTE_BUDGET_MS, RemoteResult,
   ServerState, serverStateText, VoiceSrc
-} from '../main/ets/core/remote/VoiceChain';
+} from 'common';
 
 const SHA: string = '6b57aa9020f95bb52345b5d986292da081ea900be66916d2410916c350c39573';
 

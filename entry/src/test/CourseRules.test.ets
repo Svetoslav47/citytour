@@ -10,8 +10,8 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   activeAfterInstall, afterDelete, afterInstall, cityNeedsDownload, downloadBytes, CourseRow, CourseState, courseTitle,
   demoWalkOffered, orphanCities, HomeMode, homeMode, InstalledCourse, mergeCourses, progressPct, resolveActive, sizeLabel
-} from '../main/ets/core/remote/CourseRules';
-import { CourseSummary } from '../main/ets/core/remote/ServerApi';
+} from 'common';
+import { CourseSummary } from 'common';
 
 function course(id: string, version: string): CourseSummary {
   const c = new CourseSummary();

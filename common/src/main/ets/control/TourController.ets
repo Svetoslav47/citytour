@@ -37,30 +37,19 @@
  * (no SpeechPort contract change). Row 14: BG_FAIL/BG_CANCEL keep the screen on (deps.keepScreenOn). Row 16:
  * NotifierPort.requestEnable() false => NOTIF_DENIED, no next-stop notices. Row 17: PACK_ERR (BLOCKING).
  */
-import {
-  Announcement, AppIssue, Effect, EffectType, EngineEvent, EngineEventType, EngineSnapshot, IssueCode, IssueSeverity,
-  MediaMeta, MediaPlayState, PlatformStatus, SignalQuality, StopStatus, TourPhase, TourPlan
-} from '../../contracts/EngineTypes';
-import {
-  BackgroundListener, BackgroundPort, Clock, Fix, FixSource, HapticsPort, LocationSource, LoggerPort, MediaCommand,
-  MediaSessionPort, NotifierPort, PackLoadResult, PackRepository, PermissionPort, PermissionState, SnapshotListener,
-  SpeechListener, SpeechPort, TourControl, Utterance, VoicePlan, VoicePort
-} from '../../contracts/Ports';
-import {
-  LatLng, Lang, Narration, NarrationLength, PackManifest, Poi, RouteLeg, Tour, TourStop
-} from '../../contracts/Model';
-import { VoiceLabel } from '../../contracts/Settings';
-import {
-  ClipIndex, StoryClips, StoryCoverage, storiesAllOrNothing, storyClipCoverage, storyVoicePlan
-} from '../../core/speech/ClipSelection';
-import { StepResult, TourEngine, TourInput, TourState } from '../../core/tour/TourEngine';
-import { TourConfig } from '../../core/tour/TourConfig';
-import { CityPack, PlanInputs, buildCostInputs, plan as planRoute } from '../../core/route/Planner';
-import { haversineM } from '../../core/geo/GeoMath';
-import { Projection } from '../../core/geo/Projection';
-import { albumLine } from '../../core/content/CityPack';
-import { LogEvents } from '../../app/LogEvents';
-import { Scheduler } from '../../app/Clock';
+import { Announcement, AppIssue, Effect, EffectType, EngineEvent, EngineEventType, EngineSnapshot, IssueCode, IssueSeverity, MediaMeta, MediaPlayState, PlatformStatus, SignalQuality, StopStatus, TourPhase, TourPlan } from '../contracts/EngineTypes';
+import { BackgroundListener, BackgroundPort, Clock, Fix, FixSource, HapticsPort, LocationSource, LoggerPort, MediaCommand, MediaSessionPort, NotifierPort, PackLoadResult, PackRepository, PermissionPort, PermissionState, SnapshotListener, SpeechListener, SpeechPort, TourControl, Utterance, VoicePlan, VoicePort } from '../contracts/Ports';
+import { LatLng, Lang, Narration, NarrationLength, PackManifest, Poi, RouteLeg, Tour, TourStop } from '../contracts/Model';
+import { VoiceLabel } from '../contracts/Settings';
+import { ClipIndex, StoryClips, StoryCoverage, storiesAllOrNothing, storyClipCoverage, storyVoicePlan } from '../core/speech/ClipSelection';
+import { StepResult, TourEngine, TourInput, TourState } from '../core/tour/TourEngine';
+import { TourConfig } from '../core/tour/TourConfig';
+import { CityPack, PlanInputs, buildCostInputs, plan as planRoute } from '../core/route/Planner';
+import { haversineM } from '../core/geo/GeoMath';
+import { Projection } from '../core/geo/Projection';
+import { albumLine } from '../core/content/CityPack';
+import { LogEvents } from '../app/LogEvents';
+import { Scheduler } from '../app/Clock';
 
 /** No fix from the active source for this long => FIX_TIMEOUT (§9 row 5). */
 export const FIX_TIMEOUT_MS: number = 25000;

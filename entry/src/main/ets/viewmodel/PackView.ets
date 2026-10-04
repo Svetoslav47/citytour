@@ -2,10 +2,10 @@
  * Read-only helpers that turn PackRepository data into what the tour screens show. Every pack access is guarded:
  * a missing or broken record shows less, it never throws into a build().
  */
-import { ContentTier, Lang, NarrationLength, Poi, RouteData, Tour } from '../contracts/Model';
-import { PackRepository } from '../contracts/Ports';
+import { ContentTier, Lang, NarrationLength, Poi, RouteData, Tour } from 'common';
+import { PackRepository } from 'common';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import { PlaqueState } from '../views/common/Plaque';
 import { PreviewPoint } from '../views/common/RoutePreview';
 import { StopRow } from '../views/common/StopList';

@@ -1,8 +1,8 @@
 // Suite: PoiDots.test - module under test: core/map/PoiDots (task B13, Person B).
 // Explore layer of the full map: level of detail by story/importance, screen-space thinning, tap hit test.
 import { describe, it, expect } from '@ohos/hypium';
-import { Camera } from '../main/ets/core/map/Camera';
-import { DotCandidate, dotMinScale, hitDot, NAME_ONLY_MIN_S0, NAME_ONLY_MIN_S1, PlacedDot, placeDots } from '../main/ets/core/map/PoiDots';
+import { Camera } from 'common';
+import { DotCandidate, dotMinScale, hitDot, NAME_ONLY_MIN_S0, NAME_ONLY_MIN_S1, PlacedDot, placeDots } from 'common';
 
 export default function poiDotsTest() {
   describe('PoiDots', () => {

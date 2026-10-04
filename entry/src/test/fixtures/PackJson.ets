@@ -1,8 +1,8 @@
 // Test fixture (task B3, Person B): small pack JSON strings and narration builders for PackParser and
 // NarrationValidator. Local unit tests cannot read rawfile, so tests feed these strings to the pure parser.
 // The validator cases mirror the shared spec v1 cases of scripts/pack/fixtures/validator-cases.json (task B2).
-import { ContentTier, Lang, Narration, NarrationLength, ProvenanceKind } from '../../main/ets/contracts/Model';
-import { ValidationCtx } from '../../main/ets/core/content/NarrationValidator';
+import { ContentTier, Lang, Narration, NarrationLength, ProvenanceKind } from 'common';
+import { ValidationCtx } from 'common';
 
 export const SRC_WP: string = 'src_wp_en_Q807309';
 export const POI_BARBICAN: string = 'poi_wd_Q807309';

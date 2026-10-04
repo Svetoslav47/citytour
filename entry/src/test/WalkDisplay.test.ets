@@ -4,7 +4,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   dialAngle, dialDot, dialShouldMove, relDirAngle, normalizeSigned, relativeBearing, RoundedDistance, roundWalkDistance,
   shouldUpdateDistance
-} from '../main/ets/core/map/WalkDisplay';
+} from 'common';
 
 function near(a: number, b: number): boolean {
   return Math.abs(a - b) < 1e-6;

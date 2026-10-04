@@ -32,7 +32,7 @@ test('constants equal docs/ARCHITECTURE.md §3.2 and core/geo/Projection.ets', (
   // The app's file declares the same literals (it lives on main once A1 is merged; skip if absent).
   let ets = null;
   try {
-    ets = readFileSync(join(REPO_ROOT, 'entry/src/main/ets/core/geo/Projection.ets'), 'utf8');
+    ets = readFileSync(join(REPO_ROOT, 'common/src/main/ets/core/geo/Projection.ets'), 'utf8');
   } catch {
     return;
   }

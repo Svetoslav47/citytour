@@ -3,7 +3,7 @@
  * service never freezes a screen (AGENTS.md: explicit timeouts, never crash).
  */
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 
 /**
  * Resolves with `fallback` if `p` rejects or takes longer than `ms`, and logs why. Every platform call made by a

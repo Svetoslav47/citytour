@@ -9,7 +9,7 @@
  */
 import { fileUri } from '@kit.CoreFileKit';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 import { Space, Type } from './Tokens';
 
 function uriOf(path: string): string {

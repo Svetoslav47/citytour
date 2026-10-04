@@ -22,7 +22,7 @@ export function parseModelEts(src) {
   return { enums, interfaces };
 }
 
-const model = parseModelEts(readFileSync(join(REPO_ROOT, 'entry/src/main/ets/contracts/Model.ets'), 'utf8'));
+const model = parseModelEts(readFileSync(join(REPO_ROOT, 'common/src/main/ets/contracts/Model.ets'), 'utf8'));
 
 test('every enum and value of Model.ets is mirrored exactly', () => {
   assert.ok(Object.keys(model.enums).length >= 8);

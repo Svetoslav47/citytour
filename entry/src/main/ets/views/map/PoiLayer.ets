@@ -4,10 +4,10 @@
  * zoom in). Drawn by MapRenderer between the route and the stop plaques; MapCanvas asks it for tap hits.
  * Built once per POI list (4k places) and shared, like the base map paths.
  */
-import { ContentTier, Poi } from '../../contracts/Model';
-import { GridIndex } from '../../core/geo/GridIndex';
-import { Camera, viewport } from '../../core/map/Camera';
-import { DOT_SEP_PX, DotCandidate, hitDot, PlacedDot, placeDots } from '../../core/map/PoiDots';
+import { ContentTier, Poi } from 'common';
+import { GridIndex } from 'common';
+import { Camera, viewport } from 'common';
+import { DOT_SEP_PX, DotCandidate, hitDot, PlacedDot, placeDots } from 'common';
 import { MapPalette } from './MapStyle';
 
 export class PoiLayer {

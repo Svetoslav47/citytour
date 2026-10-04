@@ -3,7 +3,7 @@
  * other screens as NavDestinations from the navDestination builder (doc: ts-basic-components-navigation).
  * No tab bar in the MVP. Each screen draws its own header, so the system title bar is hidden.
  */
-import { UserSettings } from '../contracts/Settings';
+import { UserSettings } from 'common';
 import { AppViewModel, Routes } from '../viewmodel/AppViewModel';
 import { OnboardingViewModel } from '../viewmodel/OnboardingViewModel';
 import { AboutSourcesPage } from './AboutSourcesPage';

@@ -4,13 +4,13 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   MAX_EXACT_N, PathPlan, pathCost, solveOpenPath, solveOrienteering
-} from '../main/ets/core/route/HeldKarp';
-import { UNUSABLE_COST_S, nearestNeighbour2Opt } from '../main/ets/core/route/Fallback';
-import { CityPack, PlanInputs, buildCostInputs, haversineM, plan } from '../main/ets/core/route/Planner';
+} from 'common';
+import { UNUSABLE_COST_S, nearestNeighbour2Opt } from 'common';
+import { CityPack, PlanInputs, buildCostInputs, plannerHaversineM as haversineM, plan } from 'common';
 import {
   ContentTier, LatLng, Poi, PoiKind, RouteData, RouteLeg, Tour, TourStop
-} from '../main/ets/contracts/Model';
-import { TourPlan } from '../main/ets/contracts/EngineTypes';
+} from 'common';
+import { TourPlan } from 'common';
 import {
   MINI_BARBICAN, MINI_CLOTH_HALL, MINI_ORIGIN, MINI_ST_MARYS, MINI_TOUR_ID, miniPois, miniRoutes, miniTour
 } from './fixtures/MiniPack';

@@ -1,7 +1,7 @@
 /*
  * Build-time switches. One place to flip a strategy without touching feature code (PLAN §0.4).
  */
-import { EnVoiceStrategy } from '../contracts/Settings';
+import { EnVoiceStrategy } from 'common';
 
 export class AppConfig {
   static readonly APP_VERSION: string = '1.0.0'; // keep equal to AppScope/app.json5 versionName

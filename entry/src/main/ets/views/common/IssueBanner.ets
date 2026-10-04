@@ -2,7 +2,7 @@
  * Inline banner for an AppIssue (DESIGN §3.6.2 banners, ARCHITECTURE §9). One banner at a time, in the guide's
  * voice, with at most two actions. Codes go to hilog, never to the UI.
  */
-import { AppIssue, IssueCode } from '../../contracts/EngineTypes';
+import { AppIssue, IssueCode } from 'common';
 import { Radius, Space, Type } from './Tokens';
 import { AppViewModel } from '../../viewmodel/AppViewModel';
 

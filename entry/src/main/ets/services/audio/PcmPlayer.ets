@@ -23,7 +23,7 @@
 import { audio } from '@kit.AudioKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 
 export const PCM_SAMPLE_RATE: number = 16000;
 export const IDLE_STOP_MS: number = 3000;

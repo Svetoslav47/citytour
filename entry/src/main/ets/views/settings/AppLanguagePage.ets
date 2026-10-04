@@ -3,8 +3,8 @@
  * i18n.System.setAppPreferredLanguage (SettingsViewModel.applyUiLang). B10 owns the translations.
  * Ids: radioUi<system|en|pl|zh>.
  */
-import { UiLang } from '../../contracts/Settings';
-import { UI_LANGS } from '../../core/settings/SettingsRules';
+import { UiLang } from 'common';
+import { UI_LANGS } from 'common';
 import { AppViewModel } from '../../viewmodel/AppViewModel';
 import { SettingsViewModel } from '../../viewmodel/SettingsViewModel';
 import { uiLangRes } from './SettingsText';

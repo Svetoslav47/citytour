@@ -16,13 +16,13 @@ import { http } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import { RemoteConfig } from '../../app/RemoteConfig';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 import {
   CatalogParse, CitySummary, CourseManifest, CourseSummary, InstallToken, parseCatalog, parseCityManifest,
   parseCourseManifest, parseEnvelope,
   parseInstall, SHA256_RE, tokenUsable, ttsBodyJson
-} from '../../core/remote/ServerApi';
-import { RemoteResult } from '../../core/remote/VoiceChain';
+} from 'common';
+import { RemoteResult } from 'common';
 import { FileStore } from './FileStore';
 import { SignatureVerifier } from './SignatureVerifier';
 

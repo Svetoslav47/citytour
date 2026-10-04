@@ -1,8 +1,8 @@
 // Suite: SvgPath.test - module under test: core/map/SvgPath (one SVG path string per map layer, built once and
 // handed to Path2D in a single call). Cases: a line, a polygon with two rings, empty and malformed features.
 import { describe, it, expect } from '@ohos/hypium';
-import { MapLayer } from '../main/ets/contracts/Model';
-import { svgPathOf, svgPathsOf } from '../main/ets/core/map/SvgPath';
+import { MapLayer } from 'common';
+import { svgPathOf, svgPathsOf } from 'common';
 
 function layer(geom: string, featuresJson: string): MapLayer {
   return JSON.parse(`{"id":"l","geom":"${geom}","minScale":0,"features":${featuresJson}}`) as MapLayer;

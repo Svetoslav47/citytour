@@ -13,18 +13,18 @@
  */
 import { cryptoFramework } from '@kit.CryptoArchitectureKit';
 import { util } from '@kit.ArkTS';
-import { AppIssue, IssueCode, IssueSeverity } from '../../contracts/EngineTypes';
+import { AppIssue, IssueCode, IssueSeverity } from 'common';
 import {
   Lang, LatLng, MapData, Narration, NarrationLength, PackFile, PackManifest, Persona, Poi, RouteData, SourceRef, Tour
-} from '../../contracts/Model';
-import { PackLoadResult, PackRepository } from '../../contracts/Ports';
+} from 'common';
+import { PackLoadResult, PackRepository } from 'common';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 import {
   emptyRoutes, parseManifest, parseMap, parsePersonas, parsePois, parseRoutes, parseSources, parseTours,
   pruneTourStops
-} from '../../core/content/PackParser';
-import { isStreamCityFile } from '../../core/remote/StreamRules';
+} from 'common';
+import { isStreamCityFile } from 'common';
 import { NarrationRepository } from './NarrationRepository';
 
 function hex(bytes: Uint8Array): string {

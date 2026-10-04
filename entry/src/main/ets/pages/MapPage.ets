@@ -6,15 +6,15 @@
  * course map (the city's default bounds from its city.json without one); the layers button toggles the same dots on the tour maps. Tapping a dot opens the place card sheet
  * (bindSheet, map stays interactive, doc ts-universal-attributes-sheet-transition) -> Details -> Place detail.
  */
-import { EngineSnapshot } from '../contracts/EngineTypes';
-import { MapData } from '../contracts/Model';
-import { FixSource } from '../contracts/Ports';
-import { Projection } from '../core/geo/Projection';
-import { worldBox } from '../core/content/CityPack';
-import { mapOpenBounds } from '../core/map/Camera';
+import { EngineSnapshot } from 'common';
+import { MapData } from 'common';
+import { FixSource } from 'common';
+import { Projection } from 'common';
+import { worldBox } from 'common';
+import { mapOpenBounds } from 'common';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { MapCache, overlayBounds, walkOverlay } from '../viewmodel/MapViewModel';
 import { SafeArea } from '../viewmodel/SafeArea';

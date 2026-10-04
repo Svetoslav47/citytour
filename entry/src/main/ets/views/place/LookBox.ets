@@ -3,7 +3,7 @@
  * feature). Directions relative to the visitor ("on your left") are never stored: they come from the walking
  * course at runtime, so this box only says what to look for.
  */
-import { LookDir } from '../../contracts/Model';
+import { LookDir } from 'common';
 import { Radius, Space, Type } from '../common/Tokens';
 
 @ComponentV2

@@ -601,8 +601,8 @@ if (writeFixture) {
  * stop ${P.passByStop}, the 10 s accuracy dip to ${P.poorAccM} m), times rebased to 0, for the replay test (A11).
  * Row = [tRelMs, lat, lng, accuracyM, speedMps, courseDeg (-1 = unknown), hold stop number (0 = moving)].
  */
-import { DemoFix, DemoTrack } from '../../main/ets/core/sim/DemoWalkPlayer';
-import { Maneuver, RouteLeg, RouteStep } from '../../main/ets/contracts/Model';
+import { DemoFix, DemoTrack } from 'common';
+import { Maneuver, RouteLeg, RouteStep } from 'common';
 
 export interface MiniStop {
   n: number;

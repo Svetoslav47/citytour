@@ -20,11 +20,11 @@
  */
 import { avSession } from '@kit.AVSessionKit';
 import { common, wantAgent } from '@kit.AbilityKit';
-import { EngineEventType, MediaMeta, MediaPlayState } from '../../contracts/EngineTypes';
-import { MediaCommand, MediaCommandListener, MediaSessionPort } from '../../contracts/Ports';
-import { VoiceLabel } from '../../contracts/Settings';
+import { EngineEventType, MediaMeta, MediaPlayState } from 'common';
+import { MediaCommand, MediaCommandListener, MediaSessionPort } from 'common';
+import { VoiceLabel } from 'common';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 
 export const AVS_TAG: string = 'CityTour';
 export const AVS_ARTIST_BASE: string = 'CityTour · Historian';

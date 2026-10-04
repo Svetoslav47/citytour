@@ -10,10 +10,10 @@
  * Honesty: "Mention places along the way" and "Arrival chime" have no engine behind them in this build, so their
  * rows are left out (DESIGN §3.11 lists them; the strings stay for when they ship).
  */
-import { LocRow, NotifRow } from '../core/onboarding/OnboardingRules';
-import { DetailLevel, TRIGGER_DISTANCES_M, DEMO_SPEEDS } from '../core/settings/SettingsRules';
+import { LocRow, NotifRow } from 'common';
+import { DetailLevel, TRIGGER_DISTANCES_M, DEMO_SPEEDS } from 'common';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import { AppViewModel, Routes } from '../viewmodel/AppViewModel';
 import { SettingsViewModel } from '../viewmodel/SettingsViewModel';
 import { SimulatedBadge } from '../views/common/SimulatedBadge';

@@ -6,14 +6,14 @@
  * the stories are made (AI, machine translation), and the offline pack's version. Offline.
  */
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { SafeArea } from '../viewmodel/SafeArea';
 import { FloatingIconButton } from '../views/common/FloatingIconButton';
 import { Radius, Size, Space, Type } from '../views/common/Tokens';
 import { AppContainer } from '../app/AppContainer';
-import { courseTitle } from '../core/remote/CourseRules';
-import { coverSubject } from '../core/remote/CoverRules';
+import { courseTitle } from 'common';
+import { coverSubject } from 'common';
 import { CourseCoverCredit } from '../services/remote/CourseRepository';
 import { coverLang } from '../viewmodel/CoverModel';
 import { withTimeout } from '../viewmodel/Async';

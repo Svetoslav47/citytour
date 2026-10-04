@@ -4,8 +4,8 @@
  * when the system dialog is cancelled, issue #24), and the strategy picker Auto / Chinese voice / Text only.
  * Ids: rowVoiceNow, rowLaura, btnDownloadVoice, radioStrategy<auto|zh|text>.
  */
-import { VoiceState } from '../../contracts/Ports';
-import { STRATEGY_CHOICES, StrategyChoice } from '../../core/settings/SettingsRules';
+import { VoiceState } from 'common';
+import { STRATEGY_CHOICES, StrategyChoice } from 'common';
 import { AppViewModel } from '../../viewmodel/AppViewModel';
 import { DownloadState, SettingsViewModel } from '../../viewmodel/SettingsViewModel';
 import { Size, Space, Type } from '../common/Tokens';

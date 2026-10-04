@@ -19,7 +19,7 @@ import { textToSpeech } from '@kit.CoreSpeechKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { AppConfig } from '../../app/AppConfig';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 
 /** Our own error codes (negative, so they never collide with the kit's 1002300xxx codes). */
 export class TtsErr {

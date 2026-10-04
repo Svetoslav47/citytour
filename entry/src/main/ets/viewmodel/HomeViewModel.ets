@@ -6,13 +6,13 @@
  * Demo walk (SIMULATED source, x2; offered while the course ships demo-walk.json, CourseRules.demoWalkOffered),
  * download / remove. The "Now walking" continue card comes from the TourControl snapshots.
  */
-import { EngineSnapshot, TourPhase } from '../contracts/EngineTypes';
-import { Lang } from '../contracts/Model';
-import { FixSource } from '../contracts/Ports';
+import { EngineSnapshot, TourPhase } from 'common';
+import { Lang } from 'common';
+import { FixSource } from 'common';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
-import { MapData } from '../contracts/Model';
+import { LogEvents } from 'common';
+import { MapData } from 'common';
 import { PreviewPoint } from '../views/common/RoutePreview';
 import { AppViewModel, PackState } from './AppViewModel';
 import { CoverModel } from './CoverModel';
@@ -21,8 +21,8 @@ import { MapCache, overlayBounds, previewOverlay } from './MapViewModel';
 import { withTimeout } from './Async';
 import { localName } from './Format';
 import { findTour, listedMetres, personaName, poiName, previewPoints } from './PackView';
-import { CardActions, CardInput, cardActions, homeCity, HomeHeader, homeHeader } from '../core/remote/HomeRules';
-import { CourseState } from '../core/remote/CourseRules';
+import { CardActions, CardInput, cardActions, homeCity, HomeHeader, homeHeader } from 'common';
+import { CourseState } from 'common';
 import { CourseItem, CoursesViewModel } from './CoursesViewModel';
 import { LocBanner, TourPlanViewModel } from './TourPlanViewModel';
 

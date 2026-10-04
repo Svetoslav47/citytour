@@ -7,14 +7,14 @@ import {
   HapticPlan, NOTIFY_TEXT_MAX, NOTIFY_TITLE_MAX, NoticeKind, NotifyContext, NotifyText, ShownNotice,
   contextFromSnapshot, formatNotice, hapticPlan, isTourLive, noticeKind, sanitizeNotifyText, shortDistance, shortEta,
   shouldRefresh, shownDistance
-} from '../main/ets/core/notify/NotifyText';
+} from 'common';
 import {
   EngineSnapshot, HapticKind, NextNotice, PlatformStatus, RelDir, SignalQuality, StopProgress, StopStatus,
   TourPhase
-} from '../main/ets/contracts/EngineTypes';
-import { FixSource } from '../main/ets/contracts/Ports';
-import { Lang } from '../main/ets/contracts/Model';
-import { VoiceLabel } from '../main/ets/contracts/Settings';
+} from 'common';
+import { FixSource } from 'common';
+import { Lang } from 'common';
+import { VoiceLabel } from 'common';
 
 const IDS: string[] = ['barbican', 'florian', 'stmary', 'cloth', 'wawel'];
 

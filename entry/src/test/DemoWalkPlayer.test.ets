@@ -6,8 +6,8 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   DemoFix, DemoTick, DemoTrack, DemoWalkPlayer, DEMO_PROVIDER, nextDemoSpeed, normalizeDemoSpeed, parseDemoTrack
-} from '../main/ets/core/sim/DemoWalkPlayer';
-import { FixSource } from '../main/ets/contracts/Ports';
+} from 'common';
+import { FixSource } from 'common';
 import { DEMO_MINI_EVENTS, DEMO_MINI_STOPS, demoTrackMini } from './fixtures/DemoTrackMini';
 
 const T0: number = 1700000000000;

@@ -6,9 +6,9 @@
  * If TaskPool is unavailable the parse falls back to the calling thread (still correct, just not offloaded).
  */
 import { taskpool } from '@kit.ArkTS';
-import { ClipEntry, parseClipManifest } from '../../core/speech/ClipSelection';
+import { ClipEntry, parseClipManifest } from 'common';
 import { Log } from '../../app/Log';
-import { LogEvents } from '../../app/LogEvents';
+import { LogEvents } from 'common';
 
 @Concurrent
 function parseCourseClips(text: string, root: string): ClipEntry[] {

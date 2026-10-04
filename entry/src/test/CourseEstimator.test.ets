@@ -3,8 +3,8 @@
 // is NaN; holds 60 s when stopped; unknown after. Plus: slow/inaccurate direction ignored, vector smoothing
 // across north, jitter at a stop does not turn the held course, out-of-order fixes ignored.
 import { describe, it, expect } from '@ohos/hypium';
-import { CourseEstimate, CourseEstimator, CourseSource } from '../main/ets/core/geo/CourseEstimator';
-import { Fix, FixSource } from '../main/ets/contracts/Ports';
+import { CourseEstimate, CourseEstimator, CourseSource } from 'common';
+import { Fix, FixSource } from 'common';
 
 const LAT0: number = 50.06143;
 const LNG0: number = 19.93658;

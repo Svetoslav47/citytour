@@ -5,11 +5,11 @@
 // kept, course-only records appended); the layered manifest (origin mismatch refused, city bbox, place count,
 // licences without duplicates, files of both); the media session album line.
 import { describe, it, expect } from '@ohos/hypium';
-import { PackFile, PackManifest, Poi } from '../main/ets/contracts/Model';
+import { PackFile, PackManifest, Poi } from 'common';
 import {
   albumLine, cityDisplayName, CityInfo, latLngBox, layerManifests, layerPois, parseCityJson, worldBox
-} from '../main/ets/core/content/CityPack';
-import { Projection } from '../main/ets/core/geo/Projection';
+} from 'common';
+import { Projection } from 'common';
 
 const CITY_JSON: string = '{"schemaVersion":1,"cityId":"krakow","names":{"en":"Kraków","pl":"Kraków","zh":"克拉科夫"},' +
   '"origin":{"lat":50.06143,"lng":19.93658},"bbox":[49.978575,19.796944,50.1278,20.202296],' +

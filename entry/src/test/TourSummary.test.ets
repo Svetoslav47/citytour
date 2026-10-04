@@ -4,13 +4,13 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   buildSummary, isHeard, routeWalkedM, summaryDurationS, SUMMARY_WALK_MPS, TourSummaryData, TourTimer
-} from '../main/ets/core/tour/TourSummary';
+} from 'common';
 import {
   EngineSnapshot, PlatformStatus, SignalQuality, StopProgress, StopStatus, TourPhase
-} from '../main/ets/contracts/EngineTypes';
-import { FixSource } from '../main/ets/contracts/Ports';
-import { VoiceLabel } from '../main/ets/contracts/Settings';
-import { ContentTier, Lang } from '../main/ets/contracts/Model';
+} from 'common';
+import { FixSource } from 'common';
+import { VoiceLabel } from 'common';
+import { ContentTier, Lang } from 'common';
 
 function platform(): PlatformStatus {
   const p: PlatformStatus = {

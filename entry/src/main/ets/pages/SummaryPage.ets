@@ -8,7 +8,7 @@
  * listHeard, listStillToSee, btnStartAgain.
  */
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { distanceRes, durationRes } from '../viewmodel/Format';
 import { SafeArea } from '../viewmodel/SafeArea';

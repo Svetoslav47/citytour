@@ -2,10 +2,10 @@
 // Owner: task B3 (Person B). Validator spec v1 (ARCHITECTURE §7.4): the same cases run in the pipeline
 // (scripts/pack/80-validate.mjs, task B2). This is the "incorrect AI output" evidence for the jury.
 import { describe, it, expect } from '@ohos/hypium';
-import { ContentTier, Lang, Narration, NarrationLength, Persona } from '../main/ets/contracts/Model';
-import { Check, NarrationValidator, validateNarration, ValidationCtx } from '../main/ets/core/content/NarrationValidator';
-import { langMatches, stripNames } from '../main/ets/core/content/LangDetect';
-import { nameOnlyNarration, personaChain, selectNarration } from '../main/ets/core/content/NarrationSelector';
+import { ContentTier, Lang, Narration, NarrationLength, Persona } from 'common';
+import { Check, NarrationValidator, validateNarration, ValidationCtx } from 'common';
+import { langMatches, stripNames } from 'common';
+import { nameOnlyNarration, personaChain, selectNarration } from 'common';
 import { ctxBarbican, extractTeaser, reviewedTeaser, withTier } from './fixtures/PackJson';
 
 function has(failed: string[], id: string): boolean {

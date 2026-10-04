@@ -4,10 +4,10 @@
  * screen that reads the pack shows less instead of throwing; load() fails with the NO_COURSE_DETAIL issue, and the
  * UI shows the "Download your first walk" empty state (AppViewModel PackState.NO_COURSE).
  */
-import { IssueCode, IssueSeverity } from '../../contracts/EngineTypes';
-import { Lang, MapData, Narration, NarrationLength, Persona, Poi, RouteData, SourceRef, Tour } from '../../contracts/Model';
-import { PackLoadResult, PackRepository } from '../../contracts/Ports';
-import { emptyRoutes } from '../../core/content/PackParser';
+import { IssueCode, IssueSeverity } from 'common';
+import { Lang, MapData, Narration, NarrationLength, Persona, Poi, RouteData, SourceRef, Tour } from 'common';
+import { PackLoadResult, PackRepository } from 'common';
+import { emptyRoutes } from 'common';
 
 /** PackLoadResult issue detail when no course is installed. */
 export const NO_COURSE_DETAIL: string = 'no_course';

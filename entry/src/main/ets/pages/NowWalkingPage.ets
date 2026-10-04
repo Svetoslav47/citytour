@@ -9,9 +9,9 @@
  * B11: when the tour ends (FINISHED or ABORTED) the page hands over to the Tour summary (SummaryPage).
  * B12: the ⋯ menu toggles the "How it works" HUD (views/walk/HowItWorksHud, id hudHowItWorks) over the map.
  */
-import { IssueCode } from '../contracts/EngineTypes';
+import { IssueCode } from 'common';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { NowWalkingViewModel, WalkState } from '../viewmodel/NowWalkingViewModel';
 import { IssueBanner, topIssue } from '../views/common/IssueBanner';
@@ -26,7 +26,7 @@ import { NextStopBlock } from '../views/walk/NextStopBlock';
 import { NowPlayingCard } from '../views/walk/NowPlayingCard';
 import { WalkControls } from '../views/walk/WalkControls';
 import { SafeArea } from '../viewmodel/SafeArea';
-import { liveLangName } from '../core/tour/LangSwitch';
+import { liveLangName } from 'common';
 
 const MAP_H: number = 300;
 const MAP_H_READING: number = 200;

@@ -2,13 +2,13 @@
 // Step navigation, the narration choice <-> UserSettings mapping, the English voice row (incl. the emulator path
 // Laura DOWNLOADABLE -> download fails -> "Fallback voice"), the 中文 row and the permission rows.
 import { describe, it, expect } from '@ohos/hypium';
-import { Lang } from '../main/ets/contracts/Model';
-import { PermissionState, SpeechCapabilities, VoiceState } from '../main/ets/contracts/Ports';
-import { EnVoiceStrategy, VoiceLang } from '../main/ets/contracts/Settings';
+import { Lang } from 'common';
+import { PermissionState, SpeechCapabilities, VoiceState } from 'common';
+import { EnVoiceStrategy, VoiceLang } from 'common';
 import {
   canDownloadEnglish, choiceFor, clampStep, EnVoiceInput, EnVoiceRow, enVoiceRow, LocRow, locationRow, nextStep,
   NotifRow, notifRow, ONB_STEPS, percent, selectedRow, voiceLangForPlan, zhSpoken
-} from '../main/ets/core/onboarding/OnboardingRules';
+} from 'common';
 
 function caps(en: VoiceState, zh: VoiceState): SpeechCapabilities {
   const c: SpeechCapabilities = { en: en, zh: zh };

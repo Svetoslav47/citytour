@@ -21,19 +21,19 @@
  */
 import { PersistenceV2 } from '@kit.ArkUI';
 import { notificationManager } from '@kit.NotificationKit';
-import { Lang, NarrationLength } from '../contracts/Model';
-import { PermissionPort, PermissionState, SpeechCapabilities, SpeechListener, Utterance, VoiceState } from '../contracts/Ports';
-import { UserSettings } from '../contracts/Settings';
+import { Lang, NarrationLength } from 'common';
+import { PermissionPort, PermissionState, SpeechCapabilities, SpeechListener, Utterance, VoiceState } from 'common';
+import { UserSettings } from 'common';
 import { AppContainer } from '../app/AppContainer';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
-import { phrase, PhraseKey } from '../core/content/Phrases';
+import { LogEvents } from 'common';
+import { phrase, PhraseKey } from 'common';
 import {
   canDownloadEnglish, choiceFor, clampStep, EnVoiceInput, EnVoiceRow, enVoiceRow, LocRow, locationRow, nextStep,
   NotifRow, notifRow, ONB_STEP_PERMS, ONB_STEP_VOICE, percent,
   selectedRow, voiceLangForPlan, zhSpoken
-} from '../core/onboarding/OnboardingRules';
-import { stripPauseMarkup } from '../core/speech/VoicePolicy';
+} from 'common';
+import { stripPauseMarkup } from 'common';
 import { PreviewPoint } from '../views/common/RoutePreview';
 import { AppViewModel } from './AppViewModel';
 import { withTimeout } from './Async';

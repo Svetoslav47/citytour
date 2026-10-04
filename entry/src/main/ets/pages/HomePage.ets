@@ -9,23 +9,23 @@
  * "All places in {city}" below (download-gated). Ids of the second and later cards end in _<course id>.
  * There is no separate Courses page in the flow.
  */
-import { StopStatus } from '../contracts/EngineTypes';
+import { StopStatus } from 'common';
 import { AppViewModel, PackState, Routes } from '../viewmodel/AppViewModel';
 import { distanceRes, durationRes } from '../viewmodel/Format';
 import { HomeViewModel } from '../viewmodel/HomeViewModel';
 import { IssueBanner } from '../views/common/IssueBanner';
 import { MapCanvas } from '../views/map/MapCanvas';
 import { CoverPhoto } from '../views/common/CoverPhoto';
-import { CoverView } from '../core/remote/CoverRules';
+import { CoverView } from 'common';
 import { SimulatedBadge } from '../views/common/SimulatedBadge';
 import { Radius, Size, Space, TABULAR, Type } from '../views/common/Tokens';
-import { IssueCode, StopProgress } from '../contracts/EngineTypes';
+import { IssueCode, StopProgress } from 'common';
 import { SafeArea } from '../viewmodel/SafeArea';
-import { CardDownload, CardPrimary, HomeHeader } from '../core/remote/HomeRules';
+import { CardDownload, CardPrimary, HomeHeader } from 'common';
 import { CatalogNote, CourseItem } from '../viewmodel/CoursesViewModel';
 import { LocBanner } from '../viewmodel/TourPlanViewModel';
 import { Log } from '../app/Log';
-import { LogEvents } from '../app/LogEvents';
+import { LogEvents } from 'common';
 
 @ComponentV2
 export struct HomePage {

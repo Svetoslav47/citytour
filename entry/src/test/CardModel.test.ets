@@ -4,12 +4,12 @@
 import { describe, it, expect } from '@ohos/hypium';
 import {
   CARD_MIN_INTERVAL_MS, CardMode, CardState, cardStateFor, shouldPushCard
-} from '../main/ets/core/widget/CardModel';
+} from 'common';
 import {
   EngineSnapshot, PlatformStatus, RelDir, SignalQuality, StopProgress, StopStatus, TourPhase
-} from '../main/ets/contracts/EngineTypes';
-import { FixSource } from '../main/ets/contracts/Ports';
-import { VoiceLabel } from '../main/ets/contracts/Settings';
+} from 'common';
+import { FixSource } from 'common';
+import { VoiceLabel } from 'common';
 
 function platform(): PlatformStatus {
   const p: PlatformStatus = {
